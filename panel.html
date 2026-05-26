@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · Estable Limpia</title>
+<title>NODO · OPERATIVO V21 · Estable Final</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -274,7 +274,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px;border-bottom:1px s
   <div class="login-card">
     <img src="logo-nodo.png" class="logo" alt="NODO">
     <h2 style="margin-bottom:6px">PANEL OPERATIVO LITE</h2>
-    <div class="small" style="margin-bottom:16px">Versión V21 · Estable Limpia</div>
+    <div class="small" style="margin-bottom:16px">Versión V21 · Estable Final</div>
     <label>Usuario</label>
     <input id="loginUsuario" autocomplete="username">
     <label>Clave</label>
@@ -13951,6 +13951,138 @@ Link: ${esc(link)}</textarea>
   }, 2500);
 
   setTimeout(renderAll,2200);
+})();
+</script>
+
+
+<style id="nodo-v21-sin-sector-arriba-css">
+/* =========================================================
+   NODO V21 · SIN SECTOR ARRIBA
+   Deja Inicio con una sola estructura: Centro Operativo limpio.
+========================================================= */
+
+/* Oculta todo lo viejo directo dentro de Inicio, deja solo el panel estable */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba #viewInicio > *:not(#nodoV21StablePanel){
+  display:none!important;
+}
+
+/* El panel estable queda arriba sin repetir header viejo/KPIs viejos */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba #nodoV21StablePanel{
+  order:1!important;
+  margin-top:0!important;
+}
+
+/* Ocultar botón de CSV operativo si quedó de versiones anteriores */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba #nodoOrgCsvBtn,
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba [id*="CsvBtn"],
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba [id*="csvBtn"],
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba [id*="ImportarCsv"],
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba [id*="importarCsv"]{
+  display:none!important;
+}
+
+/* Más aire arriba, menos sensación de panel duplicado */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .main,
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .content,
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .app-main{
+  padding-top:18px!important;
+}
+
+/* Botones superiores propios del Centro Operativo */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .nodo-stable-head .ops-compact-actions{
+  margin-left:auto!important;
+}
+
+/* Reduce un poco el alto visual de las billeteras para que entre más contenido sin perder estilo */
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .nodo-stable-wallet{
+  min-height:135px!important;
+  padding:16px!important;
+}
+body.nodo-v21-stable-clean.nodo-v21-sin-sector-arriba .nodo-stable-wallet .saldo{
+  font-size:31px!important;
+  margin:11px 0 8px!important;
+}
+</style>
+
+<script id="nodo-v21-sin-sector-arriba-js">
+(function(){
+  if(window.__NODO_V21_SIN_SECTOR_ARRIBA__) return;
+  window.__NODO_V21_SIN_SECTOR_ARRIBA__ = true;
+
+  function norm(v){
+    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+    catch(e){return String(v ?? '').trim().toUpperCase();}
+  }
+
+  function limpiarArribaYCsv(){
+    document.body.classList.add('nodo-v21-sin-sector-arriba');
+
+    const view = document.getElementById('viewInicio');
+    const panel = document.getElementById('nodoV21StablePanel');
+
+    if(view && panel){
+      // Asegura que el panel estable sea el primer contenido visible del inicio.
+      if(panel.parentElement === view && view.firstElementChild !== panel){
+        view.insertBefore(panel, view.firstElementChild);
+      }
+
+      Array.from(view.children || []).forEach(el=>{
+        if(el !== panel){
+          el.classList.add('nodo-v21-old-top-hidden');
+          el.style.display = 'none';
+        }
+      });
+    }
+
+    // Quitar botón Importar CSV ops / CSV del operativo.
+    document.querySelectorAll('button,a').forEach(el=>{
+      const t = norm(el.textContent || '');
+      if(t.includes('IMPORTAR CSV') || t.includes('CSV OPS') || t.includes('IMPORTAR OPERACIONES')){
+        el.style.display = 'none';
+        el.classList.add('nodo-v21-old-top-hidden');
+      }
+    });
+
+    // Quitar contenedores sueltos de CSV si quedaron sin botón.
+    document.querySelectorAll('[id], [class]').forEach(el=>{
+      const idc = norm((el.id || '') + ' ' + (el.className || ''));
+      if(idc.includes('CSV') && (idc.includes('IMPORT') || idc.includes('OPS')) && !el.closest('#nodoV21StablePanel')){
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  const oldStable = window.nodoV21StableRender;
+  if(typeof oldStable === 'function' && !oldStable.__sinSectorArriba){
+    window.nodoV21StableRender = function(){
+      const r = oldStable.apply(this, arguments);
+      setTimeout(limpiarArribaYCsv, 80);
+      return r;
+    };
+    window.nodoV21StableRender.__sinSectorArriba = true;
+  }
+
+  const wrap = (name)=>{
+    const fn = window[name];
+    if(typeof fn === 'function' && !fn.__sinSectorArriba){
+      window[name] = function(){
+        const r = fn.apply(this, arguments);
+        setTimeout(limpiarArribaYCsv, 120);
+        setTimeout(limpiarArribaYCsv, 700);
+        return r;
+      };
+      window[name].__sinSectorArriba = true;
+      try{ eval(name + '=window[name]'); }catch(e){}
+    }
+  };
+
+  wrap('renderInicio');
+  wrap('renderCentroOperativo');
+  wrap('renderWorkerJobs');
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(limpiarArribaYCsv,1200));
+  window.addEventListener('load',()=>setTimeout(limpiarArribaYCsv,1700));
+  setTimeout(limpiarArribaYCsv,2200);
 })();
 </script>
 
