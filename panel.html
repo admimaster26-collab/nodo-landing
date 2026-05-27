@@ -10196,5 +10196,630 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
 })();
 </script>
 
+
+<style id="nodo-v21-realtime-fix-css">
+/* =========================================================
+   NODO V21 · REALTIME FIX
+   Billetera/operador manual + retry alias duplicado + refresh vivo.
+========================================================= */
+body.nodo-v21-realtime-fix .nodo-live-dot{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  border-radius:999px!important;
+  padding:5px 9px!important;
+  background:rgba(34,197,94,.12)!important;
+  border:1px solid rgba(34,197,94,.22)!important;
+  color:#bbf7d0!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+body.nodo-v21-realtime-fix .nodo-live-dot::before{
+  content:"";
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:#22c55e;
+  box-shadow:0 0 12px rgba(34,197,94,.9);
+}
+body.nodo-v21-realtime-fix .nodo-alias-tools{
+  margin-top:12px!important;
+  border:1px solid rgba(245,158,11,.28)!important;
+  background:rgba(245,158,11,.10)!important;
+  border-radius:16px!important;
+  padding:12px!important;
+}
+body.nodo-v21-realtime-fix .nodo-alias-tools input{
+  width:100%!important;
+  height:42px!important;
+  border-radius:12px!important;
+  border:1px solid rgba(148,163,184,.22)!important;
+  padding:0 12px!important;
+  background:#fff!important;
+  color:#111827!important;
+  margin:8px 0!important;
+}
+body.nodo-v21-realtime-fix .nodo-alias-pills{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  margin-top:8px!important;
+}
+body.nodo-v21-realtime-fix .nodo-alias-pill{
+  border:none!important;
+  border-radius:999px!important;
+  padding:8px 11px!important;
+  background:rgba(255,255,255,.14)!important;
+  color:#fff!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+}
+body.nodo-v21-realtime-fix .nodo-job-wallet-chip.fixed{
+  background:rgba(34,197,94,.13)!important;
+  border-color:rgba(34,197,94,.25)!important;
+  color:#bbf7d0!important;
+}
+body.nodo-v21-realtime-fix .nodo-operator-chip{
+  display:inline-flex!important;
+  border-radius:999px!important;
+  padding:6px 9px!important;
+  background:rgba(148,163,184,.10)!important;
+  border:1px solid rgba(148,163,184,.14)!important;
+  color:#e5e7eb!important;
+  font-size:11px!important;
+  font-weight:800!important;
+}
+</style>
+
+<script id="nodo-v21-realtime-fix-js">
+(function(){
+  if(window.__NODO_V21_REALTIME_FIX__) return;
+  window.__NODO_V21_REALTIME_FIX__ = true;
+  document.body.classList.add('nodo-v21-realtime-fix');
+
+  const RT = {
+    pulseTimer:null,
+    activePoll:false,
+    lastFullRefresh:0,
+    createdShown:{}
+  };
+
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
+  const attr = v => esc(v).replaceAll('`','&#96;');
+  const norm = v => { try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}catch(e){return String(v ?? '').trim().toUpperCase();} };
+  const money = v => { try{return typeof window.money === 'function' ? window.money(v) : ('$ ' + Number(v||0).toLocaleString('es-AR'));}catch(e){return '$ '+(v||0);} };
+  const parseJson = v => { if(!v) return {}; if(typeof v === 'object') return v; try{return JSON.parse(String(v));}catch(e){return {};} };
+
+  function jobs(){ try{return Array.isArray(window.workerJobs) ? window.workerJobs : (Array.isArray(workerJobs) ? workerJobs : []);}catch(e){return [];} }
+  function solis(){ try{return Array.isArray(window.solicitudes) ? window.solicitudes : (Array.isArray(solicitudes) ? solicitudes : []);}catch(e){return [];} }
+  function billeteras(){
+    const out=[];
+    try{
+      if(Array.isArray(window.billeteras)) out.push(...window.billeteras);
+      if(typeof billeteras !== 'undefined' && Array.isArray(billeteras)) out.push(...billeteras);
+      if(Array.isArray(window.saldosOperativos?.billeteras)) out.push(...window.saldosOperativos.billeteras);
+      if(Array.isArray(window.wallets)) out.push(...window.wallets);
+    }catch(e){}
+    const seen=new Set();
+    return out.filter(w=>{
+      const k=String(w.id||w.ID||w.id_billetera||w.billetera_id||w.nombre_visible||w.nombre||'');
+      if(!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  const jid = j => j?.id || j?.job_id || j?.worker_job_id || j?.WORKER_JOB_ID || '';
+  const jtipo = j => j?.tipo_accion || j?.tipo || j?.TIPO || j?.TIPO_SOLICITUD || '';
+  const jusu = j => j?.usuario || j?.USUARIO || j?.USUARIO_JUGADOR || j?.alias || '';
+  const jmonto = j => Number(j?.monto || j?.MONTO_DECLARADO || j?.MONTO_REAL || 0);
+  const jest = j => j?.estado || j?.ESTADO || j?.ESTADO_WORKER || '';
+  const jres = j => j?.resultado || j?.result || j?.RESULTADO || j?.error_mensaje || j?.error || j?.WORKER_ERROR || '';
+  const wid = w => w?.id ?? w?.ID ?? w?.id_billetera ?? w?.billetera_id ?? '';
+  const wname = w => w?.nombre_visible || w?.nombre || w?.NOMBRE || w?.alias || w?.titular || ('Billetera '+wid(w));
+  const wtipo = w => w?.banco || w?.tipo || w?.TIPO || w?.provider || 'MP';
+
+  function currentOperator(){
+    try{
+      const o = window.operador || (typeof operador !== 'undefined' ? operador : null) || {};
+      return o.usuario || o.nombre || o.NOMBRE || localStorage.getItem('nodo_operador_nombre') || 'operador';
+    }catch(e){
+      return localStorage.getItem('nodo_operador_nombre') || 'operador';
+    }
+  }
+
+  function jobMeta(){
+    try{return JSON.parse(localStorage.getItem('nodo_v21_job_meta') || '{}') || {};}catch(e){return {};}
+  }
+  function saveJobMeta(meta){
+    localStorage.setItem('nodo_v21_job_meta', JSON.stringify(meta || {}));
+  }
+  function rememberJob(id, data){
+    if(!id) return;
+    const meta = jobMeta();
+    meta[String(id)] = Object.assign({}, meta[String(id)] || {}, data || {}, {updatedAt:Date.now()});
+    saveJobMeta(meta);
+  }
+
+  function pendingOps(){
+    try{return JSON.parse(localStorage.getItem('nodo_v21_pending_ops') || '[]') || [];}catch(e){return [];}
+  }
+  function savePendingOps(arr){
+    localStorage.setItem('nodo_v21_pending_ops', JSON.stringify((arr || []).slice(-80)));
+  }
+
+  function selectedWallet(){
+    const id = String(($('nodoCleanWallet') || {}).value || localStorage.getItem('nodoCleanWallet') || localStorage.getItem('nodoUltimaBilleteraImpactada') || '').trim();
+    const w = billeteras().find(x=>String(wid(x))===String(id));
+    return w ? {id:String(wid(w)), name:wname(w), tipo:wtipo(w)} : (id ? {id, name:'ID '+id, tipo:''} : null);
+  }
+
+  function walletFromJob(j){
+    if(!j) return null;
+    const p = parseJson(j.payload);
+    const meta = jobMeta()[String(jid(j))] || {};
+    const rawId = j.billetera_id ?? j.id_billetera ?? j.wallet_id ?? j.id_wallet ??
+      p.billetera_id ?? p.id_billetera ?? p.wallet_id ?? p.billeteraImpactada ?? p.billetera ?? p.id_billetera_impactada ??
+      meta.walletId ?? '';
+    const rawName = j.billetera_nombre ?? j.nombre_billetera ?? j.wallet_nombre ?? j.billetera ??
+      p.billetera_nombre ?? p.nombre_billetera ?? p.wallet_nombre ?? p.billetera_nombre_visible ??
+      meta.walletName ?? '';
+
+    const obs = String(j.observacion || j.notas || p.observacion || p.obs || '');
+    const obsId = (obs.match(/billetera_id\s*=\s*(\d+)/i) || [])[1];
+    const finalId = rawId || obsId || '';
+
+    const list = billeteras();
+    let found = null;
+    if(finalId !== '' && finalId !== null && finalId !== undefined){
+      found = list.find(w=>String(wid(w))===String(finalId));
+    }
+    if(!found && rawName){
+      found = list.find(w=>norm(wname(w)).includes(norm(rawName)) || norm(rawName).includes(norm(wname(w))));
+    }
+    if(found) return {id:String(wid(found)), name:wname(found), tipo:wtipo(found)};
+    if(finalId || rawName) return {id:finalId, name:rawName || ('ID '+finalId), tipo:''};
+    return null;
+  }
+
+  function operatorFromJob(j){
+    if(!j) return '-';
+    const p = parseJson(j.payload);
+    const meta = jobMeta()[String(jid(j))] || {};
+    const obs = String(j.observacion || j.notas || p.observacion || p.obs || '');
+    const obsOp = (obs.match(/operador\s*=\s*([^·|]+)/i) || [])[1];
+    return j.operador || j.operador_nombre || j.worker_id || j.created_by || j.agent ||
+      p.operador || p.worker_id || p.created_by || meta.operator || (obsOp ? obsOp.trim() : '') || '-';
+  }
+
+  function movementJob(j){
+    const t=norm(jtipo(j));
+    return t.includes('CARGA') || t.includes('RETIRO') || t.includes('FICHAS') || jmonto(j)!==0;
+  }
+
+  function aliasDuplicate(j){
+    const r=norm(jres(j));
+    return r.includes('ALIAS DUPLICADO') || r.includes('USUARIO DUPLICADO') || r.includes('DUPLICADO EN AGENTES') || r.includes('DUPLICADO');
+  }
+
+  function finalJob(j){
+    return ['COMPLETADO','OK','FINALIZADO','CANCELADO','CANCELADA'].includes(norm(jest(j)));
+  }
+
+  function erroredJob(j){
+    const n=norm(jest(j)), r=norm(jres(j));
+    return n.includes('ERROR') || n==='REINTENTAR' || n==='REQUIERE_MANUAL' || r.includes('ERROR') || r.includes('DUPLICADO');
+  }
+
+  function matchPendingToJobs(){
+    const pending = pendingOps().filter(p=>Date.now()-(p.createdAt||0) < 15*60*1000);
+    if(!pending.length) return;
+    const meta = jobMeta();
+    let changed = false;
+
+    jobs().forEach(j=>{
+      const id = String(jid(j) || '');
+      if(!id || meta[id]?.walletId) return;
+
+      const ju = norm(jusu(j));
+      const jt = norm(jtipo(j));
+      const jm = Math.abs(Number(jmonto(j)||0));
+
+      const hit = pending.find(p=>{
+        if(norm(p.usuario) !== ju) return false;
+        if(p.tipo && jt && !jt.includes(norm(p.tipo).replace('PROCESAR_','').replace('CARGAR_',''))) {
+          if(!(norm(p.tipo).includes('CARGA') && jt.includes('CARGA')) && !(norm(p.tipo).includes('RETIRO') && jt.includes('RETIRO')) && !(norm(p.tipo).includes('CREAR') && jt.includes('CREAR')) && !(norm(p.tipo).includes('CLAVE') && jt.includes('CLAVE')) && !(norm(p.tipo).includes('VALIDAR') && jt.includes('VALIDAR'))) return false;
+        }
+        if(Number.isFinite(p.monto) && Math.abs(Number(p.monto||0)) !== jm) return false;
+        return true;
+      });
+
+      if(hit){
+        meta[id] = Object.assign({}, meta[id] || {}, {
+          walletId: hit.walletId || '',
+          walletName: hit.walletName || '',
+          operator: hit.operator || currentOperator(),
+          usuario: hit.usuario || jusu(j),
+          tipo: hit.tipo || jtipo(j),
+          monto: hit.monto ?? jmonto(j),
+          updatedAt: Date.now()
+        });
+        changed = true;
+      }
+    });
+
+    if(changed) saveJobMeta(meta);
+    savePendingOps(pending);
+  }
+
+  function patchTables(){
+    matchPendingToJobs();
+
+    // Worker: Hora, Usuario, Operación, Monto, Billetera, Estado, Operador, Acciones
+    document.querySelectorAll('#nodoCleanWorker tr').forEach(tr=>{
+      const txt = tr.textContent || '';
+      const id = (txt.match(/#(\d+)/) || [])[1];
+      if(!id) return;
+      const j = jobs().find(x=>String(jid(x))===String(id));
+      if(!j) return;
+      const tds = tr.querySelectorAll('td');
+      if(tds.length >= 8){
+        const w = walletFromJob(j);
+        if(w && tds[4]) tds[4].innerHTML = `<span class="nodo-job-wallet-chip fixed">💳 ${esc(w.name)}</span>`;
+        if(tds[6]) tds[6].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
+      }
+    });
+
+    // History: Hora, Usuario, Tipo, Monto, Origen, Billetera, Estado, Operador, Job, Ajuste
+    document.querySelectorAll('#nodoCleanHistory tr').forEach(tr=>{
+      const txt = tr.textContent || '';
+      const id = (txt.match(/#(\d+)/) || [])[1];
+      if(!id) return;
+      const j = jobs().find(x=>String(jid(x))===String(id));
+      if(!j) return;
+      const tds = tr.querySelectorAll('td');
+      if(tds.length >= 10){
+        const w = walletFromJob(j);
+        if(w && tds[5]) tds[5].innerHTML = `<span class="nodo-job-wallet-chip fixed">💳 ${esc(w.name)}</span>`;
+        if(tds[7]) tds[7].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
+      }
+    });
+
+    // Landing operator improvements too.
+    document.querySelectorAll('#nodoCleanLanding tr').forEach(tr=>{
+      const txt = tr.textContent || '';
+      const id = (txt.match(/#(\d+)/) || [])[1];
+      if(!id) return;
+      const j = jobs().find(x=>String(jid(x))===String(id));
+      if(!j) return;
+      const tds = tr.querySelectorAll('td');
+      if(tds.length >= 8 && tds[6]) tds[6].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
+    });
+  }
+
+  function registerPendingFromForm(mode){
+    const usuario = String(($('nodoCleanUsuario') || {}).value || '').trim();
+    const monto = Number(($('nodoCleanMonto') || {}).value || 0);
+    const w = selectedWallet();
+    let tipo = 'VALIDAR_USUARIO';
+    if(mode === 'CREAR') tipo = 'CREAR_USUARIO';
+    else if(mode === 'CLAVE') tipo = 'CAMBIAR_CLAVE';
+    else if(mode === 'VALIDAR') tipo = 'VALIDAR_USUARIO';
+    else if(monto > 0) tipo = 'CARGAR_FICHAS';
+    else if(monto < 0) tipo = 'PROCESAR_RETIRO';
+
+    const arr = pendingOps();
+    arr.push({
+      usuario,
+      tipo,
+      monto: Math.abs(monto),
+      walletId: w?.id || '',
+      walletName: w?.name || '',
+      operator: currentOperator(),
+      createdAt: Date.now()
+    });
+    savePendingOps(arr);
+  }
+
+  const oldRun = window.nodoCleanRun;
+  if(typeof oldRun === 'function' && !oldRun.__rtFix){
+    window.nodoCleanRun = async function(mode){
+      registerPendingFromForm(mode);
+      const r = await oldRun.apply(this, arguments);
+      scheduleRealtimePulse(true);
+      return r;
+    };
+    window.nodoCleanRun.__rtFix = true;
+  }
+
+  async function refreshLight(){
+    if(document.hidden) return;
+    if(Date.now() - RT.lastFullRefresh < 1200) return;
+    RT.lastFullRefresh = Date.now();
+
+    try{ if(typeof window.cargarWorkerJobs === 'function') await window.cargarWorkerJobs(true); }catch(e){}
+    try{ if(typeof window.cargarSolicitudes === 'function') await window.cargarSolicitudes(true); }catch(e){}
+    try{ if(typeof window.cargarSaldosOperativos === 'function') await window.cargarSaldosOperativos(true); }catch(e){}
+
+    try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+    setTimeout(patchTables, 80);
+    checkCreatedUserJobs();
+  }
+
+  function scheduleRealtimePulse(strong){
+    const times = strong ? [300,800,1500,2500,4000,6500,9500,13000,18000] : [800,2500,5000];
+    times.forEach(ms=>setTimeout(refreshLight, ms));
+  }
+
+  function startRealtime(){
+    if(RT.pulseTimer) return;
+    RT.pulseTimer = setInterval(()=>{
+      const panel = $('nodoV21CleanPanel');
+      if(!panel || panel.offsetParent === null) return;
+      const active = document.activeElement;
+      if(active && ['INPUT','TEXTAREA','SELECT'].includes(active.tagName)) return;
+      refreshLight();
+    }, 3000);
+  }
+
+  function extractSuggestions(j){
+    const raw = String(jres(j) || '');
+    let part = '';
+    const m = raw.match(/Sugerencias?:\s*([^\.]+)/i);
+    if(m) part = m[1];
+    let list = part.split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
+    const base = String(jusu(j) || '').trim();
+    if(!list.length && base){
+      list = [base+'55', base+'1', base+'ok', base+'x', base+'vip'];
+    }
+    return [...new Set(list)].slice(0,8);
+  }
+
+  window.nodoCleanSetAliasVariant = function(jobId, val){
+    const inp = $('nodoRetryUsuario_' + jobId);
+    if(inp){
+      inp.value = val;
+      inp.focus();
+      inp.select();
+    }
+    try{
+      const m = jobMeta();
+      m[String(jobId)] = Object.assign({}, m[String(jobId)] || {}, {retryUsuario:val, updatedAt:Date.now()});
+      saveJobMeta(m);
+    }catch(e){}
+  };
+
+  async function updateJobUser(jobId, nuevoUsuario){
+    if(!nuevoUsuario) return {ok:true};
+    try{
+      const { data, error } = await supabaseClient.rpc('admin_actualizar_usuario_worker_job', {
+        p_job_id: Number(jobId),
+        p_usuario: nuevoUsuario
+      });
+      if(error) throw error;
+      const r = Array.isArray(data) ? data[0] : data;
+      if(r && r.ok === false) throw new Error(r.error || 'No se pudo actualizar usuario.');
+      return {ok:true};
+    }catch(e){
+      return {ok:false, error:e.message || String(e)};
+    }
+  }
+
+  window.nodoCleanRetryAlias = async function(jobId){
+    const id = Number(jobId);
+    const inp = $('nodoRetryUsuario_' + jobId);
+    const nuevoUsuario = String((inp && inp.value) || '').trim();
+
+    if(!id){
+      alert('Job inválido.');
+      return;
+    }
+    if(!nuevoUsuario){
+      alert('Elegí o escribí una variante de usuario.');
+      return;
+    }
+
+    const btn = $('nodoRetryBtn_' + jobId);
+    if(btn) btn.textContent = 'Reintentando...';
+
+    try{
+      const upd = await updateJobUser(id, nuevoUsuario);
+      if(!upd.ok){
+        throw new Error('No pude actualizar el usuario del mismo job: ' + upd.error);
+      }
+
+      const { data, error } = await supabaseClient.rpc('admin_reintentar_worker_job', {
+        p_job_id: id
+      });
+      if(error) throw error;
+      const r = Array.isArray(data) ? data[0] : data;
+      if(r && r.ok === false) throw new Error(r.error || 'No se pudo reintentar.');
+
+      rememberJob(id, {
+        usuario:nuevoUsuario,
+        operator:currentOperator(),
+        retryAt:Date.now()
+      });
+
+      try{
+        localStorage.setItem('nodo_watch_created_job_' + id, JSON.stringify({
+          jobId:id,
+          usuario:nuevoUsuario,
+          clave:($('nodoCleanClave') || {}).value || '12345a',
+          link:'http://bet-300.pw/',
+          until:Date.now()+180000
+        }));
+      }catch(e){}
+
+      if(typeof toast === 'function') toast('Reintentando mismo job con variante','green');
+
+      scheduleRealtimePulse(true);
+
+      const msg = $('nodoRetryMsg_' + jobId);
+      if(msg) msg.innerHTML = '<div class="ok-box">Job reintentado. Esperando respuesta del worker...</div>';
+
+      [800,1800,3200,5200,8200,12000].forEach(ms=>setTimeout(()=>openLogsIfStillModal(id), ms));
+    }catch(e){
+      alert('Error reintentando job: ' + (e.message || e));
+    }finally{
+      if(btn) btn.textContent = 'Reintentar mismo job';
+    }
+  };
+
+  function openLogsIfStillModal(id){
+    refreshLight();
+    const t = $('modalTitle');
+    if(t && /Logs del worker/i.test(t.textContent || '')){
+      const j = jobs().find(x=>String(jid(x))===String(id));
+      if(j && finalJob(j)){
+        checkCreatedUserJobs();
+        try{ cerrarModal && cerrarModal(); }catch(e){}
+      }
+    }
+  }
+
+  const oldLogs = window.nodoCleanLogs;
+  window.nodoCleanLogs = function(id){
+    const j = jobs().find(x=>String(jid(x))===String(id));
+    if(!j){
+      if(typeof oldLogs === 'function') return oldLogs.apply(this, arguments);
+      return;
+    }
+
+    const fin = finalJob(j);
+    const alias = aliasDuplicate(j);
+    const isErr = erroredJob(j);
+    const suggestions = alias && !fin ? extractSuggestions(j) : [];
+
+    const html = `
+      <div class="verify-box ${fin?'good':(isErr?'bad':'warn')}">
+        <b>Job #${esc(id)} · ${esc(String(jtipo(j)||'').replaceAll('_',' '))}</b><br>
+        Usuario: <b>${esc(jusu(j)||'-')}</b><br>
+        Monto: <b>${money(jmonto(j))}</b><br>
+        Estado: <b>${esc(jest(j)||'-')}</b><br>
+        Operador: <b>${esc(operatorFromJob(j)||'-')}</b><br>
+        Billetera: ${walletFromJob(j) ? `<span class="nodo-job-wallet-chip fixed">💳 ${esc(walletFromJob(j).name)}</span>` : '<span class="nodo-job-wallet-chip na">— No aplica</span>'}
+      </div>
+
+      <div style="margin-top:10px" class="verify-box">
+        ${esc(jres(j) || 'Sin detalle adicional.')}
+      </div>
+
+      ${alias && !fin ? `
+        <div class="nodo-alias-tools">
+          <b>Alias/usuario duplicado.</b><br>
+          Elegí una variante o escribí una nueva y reintentá el mismo job.
+          <input id="nodoRetryUsuario_${attr(id)}" value="${esc(suggestions[0] || jusu(j) || '')}" placeholder="Nueva variante">
+          <div class="nodo-alias-pills">
+            ${suggestions.map(s=>`<button class="nodo-alias-pill" onclick="nodoCleanSetAliasVariant('${attr(id)}','${attr(s)}')">${esc(s)}</button>`).join('')}
+          </div>
+          <div id="nodoRetryMsg_${attr(id)}" style="margin-top:10px"></div>
+        </div>
+      ` : ''}
+    `;
+
+    const buttons = [];
+    if(alias && !fin){
+      buttons.push(`<button id="nodoRetryBtn_${attr(id)}" class="mini-btn green" onclick="nodoCleanRetryAlias('${attr(id)}')">Reintentar mismo job</button>`);
+      buttons.push(`<button class="mini-btn red" onclick="workerPanelCancelarJob && workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);
+    }else if(!fin && isErr){
+      buttons.push(`<button class="mini-btn green" onclick="workerPanelReintentarJob && workerPanelReintentarJob('${attr(id)}'); setTimeout(nodoCleanRTRefresh,700)">Reintentar</button>`);
+      buttons.push(`<button class="mini-btn red" onclick="workerPanelCancelarJob && workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);
+    }
+
+    if(typeof abrirModal === 'function'){
+      abrirModal('Logs del worker', html + (buttons.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${buttons.join('')}</div>` : ''), null, 'Cerrar');
+    }else if(typeof oldLogs === 'function'){
+      return oldLogs.apply(this, arguments);
+    }
+  };
+
+  function showCreatedModal(data){
+    const usuario = data.usuario || '';
+    const clave = data.clave || '12345a';
+    const link = data.link || 'http://bet-300.pw/';
+    const msg = `Usuario: ${usuario}\nClave: ${clave}\nLink: ${link}`;
+
+    if(typeof abrirModalUsuarioCreado === 'function'){
+      try{
+        return abrirModalUsuarioCreado({usuario, clave, link});
+      }catch(e){}
+    }
+
+    if(typeof abrirModal === 'function'){
+      abrirModal('Usuario creado', `
+        <div class="verify-box good">
+          <b>Usuario creado correctamente</b><br><br>
+          <b>Usuario:</b> ${esc(usuario)}<br>
+          <b>Clave:</b> ${esc(clave)}<br>
+          <b>Link:</b> ${esc(link)}
+        </div>
+        <textarea id="nodoCreatedMsgRT" style="width:100%;height:115px;margin-top:10px">${esc(msg)}</textarea>
+      `, ()=>{
+        navigator.clipboard && navigator.clipboard.writeText(($('nodoCreatedMsgRT') || {}).value || msg);
+      }, 'Copiar mensaje');
+    }
+  }
+
+  function checkCreatedUserJobs(){
+    const list = jobs();
+    Object.keys(localStorage).forEach(k=>{
+      if(!k.startsWith('nodo_watch_created_job_')) return;
+      let data=null;
+      try{ data=JSON.parse(localStorage.getItem(k) || '{}'); }catch(e){}
+      if(!data || !data.jobId || Date.now() > Number(data.until || 0)){
+        localStorage.removeItem(k);
+        return;
+      }
+      if(RT.createdShown[data.jobId]) return;
+      const j = list.find(x=>String(jid(x))===String(data.jobId));
+      if(!j) return;
+      if(finalJob(j) && norm(jest(j)) !== 'CANCELADO' && norm(jest(j)) !== 'CANCELADA'){
+        RT.createdShown[data.jobId] = true;
+        localStorage.removeItem(k);
+        showCreatedModal({
+          usuario:jusu(j) || data.usuario,
+          clave:data.clave || '12345a',
+          link:data.link || 'http://bet-300.pw/'
+        });
+      }
+    });
+  }
+
+  window.nodoCleanRTRefresh = refreshLight;
+
+  const oldRender = window.nodoCleanRender;
+  if(typeof oldRender === 'function' && !oldRender.__rtPatch){
+    window.nodoCleanRender = function(){
+      const r = oldRender.apply(this, arguments);
+      setTimeout(patchTables, 60);
+      setTimeout(checkCreatedUserJobs, 120);
+      return r;
+    };
+    window.nodoCleanRender.__rtPatch = true;
+  }
+
+  // Patch built-in retry to trigger realtime pulse.
+  const oldRetry = window.workerPanelReintentarJob;
+  if(typeof oldRetry === 'function' && !oldRetry.__rtPulse){
+    window.workerPanelReintentarJob = async function(){
+      const r = await oldRetry.apply(this, arguments);
+      scheduleRealtimePulse(true);
+      return r;
+    };
+    window.workerPanelReintentarJob.__rtPulse = true;
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    setTimeout(()=>{ patchTables(); startRealtime(); }, 900);
+  });
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{ patchTables(); startRealtime(); refreshLight(); }, 1300);
+  });
+  setTimeout(()=>{ patchTables(); startRealtime(); }, 1700);
+})();
+</script>
+
 </body>
 </html>
