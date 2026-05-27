@@ -10171,9 +10171,78 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function selectedWalletData(){const id=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const w=billeteras().find(x=>String(wid(x))===id);return w?{id:String(wid(w)),name:wname(w),tipo:wtipo(w)}:(id?{id,name:'ID '+id,tipo:''}:null)}
  function isMovementTipo(t,m){const n=norm(t);return n.includes('CARGA')||n.includes('RETIRO')||n.includes('FICHAS')||Number(m||0)!==0}
  function matchPendingJobs(){const pending=pendingOps().filter(p=>Date.now()-(p.createdAt||0)<20*60*1000);if(!pending.length)return;const meta=metaStore();let changed=false;jobs().forEach(j=>{const id=String(jid(j)||'');if(!id||meta[id]?.walletId)return;const ju=norm(jusu(j)),jt=norm(jtipo(j)),jm=Math.abs(Number(jmonto(j)||0));const hit=pending.find(p=>{if(norm(p.usuario)!==ju)return false;const pt=norm(p.tipo);if(pt.includes('CARGA')&&!jt.includes('CARGA'))return false;if(pt.includes('RETIRO')&&!jt.includes('RETIRO'))return false;if(pt.includes('CREAR')&&!jt.includes('CREAR'))return false;if(pt.includes('CLAVE')&&!jt.includes('CLAVE'))return false;if(pt.includes('VALIDAR')&&!jt.includes('VALIDAR'))return false;if(Number.isFinite(Number(p.monto))&&Math.abs(Number(p.monto||0))!==jm)return false;return true});if(hit){meta[id]=Object.assign({},meta[id]||{},{walletId:hit.walletId||'',walletName:hit.walletName||'',operator:hit.operator||currentOperator(),usuario:hit.usuario,tipo:hit.tipo,monto:hit.monto,updatedAt:Date.now()});changed=true}});if(changed)saveMeta(meta);savePendingOps(pending)}
- async function cargarSaldoAgenteClean(force){if(C.saldoAgenteLoading)return;const now=Date.now();if(!force&&C.saldoAgente&&now-(C.saldoAgente.ts||0)<12000)return;C.saldoAgenteLoading=true;try{if(typeof supabaseClient==='undefined')return;const rpc='panel_operativo_get_saldo_agente_estado';const args={p_session_token:token(),p_pc_codigo:pc()};const {data,error}=await supabaseClient.rpc(rpc,args);if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(row){C.saldoAgente=Object.assign({},row,{ts:Date.now()});try{localStorage.setItem('nodo_v21_saldo_agente_cache',JSON.stringify(C.saldoAgente))}catch(e){}}}catch(e){try{C.saldoAgente=JSON.parse(localStorage.getItem('nodo_v21_saldo_agente_cache')||'null')}catch(_){}}finally{C.saldoAgenteLoading=false}}
- function saldoAgenteValue(){const s=C.saldoAgente;const val=s?(s.saldo_agente??s.saldo??s.saldo_real??null):null;return val===null||val===undefined?'Sin dato':money(Number(val||0))}
- function saldoAgenteSub(){const s=C.saldoAgente;return s?`Último: ${esc(s.ultimo_tipo||s.tipo||'-')} · ${esc(s.ultimo_usuario||s.usuario||'-')}`:'Se actualiza cuando trabaja el worker'}
+ function readSaldoCacheAny(){
+   const keys=['nodo_v21_saldo_agente_cache','nodo_v16_saldo_agente_cache','nodo_saldo_agente_cache','agent_saldo_cache'];
+   for(const k of keys){
+     try{
+       const v=JSON.parse(localStorage.getItem(k)||'null');
+       if(v && (v.saldo_agente!==undefined || v.saldo!==undefined || v.saldo_real!==undefined)) return v;
+     }catch(e){}
+   }
+   try{
+     const box=document.getElementById('agentSaldoRealtimeBox');
+     const txt=box?box.textContent:'';
+     const m=txt.match(/-\$?\s?[\d.]+|\$?\s?[\d.]+/);
+     if(m) return {saldo_agente:Number(String(m[0]).replace(/\$/g,'').replace(/\./g,'').replace(/\s/g,'')), ultimo_tipo:'cache', ultimo_usuario:'panel'};
+   }catch(e){}
+   return null;
+ }
+ function readSaldoFromLastJob(){
+   try{
+     const js=jobs().slice().sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+     for(const j of js){
+       const t=norm(jtipo(j));
+       if(!(t.includes('CARGA')||t.includes('RETIRO')||t.includes('FICHAS')||t.includes('VALIDAR'))) continue;
+       const raw=String(jres(j)||'')+' '+String(j.resultado_json||'')+' '+String(j.payload||'');
+       const patterns=[
+         /saldo[_\s-]*agente[_\s-]*(?:despues|después|actual|real)?\D{0,20}(-?[\d.]+(?:,\d+)?)/i,
+         /agente\D{0,20}(?:despues|después|actual)\D{0,20}(-?[\d.]+(?:,\d+)?)/i,
+         /saldoFinalAgente["':\s]+(-?[\d.]+)/i,
+         /saldo_agente["':\s]+(-?[\d.]+)/i
+       ];
+       for(const p of patterns){
+         const m=raw.match(p);
+         if(m){
+           const n=Number(String(m[1]).replace(/\./g,'').replace(',','.'));
+           if(Number.isFinite(n)) return {saldo_agente:n, ultimo_tipo:jtipo(j), ultimo_usuario:jusu(j), updated_at:j.updated_at||j.created_at, fuente:'worker_result'};
+         }
+       }
+     }
+   }catch(e){}
+   return null;
+ }
+ async function cargarSaldoAgenteClean(force){
+   if(C.saldoAgenteLoading)return;
+   const now=Date.now();
+   if(!force&&C.saldoAgente&&now-(C.saldoAgente.ts||0)<12000)return;
+   C.saldoAgenteLoading=true;
+   try{
+     if(typeof supabaseClient!=='undefined'){
+       const args={p_session_token:token(),p_pc_codigo:pc()};
+       const {data,error}=await supabaseClient.rpc('panel_operativo_get_saldo_agente_estado',args);
+       if(error)throw error;
+       const row=Array.isArray(data)?data[0]:data;
+       if(row && (row.saldo_agente!==undefined || row.saldo!==undefined || row.saldo_real!==undefined)){
+         C.saldoAgente=Object.assign({},row,{ts:Date.now()});
+         try{
+           localStorage.setItem('nodo_v21_saldo_agente_cache',JSON.stringify(C.saldoAgente));
+           localStorage.setItem('nodo_v16_saldo_agente_cache',JSON.stringify(C.saldoAgente));
+         }catch(e){}
+         try{renderKpis()}catch(e){}
+         return;
+       }
+     }
+   }catch(e){}
+   try{
+     C.saldoAgente=readSaldoCacheAny()||readSaldoFromLastJob()||C.saldoAgente;
+     if(C.saldoAgente) C.saldoAgente.ts=Date.now();
+     try{renderKpis()}catch(e){}
+   }finally{
+     C.saldoAgenteLoading=false;
+   }
+ }
+ function saldoAgenteValue(){const s=C.saldoAgente||readSaldoCacheAny()||readSaldoFromLastJob();const val=s?(s.saldo_agente??s.saldo??s.saldo_real??null):null;return val===null||val===undefined?'Sin dato':money(Number(val||0))}
+ function saldoAgenteSub(){const s=C.saldoAgente||readSaldoCacheAny()||readSaldoFromLastJob();return s?`Último: ${esc(s.ultimo_tipo||s.tipo||s.fuente||'-')} · ${esc(s.ultimo_usuario||s.usuario||'-')}${s.updated_at||s.created_at?' · '+fecha(s.updated_at||s.created_at):''}`:'Se actualiza cuando trabaja el worker'}
  function createdWatch(){let w=null;try{w=JSON.parse(localStorage.getItem('nodo_v21_core_created_watch')||'null')}catch(e){}if(!w||w.shown||Date.now()>Number(w.hasta||0))return;const hit=jobs().find(j=>norm(jusu(j))===norm(w.usuario)&&norm(jtipo(j)).includes('CREAR')&&['COMPLETADO','OK','FINALIZADO'].includes(norm(jest(j)))&&new Date(j.updated_at||j.created_at||0).getTime()>=Number(w.desde||0)-30000);if(!hit)return;w.shown=true;localStorage.setItem('nodo_v21_core_created_watch',JSON.stringify(w));showCreatedModal({usuario:jusu(hit)||w.usuario,clave:w.clave||'12345a',link:w.link||'http://bet-300.pw/'})}
  function showCreatedModal(data){const usuario=data.usuario||'',clave=data.clave||'12345a',link=data.link||'http://bet-300.pw/';const msg=`Usuario: ${usuario}\nClave: ${clave}\nLink: ${link}`;if(typeof abrirModalUsuarioCreado==='function'){try{return abrirModalUsuarioCreado({usuario,clave,link})}catch(e){}}if(typeof abrirModal==='function')abrirModal('Usuario creado',`<div class="verify-box good"><b>Usuario creado correctamente</b><br><br><b>Usuario:</b> ${esc(usuario)}<br><b>Clave:</b> ${esc(clave)}<br><b>Link:</b> ${esc(link)}</div><textarea id="nodoCreatedMsgCore" style="width:100%;height:115px;margin-top:10px">${esc(msg)}</textarea>`,()=>{navigator.clipboard&&navigator.clipboard.writeText(($('nodoCreatedMsgCore')||{}).value||msg)},'Copiar mensaje')}
  const $=id=>document.getElementById(id);
@@ -10198,7 +10267,35 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function pickWallet(){const cur=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const list=billeteras();if(cur&&list.some(w=>String(wid(w))===cur))C.selectedWallet=cur;else if(list.length)C.selectedWallet=String(wid(list[0]));return C.selectedWallet}
  function setOld(id,v){const el=$(id);if(el){el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}}
  function ensurePanel(){const view=$('viewInicio');if(!view)return null;let p=$('nodoV21CleanPanel');if(!p){p=document.createElement('section');p.id='nodoV21CleanPanel';p.innerHTML=`<div class="nodo-clean-head"><div><h2>Centro Operativo</h2><div class="nodo-clean-sub">PC actual · solicitudes · worker · billeteras · fichas en una sola vista.</div></div><div class="ops-compact-actions"><button class="mini-btn blue" onclick="nodoCleanRefresh()">Actualizar</button><button class="mini-btn green" onclick="mostrarVista&&mostrarVista('chat')">Chat</button><button class="mini-btn yellow" onclick="mostrarVista&&mostrarVista('ajustes')">Ajustes</button></div></div><div id="nodoCleanKpis"></div><div id="nodoCleanWallets"></div><div class="nodo-clean-quick"><h3>⚡ Operación rápida</h3><div class="nodo-clean-quick-grid"><div><label>Billetera</label><select id="nodoCleanWallet"></select></div><div><label>Monto</label><input id="nodoCleanMonto" type="number" placeholder="0"></div><div><label>Usuario</label><input id="nodoCleanUsuario" placeholder="ej: prueba100"></div><div><label>Clave</label><input id="nodoCleanClave" value="12345a"></div><div><label>Observación</label><input id="nodoCleanObs" placeholder="opcional"></div></div><div class="nodo-clean-quick-actions"><button class="nodo-clean-run" onclick="nodoCleanRun('EJECUTAR')">Ejecutar</button><button class="nodo-clean-validate" onclick="nodoCleanRun('VALIDAR')">Validar</button><button class="nodo-clean-pass" onclick="nodoCleanRun('CLAVE')">Cambiar clave</button><button class="nodo-clean-create" onclick="nodoCleanRun('CREAR')">Crear usuario</button></div><div id="nodoCleanMsg" class="nodo-clean-msg"></div></div><div class="nodo-clean-columns"><div class="nodo-clean-col"><div class="nodo-clean-colhead"><div><h3>📋 Solicitudes landing</h3><div class="sub">Izquierda: lo que llega desde landing / chat interno.</div></div></div><div id="nodoCleanLanding"></div></div><div class="nodo-clean-col"><div class="nodo-clean-colhead"><div><h3>⚙️ Manuales · Worker</h3><div class="sub">Derecha: jobs manuales y reintentos del worker.</div></div></div><div id="nodoCleanWorker"></div></div></div><div class="nodo-clean-history"><div class="nodo-clean-colhead"><div><h3>📊 Historial de cargas y retiros</h3><div class="sub">Acá se ajusta billetera si hubo error de selección. No modifica monto ejecutado.</div></div></div><div id="nodoCleanHistory"></div></div>`;view.prepend(p)}document.body.classList.add('nodo-v21-clean-core');return p}
- function renderKpis(){const box=$('nodoCleanKpis');if(!box)return;const js=jobs(),ls=solis();const manual=js.filter(j=>!(j.solicitud_id||j.SOLICITUD_ID||parsePayload(j.payload).solicitud_id));const err=js.filter(errorJob);const pending=js.filter(j=>['PENDIENTE','PROCESANDO','EN_COLA_WORKER'].includes(norm(jest(j))));const fichas=window.saldosOperativos?.fichas?.saldo;const billeTotal=billeteras().reduce((a,b)=>a+Number(wsaldo(b)||0),0);box.innerHTML=`<div class="nodo-clean-kpis"><div class="nodo-clean-kpi primary"><div class="l">Saldo agente real</div><div class="v saldo-real">${saldoAgenteValue()}</div><div class="s">${saldoAgenteSub()}</div></div><div class="nodo-clean-kpi"><div class="l">Fichas netas</div><div class="v">${money(fichas??0)}</div><div class="s">Carga resta · retiro suma</div></div><div class="nodo-clean-kpi"><div class="l">Total billeteras</div><div class="v">${money(billeTotal)}</div><div class="s">${billeteras().length} billetera/s</div></div><div class="nodo-clean-kpi"><div class="l">Landing</div><div class="v">${ls.length}</div><div class="s">Solicitudes recibidas</div></div><div class="nodo-clean-kpi"><div class="l">Worker</div><div class="v">${pending.length}</div><div class="s">Pendientes / procesando</div></div><div class="nodo-clean-kpi"><div class="l">Errores</div><div class="v">${err.length}</div><div class="s">Reintentos / revisión</div></div></div>`}
+ function fichasNetasValue(){
+   try{
+     const so=window.saldosOperativos || (typeof saldosOperativos!=='undefined'?saldosOperativos:null) || {};
+     const vals=[
+       so?.fichas?.saldo,
+       so?.fichas?.saldo_neto,
+       so?.fichas?.netas,
+       so?.saldo_fichas,
+       so?.fichas_netas,
+       so?.saldoFichas,
+       so?.balance_fichas
+     ];
+     for(const v of vals){
+       if(v!==undefined && v!==null && v!=='' && Number.isFinite(Number(v))) return Number(v);
+     }
+     const js=jobs();
+     if(js.length){
+       return js.filter(j=>['COMPLETADO','OK','FINALIZADO'].includes(norm(jest(j))) && isMovementTipo(jtipo(j),jmonto(j)))
+         .reduce((a,j)=>{
+           const t=norm(jtipo(j)), m=Math.abs(Number(jmonto(j)||0));
+           if(t.includes('CARGA')) return a-m;
+           if(t.includes('RETIRO')) return a+m;
+           return a;
+         },0);
+     }
+   }catch(e){}
+   return null;
+ }
+ function renderKpis(){const box=$('nodoCleanKpis');if(!box)return;const js=jobs(),ls=solis();const err=js.filter(errorJob);const pending=js.filter(j=>['PENDIENTE','PROCESANDO','EN_COLA_WORKER'].includes(norm(jest(j))));const fichas=fichasNetasValue();const billeTotal=billeteras().reduce((a,b)=>a+Number(wsaldo(b)||0),0);box.innerHTML=`<div class="nodo-clean-kpis"><div class="nodo-clean-kpi primary"><div class="l">Saldo agente real</div><div class="v saldo-real">${saldoAgenteValue()}</div><div class="s">${saldoAgenteSub()}</div></div><div class="nodo-clean-kpi"><div class="l">Fichas netas</div><div class="v">${fichas===null?'Sin dato':money(fichas)}</div><div class="s">Carga resta · retiro suma</div></div><div class="nodo-clean-kpi"><div class="l">Total billeteras</div><div class="v">${money(billeTotal)}</div><div class="s">${billeteras().length} billetera/s</div></div><div class="nodo-clean-kpi"><div class="l">Landing</div><div class="v">${ls.length}</div><div class="s">Solicitudes recibidas</div></div><div class="nodo-clean-kpi"><div class="l">Worker</div><div class="v">${pending.length}</div><div class="s">Pendientes / procesando</div></div><div class="nodo-clean-kpi"><div class="l">Errores</div><div class="v">${err.length}</div><div class="s">Reintentos / revisión</div></div></div>`}
  function renderWallets(){const box=$('nodoCleanWallets'),sel=$('nodoCleanWallet');if(!box||!sel)return;const list=billeteras(),selected=pickWallet();sel.innerHTML='<option value="">No aplica / seleccionar</option>'+list.map(w=>`<option value="${esc(wid(w))}">${esc(wname(w))} · ${esc(wtipo(w))}</option>`).join('');sel.value=selected||'';if(!list.length){box.innerHTML='<div class="nodo-empty">Sin billeteras cargadas.</div>';return}box.innerHTML=`<div class="nodo-clean-wallet-grid">${list.map(w=>{const id=String(wid(w)),active=id===String(selected);return`<div class="nodo-clean-wallet ${active?'active':''}" onclick="nodoCleanSelectWallet('${attr(id)}')">${active?'<span class="tag">ACTIVA</span>':''}<div class="name">${esc(wname(w))}</div><div class="saldo">${money(wsaldo(w))}</div><div class="meta">${esc(wtipo(w))} · ${esc(wtit(w))}<br>Alias: ${esc(w.alias||'sin alias')}</div><div class="actions"><button class="mini-btn blue" onclick="event.stopPropagation();nodoCleanSelectWallet('${attr(id)}')">Usar</button><button class="mini-btn gray" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${attr(w.alias||'')}')">Alias</button><button class="mini-btn gray" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${attr(w.cbu||'')}')">CBU</button><button class="mini-btn yellow" onclick="event.stopPropagation();abrirAjusteBilletera&&abrirAjusteBilletera('${attr(id)}')">Ajustar</button></div></div>`}).join('')}</div>`}
  function renderLanding(){const box=$('nodoCleanLanding');if(!box)return;const arr=solis().slice().sort((a,b)=>new Date(b.FECHA_CREACION||b.FECHA||b.created_at||0)-new Date(a.FECHA_CREACION||a.FECHA||a.created_at||0)).slice(0,100);if(!arr.length){box.innerHTML='<div class="nodo-empty">No hay solicitudes de landing.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="landing"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Job</th></tr></thead><tbody>${arr.map(s=>{const id=s.WORKER_JOB_ID||s.worker_job_id||'';const link=jobs().find(j=>String(jid(j))===String(id))||{};const fake={...link,billetera_id:s.BILLETERA_ID||s.billetera_id||link.billetera_id,billetera_nombre:s.BILLETERA_NOMBRE||s.billetera_nombre||link.billetera_nombre};const st={...link,estado:s.ESTADO_WORKER||s.ESTADO||link.estado,error_mensaje:s.WORKER_ERROR||link.error_mensaje};return`<tr><td>${fecha(s.FECHA_CREACION||s.FECHA||s.created_at)}</td><td><b>${esc(s.USUARIO||s.usuario||'-')}</b></td><td>${esc(String(s.TIPO_SOLICITUD||s.tipo||link.tipo||'-').replaceAll('_',' '))}</td><td><b>${money(s.MONTO_DECLARADO||s.monto||link.monto||0)}</b></td><td>${walletChip(fake)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(st)}</span>`:state(st)}</td><td><span class="nodo-operator-chip">${esc(operador(link)||s.operador||'-')}</span></td><td>${id?'#'+esc(id):'-'}</td></tr>`}).join('')}</tbody></table></div>`}
  function renderWorker(){const box=$('nodoCleanWorker');if(!box)return;const arr=jobs().filter(j=>!(j.solicitud_id||j.SOLICITUD_ID||parsePayload(j.payload).solicitud_id)).sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,120);if(!arr.length){box.innerHTML='<div class="nodo-empty">Sin jobs manuales / worker.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="worker"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Operación</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Acciones</th></tr></thead><tbody>${arr.map(j=>{const id=jid(j),fin=final(jest(j));return`<tr><td>${fecha(j.created_at||j.updated_at)}</td><td><b>${esc(jusu(j)||'-')}</b><br><span class="small">#${esc(id||'-')}</span></td><td>${esc(String(jtipo(j)||'-').replaceAll('_',' '))}</td><td><b>${money(jmonto(j))}</b></td><td>${walletChip(j)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(j)}</span>`:state(j)}</td><td><span class="nodo-operator-chip">${esc(operador(j))}</span></td><td><div class="ops-compact-actions"><button class="mini-btn blue" onclick="nodoCleanLogs('${attr(id)}')">Logs</button>${(!fin&&errorJob(j))?`<button class="mini-btn green" onclick="workerPanelReintentarJob&&workerPanelReintentarJob('${attr(id)}')">Reintentar</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`}
@@ -10209,7 +10306,7 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  window.nodoCleanRender=render;window.nodoCleanRefresh=async function(){if(C.refreshing)return;C.refreshing=true;try{if(typeof refrescarTodo==='function')await refrescarTodo(false);else if(typeof renderCentroOperativo==='function')renderCentroOperativo()}catch(e){}C.refreshing=false;setTimeout(render,120)};
  window.nodoCleanSelectWallet=function(id){C.selectedWallet=String(id||'');localStorage.setItem('nodoCleanWallet',C.selectedWallet);localStorage.setItem('nodoUltimaBilleteraImpactada',C.selectedWallet);const s=$('nodoCleanWallet');if(s)s.value=C.selectedWallet;renderWallets()};
  function syncOld(tipo){const u=$('nodoCleanUsuario')?.value||'',m=$('nodoCleanMonto')?.value||'0',b=$('nodoCleanWallet')?.value||C.selectedWallet||'',c=$('nodoCleanClave')?.value||'12345a';const sw=selectedWalletData();let o=$('nodoCleanObs')?.value||'';if(sw&&isMovementTipo(tipo,m)){o=(o?o+' · ':'')+'billetera_id='+sw.id+' · billetera_nombre='+sw.name+' · operador='+currentOperator()}else{o=(o?o+' · ':'')+'operador='+currentOperator()};setOld('manualWorkerUsuarioInicio',u);setOld('manualWorkerMontoInicio',m);setOld('manualWorkerBilleteraInicio',b);setOld('manualWorkerObsInicio',o);setOld('manualWorkerUsuario',u);setOld('manualWorkerMonto',m);setOld('manualWorkerBilletera',b);setOld('manualWorkerObs',o);setOld('manualWorkerTipoInicio',tipo);setOld('manualWorkerTipo',tipo);setOld('agentUserClaveFinal',c);setOld('agentUserTipoFinal',tipo)}
- window.nodoCleanRun=async function(mode){const msg=$('nodoCleanMsg');const user=String($('nodoCleanUsuario')?.value||'').trim();if(!user){if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';return}const amount=Number($('nodoCleanMonto')?.value||0);let tipo='VALIDAR_USUARIO';if(mode==='CREAR')tipo='CREAR_USUARIO';else if(mode==='CLAVE')tipo='CAMBIAR_CLAVE';else if(mode==='VALIDAR')tipo='VALIDAR_USUARIO';else if(amount>0)tipo='CARGAR_FICHAS';else if(amount<0)tipo='PROCESAR_RETIRO';else tipo='VALIDAR_USUARIO';if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo)&&!($('nodoCleanWallet')?.value||C.selectedWallet)){if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';return}const sw=selectedWalletData();rememberPending(user,tipo,Math.abs(amount),sw?.id||'',sw?.name||'');if(tipo==='CREAR_USUARIO')rememberCreatedWatch(user,$('nodoCleanClave')?.value||'12345a');try{if(msg)msg.innerHTML='<div class="ok">Enviando al worker…</div>';syncOld(tipo)if(tipo==='CREAR_USUARIO'||tipo==='CAMBIAR_CLAVE'){if(typeof crearJobUsuarioAgentesFinal==='function')await crearJobUsuarioAgentesFinal();else throw new Error('No encontré función de usuario agentes.')}else{if(typeof crearWorkerJobManualInicio==='function')await crearWorkerJobManualInicio();else throw new Error('No encontré función worker manual.')}if(msg)msg.innerHTML='<div class="ok">Acción enviada al worker.</div>';[400,1300,3000,6000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms))}catch(e){if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>'}};
+ window.nodoCleanRun=async function(mode){const msg=$('nodoCleanMsg');const user=String($('nodoCleanUsuario')?.value||'').trim();if(!user){if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';return}const amount=Number($('nodoCleanMonto')?.value||0);let tipo='VALIDAR_USUARIO';if(mode==='CREAR')tipo='CREAR_USUARIO';else if(mode==='CLAVE')tipo='CAMBIAR_CLAVE';else if(mode==='VALIDAR')tipo='VALIDAR_USUARIO';else if(amount>0)tipo='CARGAR_FICHAS';else if(amount<0)tipo='PROCESAR_RETIRO';else tipo='VALIDAR_USUARIO';if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo)&&!($('nodoCleanWallet')?.value||C.selectedWallet)){if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';return}const sw=selectedWalletData();rememberPending(user,tipo,Math.abs(amount),sw?.id||'',sw?.name||'');if(tipo==='CREAR_USUARIO')rememberCreatedWatch(user,$('nodoCleanClave')?.value||'12345a');try{if(msg)msg.innerHTML='<div class="ok">Enviando al worker…</div>';syncOld(tipo)if(tipo==='CREAR_USUARIO'||tipo==='CAMBIAR_CLAVE'){if(typeof crearJobUsuarioAgentesFinal==='function')await crearJobUsuarioAgentesFinal();else throw new Error('No encontré función de usuario agentes.')}else{if(typeof crearWorkerJobManualInicio==='function')await crearWorkerJobManualInicio();else throw new Error('No encontré función worker manual.')}if(msg)msg.innerHTML='<div class="ok">Acción enviada al worker.</div>';[400,1300,3000,6000,10000].forEach(ms=>setTimeout(()=>{cargarSaldoAgenteClean(true);window.nodoCleanRefresh&&window.nodoCleanRefresh()},ms))}catch(e){if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>'}};
  window.nodoCleanSetAliasVariant=function(jobId,val){const inp=$('nodoRetryUsuarioCore_'+jobId);if(inp){inp.value=val;inp.focus();inp.select()}};
  async function updateJobUser(jobId,nuevoUsuario){try{const {data,error}=await supabaseClient.rpc('admin_actualizar_usuario_worker_job',{p_job_id:Number(jobId),p_usuario:nuevoUsuario});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||'No se pudo actualizar usuario');return{ok:true}}catch(e){return{ok:false,error:e.message||String(e)}}}
  function suggestions(j){const raw=String(jres(j)||'');let part='';const m=raw.match(/Sugerencias?:\s*([^\.]+)/i);if(m)part=m[1];let list=part.split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);const base=String(jusu(j)||'').trim();if(!list.length&&base)list=[base+'55',base+'1',base+'ok',base+'x',base+'vip'];return[...new Set(list)].slice(0,8)}
@@ -10221,279 +10318,6 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function wrap(name){const fn=window[name];if(typeof fn==='function'&&!fn.__cleanCore){window[name]=function(){const r=fn.apply(this,arguments);setTimeout(render,180);return r};window[name].__cleanCore=true;try{eval(name+'=window[name]')}catch(e){}}}
  wrap('renderInicio');wrap('renderCentroOperativo');wrap('renderWorkerJobs');wrap('renderColaUnificada');wrap('refrescarTodo');
  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},900));window.addEventListener('load',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},1500));setTimeout(()=>{cargarSaldoAgenteClean(true);render()},2200);setInterval(()=>{if(document.hidden)return;const a=document.activeElement;if(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))return;if(Date.now()<C.scrollingUntil)return;if(Date.now()-C.lastRealtime<4500)return;C.lastRealtime=Date.now();window.nodoCleanRefresh&&window.nodoCleanRefresh()},5000);
-})();
-</script>
-
-
-<style id="nodo-v21-core-real-stable-css">
-/* =========================================================
-   NODO V21 · CORE REAL STABLE
-   Fix quirúrgico sobre Core Real visual estable.
-========================================================= */
-
-/* Oculta aviso molesto de mensajes locales; el marcado se gestiona automático */
-body.nodo-v21-core-real-stable .nodo-local-chat-warning,
-body.nodo-v21-core-real-stable #nodoLocalChatWarning,
-body.nodo-v21-core-real-stable #chatLocalWarning,
-body.nodo-v21-core-real-stable [data-local-chat-warning="1"]{
-  display:none!important;
-}
-
-/* Si el aviso viejo está suelto arriba, que no robe espacio */
-body.nodo-v21-core-real-stable .nodo-clean-head + .verify-box.warn,
-body.nodo-v21-core-real-stable .nodo-clean-head + .warn-box{
-  display:none!important;
-}
-
-/* Mantiene botones rápidos visibles si algún CSS anterior los tapó */
-body.nodo-v21-core-real-stable .nodo-clean-quick-actions{
-  display:grid!important;
-  grid-template-columns:1.25fr 1fr 1fr 1fr!important;
-  gap:10px!important;
-}
-
-body.nodo-v21-core-real-stable .nodo-clean-columns{
-  display:grid!important;
-  grid-template-columns:1fr 1fr!important;
-  gap:14px!important;
-}
-
-body.nodo-v21-core-real-stable .nodo-clean-history{
-  display:block!important;
-}
-
-body.nodo-v21-core-real-stable .nodo-clean-kpi.primary .v.saldo-real{
-  font-size:34px!important;
-  color:#cffafe!important;
-}
-</style>
-
-<script id="nodo-v21-core-real-stable-js">
-(function(){
-  if(window.__NODO_V21_CORE_REAL_STABLE__) return;
-  window.__NODO_V21_CORE_REAL_STABLE__ = true;
-  document.body.classList.add('nodo-v21-core-real-stable');
-
-  const $ = id => document.getElementById(id);
-  const norm = v => {
-    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
-    catch(e){return String(v ?? '').trim().toUpperCase();}
-  };
-  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
-  const money = v => {
-    try{return typeof window.money === 'function' ? window.money(v) : ('$ ' + Number(v || 0).toLocaleString('es-AR'));}
-    catch(e){return '$ '+(v||0);}
-  };
-  const fecha = v => {
-    try{
-      if(typeof formatFecha === 'function') return formatFecha(v);
-      const d = new Date(v);
-      if(isNaN(d)) return esc(v || '');
-      return d.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).replace(',',' ·');
-    }catch(e){return esc(v || '');}
-  };
-
-  function jobs(){
-    try{return Array.isArray(window.workerJobs) ? window.workerJobs : (Array.isArray(workerJobs) ? workerJobs : []);}
-    catch(e){return [];}
-  }
-  function jtipo(j){return j?.tipo_accion || j?.tipo || j?.TIPO || j?.TIPO_SOLICITUD || '';}
-  function jusu(j){return j?.usuario || j?.USUARIO || j?.USUARIO_JUGADOR || j?.alias || '';}
-  function jest(j){return j?.estado || j?.ESTADO || j?.ESTADO_WORKER || '';}
-  function jres(j){return j?.resultado || j?.result || j?.RESULTADO || j?.error_mensaje || j?.error || j?.WORKER_ERROR || '';}
-
-  function readSaldoCacheAny(){
-    const keys = [
-      'nodo_v21_saldo_agente_cache',
-      'nodo_v16_saldo_agente_cache',
-      'nodo_saldo_agente_cache',
-      'agent_saldo_cache'
-    ];
-    for(const k of keys){
-      try{
-        const v = JSON.parse(localStorage.getItem(k) || 'null');
-        if(v && (v.saldo_agente !== undefined || v.saldo !== undefined || v.saldo_real !== undefined)) return v;
-      }catch(e){}
-    }
-    return null;
-  }
-
-  function readSaldoFromLastJob(){
-    try{
-      const js = jobs().slice().sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
-      for(const j of js){
-        const t = norm(jtipo(j));
-        if(!(t.includes('CARGA') || t.includes('RETIRO') || t.includes('FICHAS') || t.includes('VALIDAR'))) continue;
-
-        const raw = String(jres(j)||'') + ' ' + String(j.resultado_json||'') + ' ' + String(j.payload||'');
-        const patterns = [
-          /saldo[_\s-]*agente[_\s-]*(?:despues|después|actual|real)?\D{0,25}(-?[\d.]+(?:,\d+)?)/i,
-          /agente\D{0,25}(?:despues|después|actual|saldo)\D{0,25}(-?[\d.]+(?:,\d+)?)/i,
-          /saldoFinalAgente["':\s]+(-?[\d.]+)/i,
-          /saldo_agente["':\s]+(-?[\d.]+)/i,
-          /saldoAgente["':\s]+(-?[\d.]+)/i
-        ];
-
-        for(const p of patterns){
-          const m = raw.match(p);
-          if(m){
-            const n = Number(String(m[1]).replace(/\./g,'').replace(',','.'));
-            if(Number.isFinite(n)){
-              return {
-                saldo_agente:n,
-                ultimo_tipo:jtipo(j),
-                ultimo_usuario:jusu(j),
-                updated_at:j.updated_at || j.created_at,
-                fuente:'worker'
-              };
-            }
-          }
-        }
-      }
-    }catch(e){}
-    return null;
-  }
-
-  async function cargarSaldoAgenteStable(force){
-    const now = Date.now();
-    if(!force && window.__nodoSaldoAgenteStable && now - (window.__nodoSaldoAgenteStable.ts || 0) < 12000) return window.__nodoSaldoAgenteStable;
-
-    try{
-      if(typeof supabaseClient !== 'undefined'){
-        const args = {
-          p_session_token: typeof token === 'function' ? token() : (localStorage.getItem('session_token') || ''),
-          p_pc_codigo: typeof pc === 'function' ? pc() : (localStorage.getItem('pc_codigo') || '')
-        };
-        const {data,error} = await supabaseClient.rpc('panel_operativo_get_saldo_agente_estado', args);
-        if(!error){
-          const row = Array.isArray(data) ? data[0] : data;
-          if(row && (row.saldo_agente !== undefined || row.saldo !== undefined || row.saldo_real !== undefined)){
-            window.__nodoSaldoAgenteStable = Object.assign({}, row, {ts:Date.now()});
-            try{
-              localStorage.setItem('nodo_v21_saldo_agente_cache', JSON.stringify(window.__nodoSaldoAgenteStable));
-              localStorage.setItem('nodo_v16_saldo_agente_cache', JSON.stringify(window.__nodoSaldoAgenteStable));
-            }catch(e){}
-            updateSaldoKpiStable();
-            return window.__nodoSaldoAgenteStable;
-          }
-        }
-      }
-    }catch(e){}
-
-    const fallback = readSaldoCacheAny() || readSaldoFromLastJob();
-    if(fallback){
-      window.__nodoSaldoAgenteStable = Object.assign({}, fallback, {ts:Date.now()});
-      updateSaldoKpiStable();
-    }
-    return window.__nodoSaldoAgenteStable || null;
-  }
-
-  function updateSaldoKpiStable(){
-    const s = window.__nodoSaldoAgenteStable || readSaldoCacheAny() || readSaldoFromLastJob();
-    if(!s) return;
-
-    const val = s.saldo_agente ?? s.saldo ?? s.saldo_real;
-    if(val === undefined || val === null) return;
-
-    const panel = document.getElementById('nodoV21CleanPanel');
-    if(!panel) return;
-
-    const kpis = panel.querySelectorAll('.nodo-clean-kpi');
-    let target = null;
-    kpis.forEach(k=>{
-      const label = norm(k.textContent || '');
-      if(label.includes('SALDO AGENTE REAL')) target = k;
-    });
-
-    if(target){
-      const v = target.querySelector('.v');
-      const sub = target.querySelector('.s');
-      if(v){
-        v.classList.add('saldo-real');
-        v.textContent = money(Number(val || 0));
-      }
-      if(sub){
-        const ult = s.ultimo_tipo || s.tipo || s.fuente || '-';
-        const usu = s.ultimo_usuario || s.usuario || '-';
-        const f = s.updated_at || s.created_at;
-        sub.textContent = 'Último: ' + ult + ' · ' + usu + (f ? ' · ' + fecha(f) : '');
-      }
-    }
-  }
-
-  function autoMarcarChatLocalLeido(){
-    // No modifica conversaciones reales: solo silencia el contador/aviso local molesto.
-    try{
-      localStorage.setItem('nodo_chat_local_last_read', String(Date.now()));
-      localStorage.setItem('nodo_chat_local_unread', '0');
-      localStorage.setItem('nodo_local_chat_unread', '0');
-      localStorage.setItem('chat_local_unread', '0');
-    }catch(e){}
-
-    document.querySelectorAll('button,div,span').forEach(el=>{
-      const t = norm(el.textContent || '');
-      if(t.includes('MENSAJE/S DE CHAT SIN LEER') || t.includes('MARCAR VISTO LOCAL')){
-        el.style.display = 'none';
-        const parent = el.closest('.verify-box,.warn-box,.nodo-clean-kpi,.nodo-clean-alert,div');
-        if(parent && norm(parent.textContent||'').includes('MARCAR VISTO LOCAL')){
-          parent.style.display = 'none';
-        }
-      }
-    });
-  }
-
-  // Refuerza el signo negativo antes de mandar al worker.
-  const oldRun = window.nodoCleanRun;
-  if(typeof oldRun === 'function' && !oldRun.__coreStableSign){
-    window.nodoCleanRun = async function(mode){
-      const monto = document.getElementById('nodoCleanMonto');
-      const before = monto ? monto.value : '';
-      const r = await oldRun.apply(this, arguments);
-
-      // Si era negativo, lo dejamos negativo visualmente también.
-      if(monto && String(before).trim().startsWith('-')){
-        monto.value = before;
-      }
-
-      [400,1200,2600,4800,8000,12000].forEach(ms=>setTimeout(()=>{
-        cargarSaldoAgenteStable(true);
-        try{ if(typeof window.nodoCleanRefresh === 'function') window.nodoCleanRefresh(); }catch(e){}
-      },ms));
-
-      return r;
-    };
-    window.nodoCleanRun.__coreStableSign = true;
-  }
-
-  const oldRender = window.nodoCleanRender;
-  if(typeof oldRender === 'function' && !oldRender.__coreStableSaldo){
-    window.nodoCleanRender = function(){
-      const r = oldRender.apply(this, arguments);
-      requestAnimationFrame(()=>{
-        updateSaldoKpiStable();
-        autoMarcarChatLocalLeido();
-      });
-      return r;
-    };
-    window.nodoCleanRender.__coreStableSaldo = true;
-  }
-
-  document.addEventListener('DOMContentLoaded',()=>{
-    setTimeout(()=>{autoMarcarChatLocalLeido(); cargarSaldoAgenteStable(true);},900);
-  });
-  window.addEventListener('load',()=>{
-    setTimeout(()=>{autoMarcarChatLocalLeido(); cargarSaldoAgenteStable(true);},1500);
-  });
-
-  setInterval(()=>{
-    if(document.hidden) return;
-    const a = document.activeElement;
-    if(a && ['INPUT','TEXTAREA','SELECT'].includes(a.tagName)) return;
-    autoMarcarChatLocalLeido();
-    cargarSaldoAgenteStable(false);
-  },5000);
-
-  setTimeout(()=>{autoMarcarChatLocalLeido(); cargarSaldoAgenteStable(true);},2200);
 })();
 </script>
 
