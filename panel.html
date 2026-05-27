@@ -10145,6 +10145,12 @@ body.nodo-v21-clean-core .nodo-clean-table th{background:rgba(13,19,31,.88)!impo
 body.nodo-v21-clean-core .nodo-empty{padding:18px!important;color:#94A3B8!important;text-align:center!important;border:1px dashed rgba(148,163,184,.18)!important;border-radius:14px!important}
 body.nodo-v21-clean-core .nodo-job-wallet-chip{display:inline-flex!important;align-items:center!important;gap:6px!important;border-radius:999px!important;padding:6px 10px!important;background:rgba(59,130,246,.13)!important;border:1px solid rgba(59,130,246,.22)!important;color:#BFDBFE!important;font-size:11px!important;font-weight:800!important;max-width:220px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 body.nodo-v21-clean-core .nodo-job-wallet-chip.na{background:rgba(148,163,184,.10)!important;border-color:rgba(148,163,184,.16)!important;color:#CBD5E1!important}
+body.nodo-v21-clean-core .nodo-job-wallet-chip.fixed{background:rgba(34,197,94,.13)!important;border-color:rgba(34,197,94,.25)!important;color:#bbf7d0!important}
+body.nodo-v21-clean-core .nodo-operator-chip{display:inline-flex!important;border-radius:999px!important;padding:6px 9px!important;background:rgba(148,163,184,.10)!important;border:1px solid rgba(148,163,184,.14)!important;color:#e5e7eb!important;font-size:11px!important;font-weight:800!important}
+body.nodo-v21-clean-core .nodo-alias-tools{margin-top:12px!important;border:1px solid rgba(245,158,11,.28)!important;background:rgba(245,158,11,.10)!important;border-radius:16px!important;padding:12px!important}
+body.nodo-v21-clean-core .nodo-alias-tools input{width:100%!important;height:42px!important;border-radius:12px!important;border:1px solid rgba(148,163,184,.22)!important;padding:0 12px!important;background:#fff!important;color:#111827!important;margin:8px 0!important}
+body.nodo-v21-clean-core .nodo-alias-pills{display:flex!important;flex-wrap:wrap!important;gap:8px!important;margin-top:8px!important}
+body.nodo-v21-clean-core .nodo-alias-pill{border:none!important;border-radius:999px!important;padding:8px 11px!important;background:rgba(255,255,255,.14)!important;color:#fff!important;font-weight:900!important;cursor:pointer!important}
 body.nodo-v21-clean-core .ops-compact-actions{display:flex!important;flex-wrap:wrap!important;gap:6px!important}
 body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.nodo-v21-clean-core .sidebar{width:72px!important;min-width:72px!important;max-width:72px!important;padding:14px 8px!important;overflow-x:hidden!important}body.nodo-v21-clean-core .sidebar .card{display:none!important}body.nodo-v21-clean-core .nav-btn,body.nodo-v21-clean-core .sidebar .nav-btn{width:54px!important;height:54px!important;min-height:54px!important;padding:0!important;margin:0 0 8px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;overflow:visible!important;border-radius:18px!important;font-size:0!important}body.nodo-v21-clean-core .nav-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:24px!important;line-height:1!important;min-width:26px!important;min-height:26px!important;opacity:1!important;visibility:visible!important}body.nodo-v21-clean-core .nav-text{display:none!important}body.nodo-v21-clean-core .badge-alert,body.nodo-v21-clean-core .badge{position:absolute!important;top:3px!important;right:3px!important;z-index:3!important}
 @media(max-width:1250px){body.nodo-v21-clean-core .nodo-clean-kpis{grid-template-columns:repeat(3,1fr)!important}body.nodo-v21-clean-core .nodo-clean-quick-grid{grid-template-columns:1fr 140px 1fr!important}body.nodo-v21-clean-core .nodo-clean-columns{grid-template-columns:1fr!important}}@media(max-width:900px){body.nodo-v21-clean-core .layout{grid-template-columns:1fr!important}body.nodo-v21-clean-core .sidebar{display:none!important}body.nodo-v21-clean-core .nodo-clean-kpis{grid-template-columns:1fr 1fr!important}body.nodo-v21-clean-core .nodo-clean-wallet-grid{grid-template-columns:1fr!important}body.nodo-v21-clean-core .nodo-clean-quick-grid,body.nodo-v21-clean-core .nodo-clean-quick-actions{grid-template-columns:1fr!important}}
@@ -10152,7 +10158,18 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
 <script id="nodo-v21-clean-core-js">
 (function(){
  if(window.__NODO_V21_CLEAN_CORE__)return;window.__NODO_V21_CLEAN_CORE__=true;
- const C={selectedWallet:'',scrollingUntil:0,refreshing:false};
+ const C={selectedWallet:'',scrollingUntil:0,refreshing:false,lastRealtime:0};
+ function currentOperator(){try{const o=window.operador||(typeof operador!=='undefined'?operador:null)||{};return o.usuario||o.nombre||o.NOMBRE||localStorage.getItem('nodo_operador_nombre')||localStorage.getItem('operador')||'operador'}catch(e){return localStorage.getItem('nodo_operador_nombre')||'operador'}}
+ function metaStore(){try{return JSON.parse(localStorage.getItem('nodo_v21_clean_meta')||'{}')||{}}catch(e){return{}}}
+ function saveMeta(m){try{localStorage.setItem('nodo_v21_clean_meta',JSON.stringify(m||{}))}catch(e){}}
+ function pendingOps(){try{return JSON.parse(localStorage.getItem('nodo_v21_clean_pending')||'[]')||[]}catch(e){return[]}}
+ function savePendingOps(a){try{localStorage.setItem('nodo_v21_clean_pending',JSON.stringify((a||[]).slice(-80)))}catch(e){}}
+ function rememberPending(usuario,tipo,monto,walletId,walletName){const arr=pendingOps();arr.push({usuario,tipo,monto:Math.abs(Number(monto||0)),walletId:walletId||'',walletName:walletName||'',operator:currentOperator(),createdAt:Date.now()});savePendingOps(arr)}
+ function rememberCreatedWatch(usuario,clave){try{localStorage.setItem('nodo_v21_clean_created_watch',JSON.stringify({usuario,clave:clave||'12345a',link:'http://bet-300.pw/',desde:Date.now(),hasta:Date.now()+180000,shown:false}))}catch(e){}}
+ function selectedWalletData(){const id=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const w=billeteras().find(x=>String(wid(x))===id);return w?{id:String(wid(w)),name:wname(w),tipo:wtipo(w)}:(id?{id,name:'ID '+id,tipo:''}:null)}
+ function matchPendingJobs(){const pending=pendingOps().filter(p=>Date.now()-(p.createdAt||0)<15*60*1000);if(!pending.length)return;const meta=metaStore();let changed=false;jobs().forEach(j=>{const id=String(jid(j)||'');if(!id||meta[id]?.walletId)return;const ju=norm(jusu(j)),jt=norm(jtipo(j)),jm=Math.abs(Number(jmonto(j)||0));const hit=pending.find(p=>{if(norm(p.usuario)!==ju)return false;const pt=norm(p.tipo);if(pt.includes('CARGA')&&!jt.includes('CARGA'))return false;if(pt.includes('RETIRO')&&!jt.includes('RETIRO'))return false;if(pt.includes('CREAR')&&!jt.includes('CREAR'))return false;if(pt.includes('CLAVE')&&!jt.includes('CLAVE'))return false;if(pt.includes('VALIDAR')&&!jt.includes('VALIDAR'))return false;if(Number.isFinite(Number(p.monto))&&Math.abs(Number(p.monto||0))!==jm)return false;return true});if(hit){meta[id]=Object.assign({},meta[id]||{},{walletId:hit.walletId||'',walletName:hit.walletName||'',operator:hit.operator||currentOperator(),usuario:hit.usuario,tipo:hit.tipo,monto:hit.monto,updatedAt:Date.now()});changed=true}});if(changed)saveMeta(meta);savePendingOps(pending)}
+ function createdWatch(){let w=null;try{w=JSON.parse(localStorage.getItem('nodo_v21_clean_created_watch')||'null')}catch(e){}if(!w||w.shown||Date.now()>Number(w.hasta||0))return;const hit=jobs().find(j=>norm(jusu(j))===norm(w.usuario)&&norm(jtipo(j)).includes('CREAR')&&['COMPLETADO','OK','FINALIZADO'].includes(norm(jest(j)))&&new Date(j.updated_at||j.created_at||0).getTime()>=Number(w.desde||0)-30000);if(!hit)return;w.shown=true;localStorage.setItem('nodo_v21_clean_created_watch',JSON.stringify(w));showCreatedModal({usuario:jusu(hit)||w.usuario,clave:w.clave||'12345a',link:w.link||'http://bet-300.pw/'})}
+ function showCreatedModal(data){const usuario=data.usuario||'',clave=data.clave||'12345a',link=data.link||'http://bet-300.pw/';const msg=`Usuario: ${usuario}\nClave: ${clave}\nLink: ${link}`;if(typeof abrirModalUsuarioCreado==='function'){try{return abrirModalUsuarioCreado({usuario,clave,link})}catch(e){}}if(typeof abrirModal==='function')abrirModal('Usuario creado',`<div class="verify-box good"><b>Usuario creado correctamente</b><br><br><b>Usuario:</b> ${esc(usuario)}<br><b>Clave:</b> ${esc(clave)}<br><b>Link:</b> ${esc(link)}</div><textarea id="nodoCreatedMsgClean" style="width:100%;height:115px;margin-top:10px">${esc(msg)}</textarea>`,()=>{navigator.clipboard&&navigator.clipboard.writeText(($('nodoCreatedMsgClean')||{}).value||msg)},'Copiar mensaje')}
  const $=id=>document.getElementById(id);
  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
  const attr=v=>esc(v).replaceAll('`','&#96;');
@@ -10165,659 +10182,39 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function billeteras(){const out=[];try{if(Array.isArray(window.billeteras))out.push(...window.billeteras);if(typeof billeteras!=='undefined'&&Array.isArray(billeteras))out.push(...billeteras);if(Array.isArray(window.saldosOperativos?.billeteras))out.push(...window.saldosOperativos.billeteras);if(Array.isArray(window.wallets))out.push(...window.wallets)}catch(e){}const seen=new Set();return out.filter(w=>{const k=String(w.id||w.ID||w.id_billetera||w.billetera_id||w.nombre_visible||w.nombre||'');if(!k||seen.has(k))return false;seen.add(k);return true})}
  const wid=w=>w.id??w.ID??w.id_billetera??w.billetera_id??'';const wname=w=>w.nombre_visible||w.nombre||w.NOMBRE||w.alias||w.titular||('Billetera '+wid(w));const wtipo=w=>w.banco||w.tipo||w.TIPO||w.provider||'MP';const wsaldo=w=>w.saldo_real??w.saldo??w.SALDO??w.monto??0;const wtit=w=>w.titular||w.nombre_titular||w.NOMBRE_TITULAR||'Nombre Titular';
  const jid=j=>j.id||j.job_id||j.worker_job_id||j.WORKER_JOB_ID||'';const jtipo=j=>j.tipo_accion||j.tipo||j.TIPO||j.TIPO_SOLICITUD||'';const jusu=j=>j.usuario||j.USUARIO||j.USUARIO_JUGADOR||j.alias||'';const jmonto=j=>j.monto||j.MONTO_DECLARADO||j.MONTO_REAL||0;const jest=j=>j.estado||j.ESTADO||j.ESTADO_WORKER||'';const jres=j=>j.resultado||j.result||j.RESULTADO||j.error_mensaje||j.error||j.WORKER_ERROR||'';
- function operador(j){const p=parsePayload(j?.payload);return j?.operador||j?.operador_nombre||j?.worker_id||j?.created_by||j?.agent||p.operador||p.worker_id||p.created_by||'-'}
+ function operador(j){const p=parsePayload(j?.payload);const m=metaStore()[String(jid(j)||'')]||{};const obs=String(j?.observacion||j?.notas||p.observacion||p.obs||'');const mo=(obs.match(/operador\s*=\s*([^·|]+)/i)||[])[1];return j?.operador||j?.operador_nombre||j?.worker_id||j?.created_by||j?.agent||p.operador||p.worker_id||p.created_by||m.operator||(mo?mo.trim():'')||'-'}
  function final(st){return ['COMPLETADO','OK','FINALIZADO','CANCELADO','CANCELADA'].includes(norm(st))}
  function errorJob(j){const n=norm(jest(j)),r=norm(jres(j));return n.includes('ERROR')||n==='REINTENTAR'||n==='REQUIERE_MANUAL'||r.includes('ERROR')}
  function mov(j){const t=norm(jtipo(j));return t.includes('CARGA')||t.includes('RETIRO')||t.includes('FICHAS')||Number(jmonto(j)||0)!==0}
- function resolveWallet(j){const p=parsePayload(j?.payload);const rawId=j?.billetera_id??j?.id_billetera??j?.wallet_id??j?.id_wallet??p.billetera_id??p.id_billetera??p.wallet_id??p.billeteraImpactada??p.billetera??p.id_billetera_impactada??'';const rawName=j?.billetera_nombre??j?.nombre_billetera??j?.wallet_nombre??j?.billetera??p.billetera_nombre??p.nombre_billetera??p.wallet_nombre??p.billetera_nombre_visible??'';const list=billeteras();let f=null;if(rawId!==''&&rawId!==null&&rawId!==undefined)f=list.find(w=>String(wid(w))===String(rawId));if(!f&&rawName)f=list.find(w=>norm(wname(w)).includes(norm(rawName))||norm(rawName).includes(norm(wname(w))));if(f)return{id:wid(f),name:wname(f),tipo:wtipo(f)};if(rawId||rawName)return{id:rawId,name:rawName||('ID '+rawId),tipo:''};return null}
- function walletChip(j){const w=resolveWallet(j);return w?`<span class="nodo-job-wallet-chip">💳 ${esc(w.name)}</span>`:'<span class="nodo-job-wallet-chip na">— No aplica</span>'}window.walletLabelForJob=walletChip;
+ function resolveWallet(j){const p=parsePayload(j?.payload);const m=metaStore()[String(jid(j)||'')]||{};const obs=String(j?.observacion||j?.notas||p.observacion||p.obs||'');const obsId=(obs.match(/billetera_id\s*=\s*(\d+)/i)||[])[1];const rawId=j?.billetera_id??j?.id_billetera??j?.wallet_id??j?.id_wallet??p.billetera_id??p.id_billetera??p.wallet_id??p.billeteraImpactada??p.billetera??p.id_billetera_impactada??m.walletId??obsId??'';const rawName=j?.billetera_nombre??j?.nombre_billetera??j?.wallet_nombre??j?.billetera??p.billetera_nombre??p.nombre_billetera??p.wallet_nombre??p.billetera_nombre_visible??m.walletName??'';const list=billeteras();let f=null;if(rawId!==''&&rawId!==null&&rawId!==undefined)f=list.find(w=>String(wid(w))===String(rawId));if(!f&&rawName)f=list.find(w=>norm(wname(w)).includes(norm(rawName))||norm(rawName).includes(norm(wname(w))));if(f)return{id:wid(f),name:wname(f),tipo:wtipo(f)};if(rawId||rawName)return{id:rawId,name:rawName||('ID '+rawId),tipo:''};return null}
+ function walletChip(j){const w=resolveWallet(j);return w?`<span class="nodo-job-wallet-chip fixed">💳 ${esc(w.name)}</span>`:'<span class="nodo-job-wallet-chip na">— No aplica</span>'}window.walletLabelForJob=walletChip;
  function state(j){const n=norm(jest(j));if(['COMPLETADO','OK','FINALIZADO'].includes(n))return'<span class="nodo-ok-chip">✅ OK</span>';if(n==='PENDIENTE'||n==='EN_COLA_WORKER'||n==='PROCESANDO')return`<span class="nodo-run-chip">⏳ ${esc(jest(j)||'Pendiente')}</span>`;if(n==='CANCELADO'||n==='CANCELADA')return'<span class="nodo-err-chip">🚫 Cancelado</span>';if(errorJob(j))return'<span class="nodo-err-chip">⚠️ Error / revisar logs</span>';return`<span class="nodo-warn-chip">${esc(jest(j)||'Sin estado')}</span>`}
  function pickWallet(){const cur=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const list=billeteras();if(cur&&list.some(w=>String(wid(w))===cur))C.selectedWallet=cur;else if(list.length)C.selectedWallet=String(wid(list[0]));return C.selectedWallet}
  function setOld(id,v){const el=$(id);if(el){el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}}
  function ensurePanel(){const view=$('viewInicio');if(!view)return null;let p=$('nodoV21CleanPanel');if(!p){p=document.createElement('section');p.id='nodoV21CleanPanel';p.innerHTML=`<div class="nodo-clean-head"><div><h2>Centro Operativo</h2><div class="nodo-clean-sub">PC actual · solicitudes · worker · billeteras · fichas en una sola vista.</div></div><div class="ops-compact-actions"><button class="mini-btn blue" onclick="nodoCleanRefresh()">Actualizar</button><button class="mini-btn green" onclick="mostrarVista&&mostrarVista('chat')">Chat</button><button class="mini-btn yellow" onclick="mostrarVista&&mostrarVista('ajustes')">Ajustes</button></div></div><div id="nodoCleanKpis"></div><div id="nodoCleanWallets"></div><div class="nodo-clean-quick"><h3>⚡ Operación rápida</h3><div class="nodo-clean-quick-grid"><div><label>Billetera</label><select id="nodoCleanWallet"></select></div><div><label>Monto</label><input id="nodoCleanMonto" type="number" placeholder="0"></div><div><label>Usuario</label><input id="nodoCleanUsuario" placeholder="ej: prueba100"></div><div><label>Clave</label><input id="nodoCleanClave" value="12345a"></div><div><label>Observación</label><input id="nodoCleanObs" placeholder="opcional"></div></div><div class="nodo-clean-quick-actions"><button class="nodo-clean-run" onclick="nodoCleanRun('EJECUTAR')">Ejecutar</button><button class="nodo-clean-validate" onclick="nodoCleanRun('VALIDAR')">Validar</button><button class="nodo-clean-pass" onclick="nodoCleanRun('CLAVE')">Cambiar clave</button><button class="nodo-clean-create" onclick="nodoCleanRun('CREAR')">Crear usuario</button></div><div id="nodoCleanMsg" class="nodo-clean-msg"></div></div><div class="nodo-clean-columns"><div class="nodo-clean-col"><div class="nodo-clean-colhead"><div><h3>📋 Solicitudes landing</h3><div class="sub">Izquierda: lo que llega desde landing / chat interno.</div></div></div><div id="nodoCleanLanding"></div></div><div class="nodo-clean-col"><div class="nodo-clean-colhead"><div><h3>⚙️ Manuales · Worker</h3><div class="sub">Derecha: jobs manuales y reintentos del worker.</div></div></div><div id="nodoCleanWorker"></div></div></div><div class="nodo-clean-history"><div class="nodo-clean-colhead"><div><h3>📊 Historial de cargas y retiros</h3><div class="sub">Acá se ajusta billetera si hubo error de selección. No modifica monto ejecutado.</div></div></div><div id="nodoCleanHistory"></div></div>`;view.prepend(p)}document.body.classList.add('nodo-v21-clean-core');return p}
  function renderKpis(){const box=$('nodoCleanKpis');if(!box)return;const js=jobs(),ls=solis();const manual=js.filter(j=>!(j.solicitud_id||j.SOLICITUD_ID||parsePayload(j.payload).solicitud_id));const err=js.filter(errorJob);const pending=js.filter(j=>['PENDIENTE','PROCESANDO','EN_COLA_WORKER'].includes(norm(jest(j))));const fichas=window.saldosOperativos?.fichas?.saldo;const billeTotal=billeteras().reduce((a,b)=>a+Number(wsaldo(b)||0),0);box.innerHTML=`<div class="nodo-clean-kpis"><div class="nodo-clean-kpi primary"><div class="l">Saldo en fichas</div><div class="v">${money(fichas??0)}</div><div class="s">Carga resta · retiro suma</div></div><div class="nodo-clean-kpi"><div class="l">Total billeteras</div><div class="v">${money(billeTotal)}</div><div class="s">${billeteras().length} billetera/s</div></div><div class="nodo-clean-kpi"><div class="l">Landing</div><div class="v">${ls.length}</div><div class="s">Solicitudes recibidas</div></div><div class="nodo-clean-kpi"><div class="l">Manuales</div><div class="v">${manual.length}</div><div class="s">Operaciones enviadas</div></div><div class="nodo-clean-kpi"><div class="l">Worker</div><div class="v">${pending.length}</div><div class="s">Pendientes / procesando</div></div><div class="nodo-clean-kpi"><div class="l">Errores</div><div class="v">${err.length}</div><div class="s">Reintentos / revisión</div></div></div>`}
  function renderWallets(){const box=$('nodoCleanWallets'),sel=$('nodoCleanWallet');if(!box||!sel)return;const list=billeteras(),selected=pickWallet();sel.innerHTML='<option value="">No aplica / seleccionar</option>'+list.map(w=>`<option value="${esc(wid(w))}">${esc(wname(w))} · ${esc(wtipo(w))}</option>`).join('');sel.value=selected||'';if(!list.length){box.innerHTML='<div class="nodo-empty">Sin billeteras cargadas.</div>';return}box.innerHTML=`<div class="nodo-clean-wallet-grid">${list.map(w=>{const id=String(wid(w)),active=id===String(selected);return`<div class="nodo-clean-wallet ${active?'active':''}" onclick="nodoCleanSelectWallet('${attr(id)}')">${active?'<span class="tag">ACTIVA</span>':''}<div class="name">${esc(wname(w))}</div><div class="saldo">${money(wsaldo(w))}</div><div class="meta">${esc(wtipo(w))} · ${esc(wtit(w))}<br>Alias: ${esc(w.alias||'sin alias')}</div><div class="actions"><button class="mini-btn blue" onclick="event.stopPropagation();nodoCleanSelectWallet('${attr(id)}')">Usar</button><button class="mini-btn gray" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${attr(w.alias||'')}')">Alias</button><button class="mini-btn gray" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${attr(w.cbu||'')}')">CBU</button><button class="mini-btn yellow" onclick="event.stopPropagation();abrirAjusteBilletera&&abrirAjusteBilletera('${attr(id)}')">Ajustar</button></div></div>`}).join('')}</div>`}
- function renderLanding(){const box=$('nodoCleanLanding');if(!box)return;const arr=solis().slice().sort((a,b)=>new Date(b.FECHA_CREACION||b.FECHA||b.created_at||0)-new Date(a.FECHA_CREACION||a.FECHA||a.created_at||0)).slice(0,100);if(!arr.length){box.innerHTML='<div class="nodo-empty">No hay solicitudes de landing.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="landing"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Job</th></tr></thead><tbody>${arr.map(s=>{const id=s.WORKER_JOB_ID||s.worker_job_id||'';const link=jobs().find(j=>String(jid(j))===String(id))||{};const fake={...link,billetera_id:s.BILLETERA_ID||s.billetera_id||link.billetera_id,billetera_nombre:s.BILLETERA_NOMBRE||s.billetera_nombre||link.billetera_nombre};const st={...link,estado:s.ESTADO_WORKER||s.ESTADO||link.estado,error_mensaje:s.WORKER_ERROR||link.error_mensaje};return`<tr><td>${fecha(s.FECHA_CREACION||s.FECHA||s.created_at)}</td><td><b>${esc(s.USUARIO||s.usuario||'-')}</b></td><td>${esc(String(s.TIPO_SOLICITUD||s.tipo||link.tipo||'-').replaceAll('_',' '))}</td><td><b>${money(s.MONTO_DECLARADO||s.monto||link.monto||0)}</b></td><td>${walletChip(fake)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(st)}</span>`:state(st)}</td><td>${esc(operador(link)||s.operador||'-')}</td><td>${id?'#'+esc(id):'-'}</td></tr>`}).join('')}</tbody></table></div>`}
- function renderWorker(){const box=$('nodoCleanWorker');if(!box)return;const arr=jobs().filter(j=>!(j.solicitud_id||j.SOLICITUD_ID||parsePayload(j.payload).solicitud_id)).sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,120);if(!arr.length){box.innerHTML='<div class="nodo-empty">Sin jobs manuales / worker.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="worker"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Operación</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Acciones</th></tr></thead><tbody>${arr.map(j=>{const id=jid(j),fin=final(jest(j));return`<tr><td>${fecha(j.created_at||j.updated_at)}</td><td><b>${esc(jusu(j)||'-')}</b><br><span class="small">#${esc(id||'-')}</span></td><td>${esc(String(jtipo(j)||'-').replaceAll('_',' '))}</td><td><b>${money(jmonto(j))}</b></td><td>${walletChip(j)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(j)}</span>`:state(j)}</td><td>${esc(operador(j))}</td><td><div class="ops-compact-actions"><button class="mini-btn blue" onclick="nodoCleanLogs('${attr(id)}')">Logs</button>${(!fin&&errorJob(j))?`<button class="mini-btn green" onclick="workerPanelReintentarJob&&workerPanelReintentarJob('${attr(id)}')">Reintentar</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`}
- function renderHistory(){const box=$('nodoCleanHistory');if(!box)return;const arr=[];jobs().forEach(j=>{if(mov(j))arr.push({fecha:j.created_at||j.updated_at,usuario:jusu(j),tipo:jtipo(j),monto:jmonto(j),origen:(j.solicitud_id||parsePayload(j.payload).solicitud_id)?'LANDING_JOB':'MANUAL',estado:jest(j),operador:operador(j),job:jid(j),raw:j})});solis().forEach(s=>{const t=norm(s.TIPO_SOLICITUD||s.tipo||''),m=Number(s.MONTO_DECLARADO||s.monto||0);if(t.includes('CARGA')||t.includes('RETIRO')||m!==0)arr.push({fecha:s.FECHA_CREACION||s.FECHA||s.created_at,usuario:s.USUARIO||s.usuario,tipo:s.TIPO_SOLICITUD||s.tipo,monto:m,origen:'LANDING',estado:s.ESTADO_WORKER||s.ESTADO,operador:s.operador||'-',job:s.WORKER_JOB_ID||'',raw:{billetera_id:s.BILLETERA_ID,billetera_nombre:s.BILLETERA_NOMBRE}})});arr.sort((a,b)=>new Date(b.fecha||0)-new Date(a.fecha||0));const data=arr.slice(0,150);if(!data.length){box.innerHTML='<div class="nodo-empty">Todavía no hay historial de cargas/retiros.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="history"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Job</th><th>Ajuste</th></tr></thead><tbody>${data.map(x=>`<tr><td>${fecha(x.fecha)}</td><td><b>${esc(x.usuario||'-')}</b></td><td>${esc(String(x.tipo||'-').replaceAll('_',' '))}</td><td><b>${money(x.monto)}</b></td><td><span class="ops-origin">${esc(x.origen||'-')}</span></td><td>${walletChip(x.raw)}</td><td>${esc(x.estado||'-')}</td><td>${esc(x.operador||'-')}</td><td>${x.job?'#'+esc(x.job):'-'}</td><td>${x.job?`<button class="mini-btn yellow" onclick="abrirEditarBilleteraJobV20&&abrirEditarBilleteraJobV20('${attr(x.job)}')">Billetera</button>`:'-'}</td></tr>`).join('')}</tbody></table></div>`}
+ function renderLanding(){const box=$('nodoCleanLanding');if(!box)return;const arr=solis().slice().sort((a,b)=>new Date(b.FECHA_CREACION||b.FECHA||b.created_at||0)-new Date(a.FECHA_CREACION||a.FECHA||a.created_at||0)).slice(0,100);if(!arr.length){box.innerHTML='<div class="nodo-empty">No hay solicitudes de landing.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="landing"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Job</th></tr></thead><tbody>${arr.map(s=>{const id=s.WORKER_JOB_ID||s.worker_job_id||'';const link=jobs().find(j=>String(jid(j))===String(id))||{};const fake={...link,billetera_id:s.BILLETERA_ID||s.billetera_id||link.billetera_id,billetera_nombre:s.BILLETERA_NOMBRE||s.billetera_nombre||link.billetera_nombre};const st={...link,estado:s.ESTADO_WORKER||s.ESTADO||link.estado,error_mensaje:s.WORKER_ERROR||link.error_mensaje};return`<tr><td>${fecha(s.FECHA_CREACION||s.FECHA||s.created_at)}</td><td><b>${esc(s.USUARIO||s.usuario||'-')}</b></td><td>${esc(String(s.TIPO_SOLICITUD||s.tipo||link.tipo||'-').replaceAll('_',' '))}</td><td><b>${money(s.MONTO_DECLARADO||s.monto||link.monto||0)}</b></td><td>${walletChip(fake)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(st)}</span>`:state(st)}</td><td><span class="nodo-operator-chip">${esc(operador(link)||s.operador||'-')}</span></td><td>${id?'#'+esc(id):'-'}</td></tr>`}).join('')}</tbody></table></div>`}
+ function renderWorker(){const box=$('nodoCleanWorker');if(!box)return;const arr=jobs().filter(j=>!(j.solicitud_id||j.SOLICITUD_ID||parsePayload(j.payload).solicitud_id)).sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,120);if(!arr.length){box.innerHTML='<div class="nodo-empty">Sin jobs manuales / worker.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="worker"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Operación</th><th>Monto</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Acciones</th></tr></thead><tbody>${arr.map(j=>{const id=jid(j),fin=final(jest(j));return`<tr><td>${fecha(j.created_at||j.updated_at)}</td><td><b>${esc(jusu(j)||'-')}</b><br><span class="small">#${esc(id||'-')}</span></td><td>${esc(String(jtipo(j)||'-').replaceAll('_',' '))}</td><td><b>${money(jmonto(j))}</b></td><td>${walletChip(j)}</td><td>${id?`<span onclick="nodoCleanLogs('${attr(id)}')">${state(j)}</span>`:state(j)}</td><td><span class="nodo-operator-chip">${esc(operador(j))}</span></td><td><div class="ops-compact-actions"><button class="mini-btn blue" onclick="nodoCleanLogs('${attr(id)}')">Logs</button>${(!fin&&errorJob(j))?`<button class="mini-btn green" onclick="workerPanelReintentarJob&&workerPanelReintentarJob('${attr(id)}')">Reintentar</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`:''}</div></td></tr>`}).join('')}</tbody></table></div>`}
+ function renderHistory(){const box=$('nodoCleanHistory');if(!box)return;const arr=[];jobs().forEach(j=>{if(mov(j))arr.push({fecha:j.created_at||j.updated_at,usuario:jusu(j),tipo:jtipo(j),monto:jmonto(j),origen:(j.solicitud_id||parsePayload(j.payload).solicitud_id)?'LANDING_JOB':'MANUAL',estado:jest(j),operador:operador(j),job:jid(j),raw:j})});solis().forEach(s=>{const t=norm(s.TIPO_SOLICITUD||s.tipo||''),m=Number(s.MONTO_DECLARADO||s.monto||0);if(t.includes('CARGA')||t.includes('RETIRO')||m!==0)arr.push({fecha:s.FECHA_CREACION||s.FECHA||s.created_at,usuario:s.USUARIO||s.usuario,tipo:s.TIPO_SOLICITUD||s.tipo,monto:m,origen:'LANDING',estado:s.ESTADO_WORKER||s.ESTADO,operador:s.operador||'-',job:s.WORKER_JOB_ID||'',raw:{billetera_id:s.BILLETERA_ID,billetera_nombre:s.BILLETERA_NOMBRE}})});arr.sort((a,b)=>new Date(b.fecha||0)-new Date(a.fecha||0));const data=arr.slice(0,150);if(!data.length){box.innerHTML='<div class="nodo-empty">Todavía no hay historial de cargas/retiros.</div>';return}box.innerHTML=`<div class="nodo-clean-table" data-clean-scroll="history"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Billetera</th><th>Estado</th><th>Operador</th><th>Job</th><th>Ajuste</th></tr></thead><tbody>${data.map(x=>`<tr><td>${fecha(x.fecha)}</td><td><b>${esc(x.usuario||'-')}</b></td><td>${esc(String(x.tipo||'-').replaceAll('_',' '))}</td><td><b>${money(x.monto)}</b></td><td><span class="ops-origin">${esc(x.origen||'-')}</span></td><td>${walletChip(x.raw)}</td><td>${esc(x.estado||'-')}</td><td><span class="nodo-operator-chip">${esc(x.operador||'-')}</span></td><td>${x.job?'#'+esc(x.job):'-'}</td><td>${x.job?`<button class="mini-btn yellow" onclick="abrirEditarBilleteraJobV20&&abrirEditarBilleteraJobV20('${attr(x.job)}')">Billetera</button>`:'-'}</td></tr>`).join('')}</tbody></table></div>`}
  function preserve(fn){const boxes=[...document.querySelectorAll('[data-clean-scroll]')].map(el=>({k:el.dataset.cleanScroll,t:el.scrollTop,l:el.scrollLeft}));fn();requestAnimationFrame(()=>boxes.forEach(s=>{const el=document.querySelector(`[data-clean-scroll="${s.k}"]`);if(el){el.scrollTop=s.t;el.scrollLeft=s.l}}))}
  function bindScroll(){document.querySelectorAll('[data-clean-scroll]').forEach(el=>{if(el.dataset.cleanBound==='1')return;el.addEventListener('scroll',()=>{C.scrollingUntil=Date.now()+1200},{passive:true});el.dataset.cleanBound='1'})}
- function render(){if(C.refreshing)return;if(Date.now()<C.scrollingUntil)return;ensurePanel();preserve(()=>{renderKpis();renderWallets();renderLanding();renderWorker();renderHistory()});bindScroll();fixSidebar();hideCsv()}
+ function render(){if(C.refreshing)return;if(Date.now()<C.scrollingUntil)return;matchPendingJobs();ensurePanel();preserve(()=>{renderKpis();renderWallets();renderLanding();renderWorker();renderHistory()});bindScroll();fixSidebar();hideCsv();createdWatch()}
  window.nodoCleanRender=render;window.nodoCleanRefresh=async function(){if(C.refreshing)return;C.refreshing=true;try{if(typeof refrescarTodo==='function')await refrescarTodo(false);else if(typeof renderCentroOperativo==='function')renderCentroOperativo()}catch(e){}C.refreshing=false;setTimeout(render,120)};
  window.nodoCleanSelectWallet=function(id){C.selectedWallet=String(id||'');localStorage.setItem('nodoCleanWallet',C.selectedWallet);localStorage.setItem('nodoUltimaBilleteraImpactada',C.selectedWallet);const s=$('nodoCleanWallet');if(s)s.value=C.selectedWallet;renderWallets()};
  function syncOld(tipo){const u=$('nodoCleanUsuario')?.value||'',m=$('nodoCleanMonto')?.value||'0',b=$('nodoCleanWallet')?.value||C.selectedWallet||'',c=$('nodoCleanClave')?.value||'12345a',o=$('nodoCleanObs')?.value||'';setOld('manualWorkerUsuarioInicio',u);setOld('manualWorkerMontoInicio',m);setOld('manualWorkerBilleteraInicio',b);setOld('manualWorkerObsInicio',o);setOld('manualWorkerUsuario',u);setOld('manualWorkerMonto',m);setOld('manualWorkerBilletera',b);setOld('manualWorkerObs',o);setOld('manualWorkerTipoInicio',tipo);setOld('manualWorkerTipo',tipo);setOld('agentUserClaveFinal',c);setOld('agentUserTipoFinal',tipo)}
- window.nodoCleanRun=async function(mode){const msg=$('nodoCleanMsg');const user=String($('nodoCleanUsuario')?.value||'').trim();if(!user){if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';return}const amount=Number($('nodoCleanMonto')?.value||0);let tipo='VALIDAR_USUARIO';if(mode==='CREAR')tipo='CREAR_USUARIO';else if(mode==='CLAVE')tipo='CAMBIAR_CLAVE';else if(mode==='VALIDAR')tipo='VALIDAR_USUARIO';else if(amount>0)tipo='CARGAR_FICHAS';else if(amount<0)tipo='PROCESAR_RETIRO';else tipo='VALIDAR_USUARIO';if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo)&&!($('nodoCleanWallet')?.value||C.selectedWallet)){if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';return}try{if(msg)msg.innerHTML='<div class="ok">Enviando al worker…</div>';if(tipo==='PROCESAR_RETIRO'){if($('nodoCleanMonto'))$('nodoCleanMonto').value=Math.abs(amount);syncOld(tipo)}else{syncOld(tipo)}if(tipo==='CREAR_USUARIO'||tipo==='CAMBIAR_CLAVE'){if(typeof crearJobUsuarioAgentesFinal==='function')await crearJobUsuarioAgentesFinal();else throw new Error('No encontré función de usuario agentes.')}else{if(typeof crearWorkerJobManualInicio==='function')await crearWorkerJobManualInicio();else throw new Error('No encontré función worker manual.')}if(msg)msg.innerHTML='<div class="ok">Acción enviada al worker.</div>';[400,1300,3000,6000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms))}catch(e){if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>'}};
- window.nodoCleanLogs=function(id){const j=jobs().find(x=>String(jid(x))===String(id));if(!j){if(typeof abrirWorkerLogsUxFina==='function')return abrirWorkerLogsUxFina(id);if(typeof abrirWorkerLogs==='function')return abrirWorkerLogs(id);return}const fin=final(jest(j)),isMov=mov(j),alias=norm(jres(j)).includes('DUPLICADO');const html=`<div class="verify-box ${fin?'good':(errorJob(j)?'bad':'warn')}"><b>Job #${esc(id)} · ${esc(String(jtipo(j)||'').replaceAll('_',' '))}</b><br>Usuario: <b>${esc(jusu(j)||'-')}</b><br>Monto: <b>${money(jmonto(j))}</b><br>Estado: <b>${esc(jest(j)||'-')}</b><br>Operador: <b>${esc(operador(j)||'-')}</b><br>Billetera: ${walletChip(j)}</div><div style="margin-top:10px" class="verify-box">${esc(jres(j)||'Sin detalle adicional.')}</div>${alias&&!fin?'<div style="margin-top:10px" class="verify-box warn"><b>Posible alias/usuario duplicado.</b><br>Usá una variante y tocá Reintentar.</div>':''}`;const buttons=[];if(isMov)buttons.push(`<button class="mini-btn yellow" onclick="abrirEditarBilleteraJobV20&&abrirEditarBilleteraJobV20('${attr(id)}')">Editar billetera</button>`);if(!fin&&errorJob(j))buttons.push(`<button class="mini-btn green" onclick="workerPanelReintentarJob&&workerPanelReintentarJob('${attr(id)}')">Reintentar</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);if(typeof abrirModal==='function')abrirModal('Logs del worker',html+(buttons.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${buttons.join('')}</div>`:''),null,'Cerrar');else alert(jres(j)||'Sin logs')};
+ window.nodoCleanRun=async function(mode){const msg=$('nodoCleanMsg');const user=String($('nodoCleanUsuario')?.value||'').trim();if(!user){if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';return}const amount=Number($('nodoCleanMonto')?.value||0);let tipo='VALIDAR_USUARIO';if(mode==='CREAR')tipo='CREAR_USUARIO';else if(mode==='CLAVE')tipo='CAMBIAR_CLAVE';else if(mode==='VALIDAR')tipo='VALIDAR_USUARIO';else if(amount>0)tipo='CARGAR_FICHAS';else if(amount<0)tipo='PROCESAR_RETIRO';else tipo='VALIDAR_USUARIO';if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo)&&!($('nodoCleanWallet')?.value||C.selectedWallet)){if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';return}const sw=selectedWalletData();rememberPending(user,tipo,Math.abs(amount),sw?.id||'',sw?.name||'');if(tipo==='CREAR_USUARIO')rememberCreatedWatch(user,$('nodoCleanClave')?.value||'12345a');try{if(msg)msg.innerHTML='<div class="ok">Enviando al worker…</div>';if(tipo==='PROCESAR_RETIRO'){if($('nodoCleanMonto'))$('nodoCleanMonto').value=Math.abs(amount);syncOld(tipo)}else{syncOld(tipo)}if(tipo==='CREAR_USUARIO'||tipo==='CAMBIAR_CLAVE'){if(typeof crearJobUsuarioAgentesFinal==='function')await crearJobUsuarioAgentesFinal();else throw new Error('No encontré función de usuario agentes.')}else{if(typeof crearWorkerJobManualInicio==='function')await crearWorkerJobManualInicio();else throw new Error('No encontré función worker manual.')}if(msg)msg.innerHTML='<div class="ok">Acción enviada al worker.</div>';[400,1300,3000,6000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms))}catch(e){if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>'}};
+ window.nodoCleanSetAliasVariant=function(jobId,val){const inp=$('nodoRetryUsuarioClean_'+jobId);if(inp){inp.value=val;inp.focus();inp.select()}};
+ async function updateJobUser(jobId,nuevoUsuario){try{const {data,error}=await supabaseClient.rpc('admin_actualizar_usuario_worker_job',{p_job_id:Number(jobId),p_usuario:nuevoUsuario});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||'No se pudo actualizar usuario');return{ok:true}}catch(e){return{ok:false,error:e.message||String(e)}}}
+ function suggestions(j){const raw=String(jres(j)||'');let part='';const m=raw.match(/Sugerencias?:\s*([^\.]+)/i);if(m)part=m[1];let list=part.split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);const base=String(jusu(j)||'').trim();if(!list.length&&base)list=[base+'55',base+'1',base+'ok',base+'x',base+'vip'];return[...new Set(list)].slice(0,8)}
+ window.nodoCleanRetryAlias=async function(id){const inp=$('nodoRetryUsuarioClean_'+id);const nuevo=String(inp?.value||'').trim();if(!nuevo){alert('Elegí o escribí una variante.');return}const btn=$('nodoRetryBtnClean_'+id);if(btn)btn.textContent='Reintentando...';try{const upd=await updateJobUser(id,nuevo);if(!upd.ok)throw new Error('No pude actualizar el usuario del mismo job: '+upd.error);const {data,error}=await supabaseClient.rpc('admin_reintentar_worker_job',{p_job_id:Number(id)});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||'No se pudo reintentar.');const meta=metaStore();meta[String(id)]=Object.assign({},meta[String(id)]||{},{usuario:nuevo,operator:currentOperator(),updatedAt:Date.now()});saveMeta(meta);rememberCreatedWatch(nuevo,$('nodoCleanClave')?.value||'12345a');if(typeof toast==='function')toast('Reintentando mismo job con variante','green');[500,1200,2500,4500,7500,11000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms));const box=$('nodoRetryMsgClean_'+id);if(box)box.innerHTML='<div class="ok-box">Job reintentado. Esperando respuesta del worker...</div>'}catch(e){alert('Error reintentando job: '+(e.message||e))}finally{if(btn)btn.textContent='Reintentar mismo job'}};
+ window.nodoCleanLogs=function(id){const j=jobs().find(x=>String(jid(x))===String(id));if(!j){if(typeof abrirWorkerLogsUxFina==='function')return abrirWorkerLogsUxFina(id);if(typeof abrirWorkerLogs==='function')return abrirWorkerLogs(id);return}const fin=final(jest(j)),isMov=mov(j),alias=norm(jres(j)).includes('DUPLICADO');const sugg=alias&&!fin?suggestions(j):[];const html=`<div class="verify-box ${fin?'good':(errorJob(j)?'bad':'warn')}"><b>Job #${esc(id)} · ${esc(String(jtipo(j)||'').replaceAll('_',' '))}</b><br>Usuario: <b>${esc(jusu(j)||'-')}</b><br>Monto: <b>${money(jmonto(j))}</b><br>Estado: <b>${esc(jest(j)||'-')}</b><br>Operador: <b>${esc(operador(j)||'-')}</b><br>Billetera: ${walletChip(j)}</div><div style="margin-top:10px" class="verify-box">${esc(jres(j)||'Sin detalle adicional.')}</div>${alias&&!fin?`<div class="nodo-alias-tools"><b>Alias/usuario duplicado.</b><br>Elegí una variante o escribí una nueva y reintentá el mismo job.<input id="nodoRetryUsuarioClean_${attr(id)}" value="${esc(sugg[0]||jusu(j)||'')}" placeholder="Nueva variante"><div class="nodo-alias-pills">${sugg.map(s=>`<button class="nodo-alias-pill" onclick="nodoCleanSetAliasVariant('${attr(id)}','${attr(s)}')">${esc(s)}</button>`).join('')}</div><div id="nodoRetryMsgClean_${attr(id)}" style="margin-top:10px"></div></div>`:''}`;const buttons=[];if(isMov&&fin)buttons.push(`<button class="mini-btn yellow" onclick="abrirEditarBilleteraJobV20&&abrirEditarBilleteraJobV20('${attr(id)}')">Editar billetera</button>`);if(alias&&!fin)buttons.push(`<button id="nodoRetryBtnClean_${attr(id)}" class="mini-btn green" onclick="nodoCleanRetryAlias('${attr(id)}')">Reintentar mismo job</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);else if(!fin&&errorJob(j))buttons.push(`<button class="mini-btn green" onclick="workerPanelReintentarJob&&workerPanelReintentarJob('${attr(id)}');setTimeout(nodoCleanRefresh,700)">Reintentar</button><button class="mini-btn red" onclick="workerPanelCancelarJob&&workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);if(typeof abrirModal==='function')abrirModal('Logs del worker',html+(buttons.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${buttons.join('')}</div>`:''),null,'Cerrar');else alert(jres(j)||'Sin logs')};
+
  function fixSidebar(){document.querySelectorAll('.sidebar .nav-btn,.nav-btn').forEach(btn=>{const badges=[...btn.querySelectorAll('.badge,.badge-alert')];badges.forEach(b=>b.remove());const raw=(btn.getAttribute('title')||btn.textContent||'').trim();let icon='•',label=raw;if(raw.includes('Centro')||raw.includes('Inicio')||raw.includes('🏠'))icon='🏠';else if(raw.includes('Pago')||raw.includes('💚'))icon='💚';else if(raw.includes('Billetera')||raw.includes('💳'))icon='💳';else if(raw.includes('Chat')||raw.includes('💬'))icon='💬';else if(raw.includes('Worker')||raw.includes('⚙'))icon='⚙️';else if(raw.includes('Ajust'))icon='🧾';btn.innerHTML=`<span class="nav-icon">${esc(icon)}</span><span class="nav-text">${esc(label)}</span>`;badges.forEach(b=>btn.appendChild(b));btn.title=label||'Sección'})}
  function hideCsv(){document.querySelectorAll('button,a').forEach(el=>{const t=norm(el.textContent||'');if(t.includes('IMPORTAR CSV')||t.includes('CSV OPS')||t.includes('IMPORTAR OPERACIONES'))el.style.display='none'})}
  function wrap(name){const fn=window[name];if(typeof fn==='function'&&!fn.__cleanCore){window[name]=function(){const r=fn.apply(this,arguments);setTimeout(render,180);return r};window[name].__cleanCore=true;try{eval(name+'=window[name]')}catch(e){}}}
  wrap('renderInicio');wrap('renderCentroOperativo');wrap('renderWorkerJobs');wrap('renderColaUnificada');wrap('refrescarTodo');
- document.addEventListener('DOMContentLoaded',()=>setTimeout(render,900));window.addEventListener('load',()=>setTimeout(render,1500));setTimeout(render,2200);
-})();
-</script>
-
-
-<style id="nodo-v21-realtime-fix-css">
-/* =========================================================
-   NODO V21 · REALTIME FIX
-   Billetera/operador manual + retry alias duplicado + refresh vivo.
-========================================================= */
-body.nodo-v21-realtime-fix .nodo-live-dot{
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:6px!important;
-  border-radius:999px!important;
-  padding:5px 9px!important;
-  background:rgba(34,197,94,.12)!important;
-  border:1px solid rgba(34,197,94,.22)!important;
-  color:#bbf7d0!important;
-  font-size:11px!important;
-  font-weight:900!important;
-}
-body.nodo-v21-realtime-fix .nodo-live-dot::before{
-  content:"";
-  width:7px;
-  height:7px;
-  border-radius:999px;
-  background:#22c55e;
-  box-shadow:0 0 12px rgba(34,197,94,.9);
-}
-body.nodo-v21-realtime-fix .nodo-alias-tools{
-  margin-top:12px!important;
-  border:1px solid rgba(245,158,11,.28)!important;
-  background:rgba(245,158,11,.10)!important;
-  border-radius:16px!important;
-  padding:12px!important;
-}
-body.nodo-v21-realtime-fix .nodo-alias-tools input{
-  width:100%!important;
-  height:42px!important;
-  border-radius:12px!important;
-  border:1px solid rgba(148,163,184,.22)!important;
-  padding:0 12px!important;
-  background:#fff!important;
-  color:#111827!important;
-  margin:8px 0!important;
-}
-body.nodo-v21-realtime-fix .nodo-alias-pills{
-  display:flex!important;
-  flex-wrap:wrap!important;
-  gap:8px!important;
-  margin-top:8px!important;
-}
-body.nodo-v21-realtime-fix .nodo-alias-pill{
-  border:none!important;
-  border-radius:999px!important;
-  padding:8px 11px!important;
-  background:rgba(255,255,255,.14)!important;
-  color:#fff!important;
-  font-weight:900!important;
-  cursor:pointer!important;
-}
-body.nodo-v21-realtime-fix .nodo-job-wallet-chip.fixed{
-  background:rgba(34,197,94,.13)!important;
-  border-color:rgba(34,197,94,.25)!important;
-  color:#bbf7d0!important;
-}
-body.nodo-v21-realtime-fix .nodo-operator-chip{
-  display:inline-flex!important;
-  border-radius:999px!important;
-  padding:6px 9px!important;
-  background:rgba(148,163,184,.10)!important;
-  border:1px solid rgba(148,163,184,.14)!important;
-  color:#e5e7eb!important;
-  font-size:11px!important;
-  font-weight:800!important;
-}
-</style>
-
-<script id="nodo-v21-realtime-fix-js">
-(function(){
-  if(window.__NODO_V21_REALTIME_FIX__) return;
-  window.__NODO_V21_REALTIME_FIX__ = true;
-  document.body.classList.add('nodo-v21-realtime-fix');
-
-  const RT = {
-    pulseTimer:null,
-    activePoll:false,
-    lastFullRefresh:0,
-    createdShown:{}
-  };
-
-  const $ = id => document.getElementById(id);
-  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
-  const attr = v => esc(v).replaceAll('`','&#96;');
-  const norm = v => { try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}catch(e){return String(v ?? '').trim().toUpperCase();} };
-  const money = v => { try{return typeof window.money === 'function' ? window.money(v) : ('$ ' + Number(v||0).toLocaleString('es-AR'));}catch(e){return '$ '+(v||0);} };
-  const parseJson = v => { if(!v) return {}; if(typeof v === 'object') return v; try{return JSON.parse(String(v));}catch(e){return {};} };
-
-  function jobs(){ try{return Array.isArray(window.workerJobs) ? window.workerJobs : (Array.isArray(workerJobs) ? workerJobs : []);}catch(e){return [];} }
-  function solis(){ try{return Array.isArray(window.solicitudes) ? window.solicitudes : (Array.isArray(solicitudes) ? solicitudes : []);}catch(e){return [];} }
-  function billeteras(){
-    const out=[];
-    try{
-      if(Array.isArray(window.billeteras)) out.push(...window.billeteras);
-      if(typeof billeteras !== 'undefined' && Array.isArray(billeteras)) out.push(...billeteras);
-      if(Array.isArray(window.saldosOperativos?.billeteras)) out.push(...window.saldosOperativos.billeteras);
-      if(Array.isArray(window.wallets)) out.push(...window.wallets);
-    }catch(e){}
-    const seen=new Set();
-    return out.filter(w=>{
-      const k=String(w.id||w.ID||w.id_billetera||w.billetera_id||w.nombre_visible||w.nombre||'');
-      if(!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }
-
-  const jid = j => j?.id || j?.job_id || j?.worker_job_id || j?.WORKER_JOB_ID || '';
-  const jtipo = j => j?.tipo_accion || j?.tipo || j?.TIPO || j?.TIPO_SOLICITUD || '';
-  const jusu = j => j?.usuario || j?.USUARIO || j?.USUARIO_JUGADOR || j?.alias || '';
-  const jmonto = j => Number(j?.monto || j?.MONTO_DECLARADO || j?.MONTO_REAL || 0);
-  const jest = j => j?.estado || j?.ESTADO || j?.ESTADO_WORKER || '';
-  const jres = j => j?.resultado || j?.result || j?.RESULTADO || j?.error_mensaje || j?.error || j?.WORKER_ERROR || '';
-  const wid = w => w?.id ?? w?.ID ?? w?.id_billetera ?? w?.billetera_id ?? '';
-  const wname = w => w?.nombre_visible || w?.nombre || w?.NOMBRE || w?.alias || w?.titular || ('Billetera '+wid(w));
-  const wtipo = w => w?.banco || w?.tipo || w?.TIPO || w?.provider || 'MP';
-
-  function currentOperator(){
-    try{
-      const o = window.operador || (typeof operador !== 'undefined' ? operador : null) || {};
-      return o.usuario || o.nombre || o.NOMBRE || localStorage.getItem('nodo_operador_nombre') || 'operador';
-    }catch(e){
-      return localStorage.getItem('nodo_operador_nombre') || 'operador';
-    }
-  }
-
-  function jobMeta(){
-    try{return JSON.parse(localStorage.getItem('nodo_v21_job_meta') || '{}') || {};}catch(e){return {};}
-  }
-  function saveJobMeta(meta){
-    localStorage.setItem('nodo_v21_job_meta', JSON.stringify(meta || {}));
-  }
-  function rememberJob(id, data){
-    if(!id) return;
-    const meta = jobMeta();
-    meta[String(id)] = Object.assign({}, meta[String(id)] || {}, data || {}, {updatedAt:Date.now()});
-    saveJobMeta(meta);
-  }
-
-  function pendingOps(){
-    try{return JSON.parse(localStorage.getItem('nodo_v21_pending_ops') || '[]') || [];}catch(e){return [];}
-  }
-  function savePendingOps(arr){
-    localStorage.setItem('nodo_v21_pending_ops', JSON.stringify((arr || []).slice(-80)));
-  }
-
-  function selectedWallet(){
-    const id = String(($('nodoCleanWallet') || {}).value || localStorage.getItem('nodoCleanWallet') || localStorage.getItem('nodoUltimaBilleteraImpactada') || '').trim();
-    const w = billeteras().find(x=>String(wid(x))===String(id));
-    return w ? {id:String(wid(w)), name:wname(w), tipo:wtipo(w)} : (id ? {id, name:'ID '+id, tipo:''} : null);
-  }
-
-  function walletFromJob(j){
-    if(!j) return null;
-    const p = parseJson(j.payload);
-    const meta = jobMeta()[String(jid(j))] || {};
-    const rawId = j.billetera_id ?? j.id_billetera ?? j.wallet_id ?? j.id_wallet ??
-      p.billetera_id ?? p.id_billetera ?? p.wallet_id ?? p.billeteraImpactada ?? p.billetera ?? p.id_billetera_impactada ??
-      meta.walletId ?? '';
-    const rawName = j.billetera_nombre ?? j.nombre_billetera ?? j.wallet_nombre ?? j.billetera ??
-      p.billetera_nombre ?? p.nombre_billetera ?? p.wallet_nombre ?? p.billetera_nombre_visible ??
-      meta.walletName ?? '';
-
-    const obs = String(j.observacion || j.notas || p.observacion || p.obs || '');
-    const obsId = (obs.match(/billetera_id\s*=\s*(\d+)/i) || [])[1];
-    const finalId = rawId || obsId || '';
-
-    const list = billeteras();
-    let found = null;
-    if(finalId !== '' && finalId !== null && finalId !== undefined){
-      found = list.find(w=>String(wid(w))===String(finalId));
-    }
-    if(!found && rawName){
-      found = list.find(w=>norm(wname(w)).includes(norm(rawName)) || norm(rawName).includes(norm(wname(w))));
-    }
-    if(found) return {id:String(wid(found)), name:wname(found), tipo:wtipo(found)};
-    if(finalId || rawName) return {id:finalId, name:rawName || ('ID '+finalId), tipo:''};
-    return null;
-  }
-
-  function operatorFromJob(j){
-    if(!j) return '-';
-    const p = parseJson(j.payload);
-    const meta = jobMeta()[String(jid(j))] || {};
-    const obs = String(j.observacion || j.notas || p.observacion || p.obs || '');
-    const obsOp = (obs.match(/operador\s*=\s*([^·|]+)/i) || [])[1];
-    return j.operador || j.operador_nombre || j.worker_id || j.created_by || j.agent ||
-      p.operador || p.worker_id || p.created_by || meta.operator || (obsOp ? obsOp.trim() : '') || '-';
-  }
-
-  function movementJob(j){
-    const t=norm(jtipo(j));
-    return t.includes('CARGA') || t.includes('RETIRO') || t.includes('FICHAS') || jmonto(j)!==0;
-  }
-
-  function aliasDuplicate(j){
-    const r=norm(jres(j));
-    return r.includes('ALIAS DUPLICADO') || r.includes('USUARIO DUPLICADO') || r.includes('DUPLICADO EN AGENTES') || r.includes('DUPLICADO');
-  }
-
-  function finalJob(j){
-    return ['COMPLETADO','OK','FINALIZADO','CANCELADO','CANCELADA'].includes(norm(jest(j)));
-  }
-
-  function erroredJob(j){
-    const n=norm(jest(j)), r=norm(jres(j));
-    return n.includes('ERROR') || n==='REINTENTAR' || n==='REQUIERE_MANUAL' || r.includes('ERROR') || r.includes('DUPLICADO');
-  }
-
-  function matchPendingToJobs(){
-    const pending = pendingOps().filter(p=>Date.now()-(p.createdAt||0) < 15*60*1000);
-    if(!pending.length) return;
-    const meta = jobMeta();
-    let changed = false;
-
-    jobs().forEach(j=>{
-      const id = String(jid(j) || '');
-      if(!id || meta[id]?.walletId) return;
-
-      const ju = norm(jusu(j));
-      const jt = norm(jtipo(j));
-      const jm = Math.abs(Number(jmonto(j)||0));
-
-      const hit = pending.find(p=>{
-        if(norm(p.usuario) !== ju) return false;
-        if(p.tipo && jt && !jt.includes(norm(p.tipo).replace('PROCESAR_','').replace('CARGAR_',''))) {
-          if(!(norm(p.tipo).includes('CARGA') && jt.includes('CARGA')) && !(norm(p.tipo).includes('RETIRO') && jt.includes('RETIRO')) && !(norm(p.tipo).includes('CREAR') && jt.includes('CREAR')) && !(norm(p.tipo).includes('CLAVE') && jt.includes('CLAVE')) && !(norm(p.tipo).includes('VALIDAR') && jt.includes('VALIDAR'))) return false;
-        }
-        if(Number.isFinite(p.monto) && Math.abs(Number(p.monto||0)) !== jm) return false;
-        return true;
-      });
-
-      if(hit){
-        meta[id] = Object.assign({}, meta[id] || {}, {
-          walletId: hit.walletId || '',
-          walletName: hit.walletName || '',
-          operator: hit.operator || currentOperator(),
-          usuario: hit.usuario || jusu(j),
-          tipo: hit.tipo || jtipo(j),
-          monto: hit.monto ?? jmonto(j),
-          updatedAt: Date.now()
-        });
-        changed = true;
-      }
-    });
-
-    if(changed) saveJobMeta(meta);
-    savePendingOps(pending);
-  }
-
-  function patchTables(){
-    matchPendingToJobs();
-
-    // Worker: Hora, Usuario, Operación, Monto, Billetera, Estado, Operador, Acciones
-    document.querySelectorAll('#nodoCleanWorker tr').forEach(tr=>{
-      const txt = tr.textContent || '';
-      const id = (txt.match(/#(\d+)/) || [])[1];
-      if(!id) return;
-      const j = jobs().find(x=>String(jid(x))===String(id));
-      if(!j) return;
-      const tds = tr.querySelectorAll('td');
-      if(tds.length >= 8){
-        const w = walletFromJob(j);
-        if(w && tds[4]) tds[4].innerHTML = `<span class="nodo-job-wallet-chip fixed">💳 ${esc(w.name)}</span>`;
-        if(tds[6]) tds[6].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
-      }
-    });
-
-    // History: Hora, Usuario, Tipo, Monto, Origen, Billetera, Estado, Operador, Job, Ajuste
-    document.querySelectorAll('#nodoCleanHistory tr').forEach(tr=>{
-      const txt = tr.textContent || '';
-      const id = (txt.match(/#(\d+)/) || [])[1];
-      if(!id) return;
-      const j = jobs().find(x=>String(jid(x))===String(id));
-      if(!j) return;
-      const tds = tr.querySelectorAll('td');
-      if(tds.length >= 10){
-        const w = walletFromJob(j);
-        if(w && tds[5]) tds[5].innerHTML = `<span class="nodo-job-wallet-chip fixed">💳 ${esc(w.name)}</span>`;
-        if(tds[7]) tds[7].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
-      }
-    });
-
-    // Landing operator improvements too.
-    document.querySelectorAll('#nodoCleanLanding tr').forEach(tr=>{
-      const txt = tr.textContent || '';
-      const id = (txt.match(/#(\d+)/) || [])[1];
-      if(!id) return;
-      const j = jobs().find(x=>String(jid(x))===String(id));
-      if(!j) return;
-      const tds = tr.querySelectorAll('td');
-      if(tds.length >= 8 && tds[6]) tds[6].innerHTML = `<span class="nodo-operator-chip">${esc(operatorFromJob(j))}</span>`;
-    });
-  }
-
-  function registerPendingFromForm(mode){
-    const usuario = String(($('nodoCleanUsuario') || {}).value || '').trim();
-    const monto = Number(($('nodoCleanMonto') || {}).value || 0);
-    const w = selectedWallet();
-    let tipo = 'VALIDAR_USUARIO';
-    if(mode === 'CREAR') tipo = 'CREAR_USUARIO';
-    else if(mode === 'CLAVE') tipo = 'CAMBIAR_CLAVE';
-    else if(mode === 'VALIDAR') tipo = 'VALIDAR_USUARIO';
-    else if(monto > 0) tipo = 'CARGAR_FICHAS';
-    else if(monto < 0) tipo = 'PROCESAR_RETIRO';
-
-    const arr = pendingOps();
-    arr.push({
-      usuario,
-      tipo,
-      monto: Math.abs(monto),
-      walletId: w?.id || '',
-      walletName: w?.name || '',
-      operator: currentOperator(),
-      createdAt: Date.now()
-    });
-    savePendingOps(arr);
-  }
-
-  const oldRun = window.nodoCleanRun;
-  if(typeof oldRun === 'function' && !oldRun.__rtFix){
-    window.nodoCleanRun = async function(mode){
-      registerPendingFromForm(mode);
-      const r = await oldRun.apply(this, arguments);
-      scheduleRealtimePulse(true);
-      return r;
-    };
-    window.nodoCleanRun.__rtFix = true;
-  }
-
-  async function refreshLight(){
-    if(document.hidden) return;
-    if(Date.now() - RT.lastFullRefresh < 1200) return;
-    RT.lastFullRefresh = Date.now();
-
-    try{ if(typeof window.cargarWorkerJobs === 'function') await window.cargarWorkerJobs(true); }catch(e){}
-    try{ if(typeof window.cargarSolicitudes === 'function') await window.cargarSolicitudes(true); }catch(e){}
-    try{ if(typeof window.cargarSaldosOperativos === 'function') await window.cargarSaldosOperativos(true); }catch(e){}
-
-    try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
-    setTimeout(patchTables, 80);
-    checkCreatedUserJobs();
-  }
-
-  function scheduleRealtimePulse(strong){
-    const times = strong ? [300,800,1500,2500,4000,6500,9500,13000,18000] : [800,2500,5000];
-    times.forEach(ms=>setTimeout(refreshLight, ms));
-  }
-
-  function startRealtime(){
-    if(RT.pulseTimer) return;
-    RT.pulseTimer = setInterval(()=>{
-      const panel = $('nodoV21CleanPanel');
-      if(!panel || panel.offsetParent === null) return;
-      const active = document.activeElement;
-      if(active && ['INPUT','TEXTAREA','SELECT'].includes(active.tagName)) return;
-      refreshLight();
-    }, 3000);
-  }
-
-  function extractSuggestions(j){
-    const raw = String(jres(j) || '');
-    let part = '';
-    const m = raw.match(/Sugerencias?:\s*([^\.]+)/i);
-    if(m) part = m[1];
-    let list = part.split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
-    const base = String(jusu(j) || '').trim();
-    if(!list.length && base){
-      list = [base+'55', base+'1', base+'ok', base+'x', base+'vip'];
-    }
-    return [...new Set(list)].slice(0,8);
-  }
-
-  window.nodoCleanSetAliasVariant = function(jobId, val){
-    const inp = $('nodoRetryUsuario_' + jobId);
-    if(inp){
-      inp.value = val;
-      inp.focus();
-      inp.select();
-    }
-    try{
-      const m = jobMeta();
-      m[String(jobId)] = Object.assign({}, m[String(jobId)] || {}, {retryUsuario:val, updatedAt:Date.now()});
-      saveJobMeta(m);
-    }catch(e){}
-  };
-
-  async function updateJobUser(jobId, nuevoUsuario){
-    if(!nuevoUsuario) return {ok:true};
-    try{
-      const { data, error } = await supabaseClient.rpc('admin_actualizar_usuario_worker_job', {
-        p_job_id: Number(jobId),
-        p_usuario: nuevoUsuario
-      });
-      if(error) throw error;
-      const r = Array.isArray(data) ? data[0] : data;
-      if(r && r.ok === false) throw new Error(r.error || 'No se pudo actualizar usuario.');
-      return {ok:true};
-    }catch(e){
-      return {ok:false, error:e.message || String(e)};
-    }
-  }
-
-  window.nodoCleanRetryAlias = async function(jobId){
-    const id = Number(jobId);
-    const inp = $('nodoRetryUsuario_' + jobId);
-    const nuevoUsuario = String((inp && inp.value) || '').trim();
-
-    if(!id){
-      alert('Job inválido.');
-      return;
-    }
-    if(!nuevoUsuario){
-      alert('Elegí o escribí una variante de usuario.');
-      return;
-    }
-
-    const btn = $('nodoRetryBtn_' + jobId);
-    if(btn) btn.textContent = 'Reintentando...';
-
-    try{
-      const upd = await updateJobUser(id, nuevoUsuario);
-      if(!upd.ok){
-        throw new Error('No pude actualizar el usuario del mismo job: ' + upd.error);
-      }
-
-      const { data, error } = await supabaseClient.rpc('admin_reintentar_worker_job', {
-        p_job_id: id
-      });
-      if(error) throw error;
-      const r = Array.isArray(data) ? data[0] : data;
-      if(r && r.ok === false) throw new Error(r.error || 'No se pudo reintentar.');
-
-      rememberJob(id, {
-        usuario:nuevoUsuario,
-        operator:currentOperator(),
-        retryAt:Date.now()
-      });
-
-      try{
-        localStorage.setItem('nodo_watch_created_job_' + id, JSON.stringify({
-          jobId:id,
-          usuario:nuevoUsuario,
-          clave:($('nodoCleanClave') || {}).value || '12345a',
-          link:'http://bet-300.pw/',
-          until:Date.now()+180000
-        }));
-      }catch(e){}
-
-      if(typeof toast === 'function') toast('Reintentando mismo job con variante','green');
-
-      scheduleRealtimePulse(true);
-
-      const msg = $('nodoRetryMsg_' + jobId);
-      if(msg) msg.innerHTML = '<div class="ok-box">Job reintentado. Esperando respuesta del worker...</div>';
-
-      [800,1800,3200,5200,8200,12000].forEach(ms=>setTimeout(()=>openLogsIfStillModal(id), ms));
-    }catch(e){
-      alert('Error reintentando job: ' + (e.message || e));
-    }finally{
-      if(btn) btn.textContent = 'Reintentar mismo job';
-    }
-  };
-
-  function openLogsIfStillModal(id){
-    refreshLight();
-    const t = $('modalTitle');
-    if(t && /Logs del worker/i.test(t.textContent || '')){
-      const j = jobs().find(x=>String(jid(x))===String(id));
-      if(j && finalJob(j)){
-        checkCreatedUserJobs();
-        try{ cerrarModal && cerrarModal(); }catch(e){}
-      }
-    }
-  }
-
-  const oldLogs = window.nodoCleanLogs;
-  window.nodoCleanLogs = function(id){
-    const j = jobs().find(x=>String(jid(x))===String(id));
-    if(!j){
-      if(typeof oldLogs === 'function') return oldLogs.apply(this, arguments);
-      return;
-    }
-
-    const fin = finalJob(j);
-    const alias = aliasDuplicate(j);
-    const isErr = erroredJob(j);
-    const suggestions = alias && !fin ? extractSuggestions(j) : [];
-
-    const html = `
-      <div class="verify-box ${fin?'good':(isErr?'bad':'warn')}">
-        <b>Job #${esc(id)} · ${esc(String(jtipo(j)||'').replaceAll('_',' '))}</b><br>
-        Usuario: <b>${esc(jusu(j)||'-')}</b><br>
-        Monto: <b>${money(jmonto(j))}</b><br>
-        Estado: <b>${esc(jest(j)||'-')}</b><br>
-        Operador: <b>${esc(operatorFromJob(j)||'-')}</b><br>
-        Billetera: ${walletFromJob(j) ? `<span class="nodo-job-wallet-chip fixed">💳 ${esc(walletFromJob(j).name)}</span>` : '<span class="nodo-job-wallet-chip na">— No aplica</span>'}
-      </div>
-
-      <div style="margin-top:10px" class="verify-box">
-        ${esc(jres(j) || 'Sin detalle adicional.')}
-      </div>
-
-      ${alias && !fin ? `
-        <div class="nodo-alias-tools">
-          <b>Alias/usuario duplicado.</b><br>
-          Elegí una variante o escribí una nueva y reintentá el mismo job.
-          <input id="nodoRetryUsuario_${attr(id)}" value="${esc(suggestions[0] || jusu(j) || '')}" placeholder="Nueva variante">
-          <div class="nodo-alias-pills">
-            ${suggestions.map(s=>`<button class="nodo-alias-pill" onclick="nodoCleanSetAliasVariant('${attr(id)}','${attr(s)}')">${esc(s)}</button>`).join('')}
-          </div>
-          <div id="nodoRetryMsg_${attr(id)}" style="margin-top:10px"></div>
-        </div>
-      ` : ''}
-    `;
-
-    const buttons = [];
-    if(alias && !fin){
-      buttons.push(`<button id="nodoRetryBtn_${attr(id)}" class="mini-btn green" onclick="nodoCleanRetryAlias('${attr(id)}')">Reintentar mismo job</button>`);
-      buttons.push(`<button class="mini-btn red" onclick="workerPanelCancelarJob && workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);
-    }else if(!fin && isErr){
-      buttons.push(`<button class="mini-btn green" onclick="workerPanelReintentarJob && workerPanelReintentarJob('${attr(id)}'); setTimeout(nodoCleanRTRefresh,700)">Reintentar</button>`);
-      buttons.push(`<button class="mini-btn red" onclick="workerPanelCancelarJob && workerPanelCancelarJob('${attr(id)}')">Cancelar</button>`);
-    }
-
-    if(typeof abrirModal === 'function'){
-      abrirModal('Logs del worker', html + (buttons.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${buttons.join('')}</div>` : ''), null, 'Cerrar');
-    }else if(typeof oldLogs === 'function'){
-      return oldLogs.apply(this, arguments);
-    }
-  };
-
-  function showCreatedModal(data){
-    const usuario = data.usuario || '';
-    const clave = data.clave || '12345a';
-    const link = data.link || 'http://bet-300.pw/';
-    const msg = `Usuario: ${usuario}\nClave: ${clave}\nLink: ${link}`;
-
-    if(typeof abrirModalUsuarioCreado === 'function'){
-      try{
-        return abrirModalUsuarioCreado({usuario, clave, link});
-      }catch(e){}
-    }
-
-    if(typeof abrirModal === 'function'){
-      abrirModal('Usuario creado', `
-        <div class="verify-box good">
-          <b>Usuario creado correctamente</b><br><br>
-          <b>Usuario:</b> ${esc(usuario)}<br>
-          <b>Clave:</b> ${esc(clave)}<br>
-          <b>Link:</b> ${esc(link)}
-        </div>
-        <textarea id="nodoCreatedMsgRT" style="width:100%;height:115px;margin-top:10px">${esc(msg)}</textarea>
-      `, ()=>{
-        navigator.clipboard && navigator.clipboard.writeText(($('nodoCreatedMsgRT') || {}).value || msg);
-      }, 'Copiar mensaje');
-    }
-  }
-
-  function checkCreatedUserJobs(){
-    const list = jobs();
-    Object.keys(localStorage).forEach(k=>{
-      if(!k.startsWith('nodo_watch_created_job_')) return;
-      let data=null;
-      try{ data=JSON.parse(localStorage.getItem(k) || '{}'); }catch(e){}
-      if(!data || !data.jobId || Date.now() > Number(data.until || 0)){
-        localStorage.removeItem(k);
-        return;
-      }
-      if(RT.createdShown[data.jobId]) return;
-      const j = list.find(x=>String(jid(x))===String(data.jobId));
-      if(!j) return;
-      if(finalJob(j) && norm(jest(j)) !== 'CANCELADO' && norm(jest(j)) !== 'CANCELADA'){
-        RT.createdShown[data.jobId] = true;
-        localStorage.removeItem(k);
-        showCreatedModal({
-          usuario:jusu(j) || data.usuario,
-          clave:data.clave || '12345a',
-          link:data.link || 'http://bet-300.pw/'
-        });
-      }
-    });
-  }
-
-  window.nodoCleanRTRefresh = refreshLight;
-
-  const oldRender = window.nodoCleanRender;
-  if(typeof oldRender === 'function' && !oldRender.__rtPatch){
-    window.nodoCleanRender = function(){
-      const r = oldRender.apply(this, arguments);
-      setTimeout(patchTables, 60);
-      setTimeout(checkCreatedUserJobs, 120);
-      return r;
-    };
-    window.nodoCleanRender.__rtPatch = true;
-  }
-
-  // Patch built-in retry to trigger realtime pulse.
-  const oldRetry = window.workerPanelReintentarJob;
-  if(typeof oldRetry === 'function' && !oldRetry.__rtPulse){
-    window.workerPanelReintentarJob = async function(){
-      const r = await oldRetry.apply(this, arguments);
-      scheduleRealtimePulse(true);
-      return r;
-    };
-    window.workerPanelReintentarJob.__rtPulse = true;
-  }
-
-  document.addEventListener('DOMContentLoaded',()=>{
-    setTimeout(()=>{ patchTables(); startRealtime(); }, 900);
-  });
-  window.addEventListener('load',()=>{
-    setTimeout(()=>{ patchTables(); startRealtime(); refreshLight(); }, 1300);
-  });
-  setTimeout(()=>{ patchTables(); startRealtime(); }, 1700);
+ document.addEventListener('DOMContentLoaded',()=>setTimeout(render,900));window.addEventListener('load',()=>setTimeout(render,1500));setTimeout(render,2200);setInterval(()=>{if(document.hidden)return;const a=document.activeElement;if(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))return;if(Date.now()<C.scrollingUntil)return;if(Date.now()-C.lastRealtime<3500)return;C.lastRealtime=Date.now();window.nodoCleanRefresh&&window.nodoCleanRefresh()},4000);
 })();
 </script>
 
