@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros</title>
+<title>BET300 · Cargas/Retiros · Estado fix</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -735,7 +735,7 @@ function recuperarSolicitudPendiente(){
 function mostrarReferenciaPago(s){const box=$("referenciaPagoBox");if(!box)return;const tipo=String(s?.tipo||tipoSolicitudActual||"CARGA").toUpperCase(), ref=s?.referencia_pago||s?.referencia_pago_visible||"";if(tipo!=="CARGA"||!ref){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=`<b>Referencia de carga:</b> ${escapeHtml(ref)}<br><span class="mini">Si tu billetera permite agregar nota o motivo, escribí esta referencia. Esto ayuda a validar tu pago más rápido.</span><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText('${escapeAttr(ref)}')">Copiar referencia</button>`}
 function mostrarResultado(texto,ok){const box=$("resultado");box.innerHTML=texto;box.className="result "+(ok?"ok":"err")}
 function mostrarEstadoEspera(e="PENDIENTE"){$("estadoEspera").classList.remove("hidden");renderProgresoSolicitud(e)}
-function esEstadoSolicitudOk(estado){return ["ACREDITADA","PAGADA"].includes(String(estado||"").toUpperCase())}
+function esEstadoSolicitudOk(estado){const e=String(estado||"").toUpperCase();return ["ACREDITADA","PAGADA","APROBADA","APROBADO","REALIZADA","REALIZADO","COMPLETADA","COMPLETADO","OK","FINALIZADA","FINALIZADO"].includes(e)}
 function esEstadoSolicitudCancelado(estado){const e=String(estado||"").toUpperCase();return e.includes("RECHAZ")||e.includes("ERROR")||e.includes("CANCEL")||e.includes("ANUL")}
 function renderProgresoSolicitud(estado){
   const e=String(estado||"PENDIENTE").toUpperCase(), esRetiro=String(tipoSolicitudActual||"CARGA").toUpperCase()==="RETIRO", ok=esEstadoSolicitudOk(e), bad=esEstadoSolicitudCancelado(e);
@@ -811,7 +811,7 @@ function iniciarEscuchaEstado(){
       intervaloEstado = null;
 
       if(tipo === "RETIRO"){
-        mostrarResultado("OK Tu retiro fue marcado como pagado/aprobado.", true);
+        mostrarResultado("OK Tu retiro fue aprobado/pagado. Ya fue informado por el panel.", true);
 
         setTimeout(() => {
           resetLandingEstado();
@@ -848,7 +848,7 @@ function iniciarEscuchaEstado(){
       return;
     }
 
-  }, 3000);
+  }, 2500);
 }
 function resetLandingEstado(){solicitudActual=null;if(intervaloEstado){clearInterval(intervaloEstado);intervaloEstado=null}sessionStorage.removeItem(LS_SOLICITUD);$("estadoEspera").classList.add("hidden");$("successModal").classList.add("hidden");$("resultado").innerHTML="";$("resultado").className="result";$("monto").value="";seleccionarTipoSolicitud("CARGA")}
 function irPlataforma(){resetLandingEstado();window.location.href=LINKS_PLATAFORMA[PC]||LINKS_PLATAFORMA.P1}
