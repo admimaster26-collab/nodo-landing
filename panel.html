@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · Performance V2 · Retiro24H Fix</title>
+<title>NODO · OPERATIVO V21 · Queue Fast V2 · Retiro24H Fix</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -274,7 +274,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:11px;border-bottom:1px s
   <div class="login-card">
     <img src="logo-nodo.png" class="logo" alt="NODO">
     <h2 style="margin-bottom:6px">PANEL OPERATIVO LITE</h2>
-    <div class="small" style="margin-bottom:16px">Versión V21 · Performance · Retiro24H Fix</div>
+    <div class="small" style="margin-bottom:16px">Versión V21 · Queue Fast · Retiro24H Fix</div>
     <label>Usuario</label>
     <input id="loginUsuario" autocomplete="username">
     <label>Clave</label>
@@ -10293,8 +10293,171 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  async function crearWorkerJobCore(user,flow,sw){const {data,error}=await supabaseClient.rpc('operativo_crear_worker_job_manual_v2',{p_pc_codigo:corePc(),p_usuario:user,p_tipo_accion:flow.tipo,p_monto:flow.tipo==='VALIDAR_USUARIO'?0:flow.absAmount,p_origen:'PANEL_OPERATIVO',p_billetera_id:sw?.id?Number(sw.id):null,p_observacion:coreObs(flow,sw)});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||r.mensaje||'No se pudo crear el job.');rememberJobMeta(r?.job_id||r?.id||r?.worker_job_id,user,flow,sw);return r}
  function rememberAgentUserWatch(jobId,user,flow,clave){const id=String(jobId||'').trim();if(!id)return;try{const key='nodo_v20_agent_user_watch_estable';const map=JSON.parse(localStorage.getItem(key)||'{}')||{};map[id]={usuario:user,tipo:flow.tipo,clave:clave||'12345a',pc:corePc(),ts:Date.now()};localStorage.setItem(key,JSON.stringify(map))}catch(e){}}
  async function crearUsuarioJobCore(user,flow){const clave=String($('nodoCleanClave')?.value||'12345a').trim()||'12345a';const {data,error}=await supabaseClient.rpc('operativo_crear_worker_job_usuario_clave_v1',{p_session_token:coreToken(),p_pc_codigo:corePc(),p_usuario:user,p_tipo_accion:flow.tipo,p_clave:clave,p_observacion:coreObs(flow,null)});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||r.mensaje||'No se pudo crear el job.');rememberJobMeta(r?.job_id||r?.id||r?.worker_job_id,user,flow,null);rememberAgentUserWatch(r?.job_id||r?.id||r?.worker_job_id,user,flow,clave);return r}
- window.nodoCleanRun=async function(mode){const msg=$("nodoCleanMsg");const user=String($("nodoCleanUsuario")?.value||'').trim();if(!user){if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';return}const flow=parseManualOperation($("nodoCleanMonto")?.value||0,mode);if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(flow.tipo)&&!($("nodoCleanWallet")?.value||C.selectedWallet)){if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';return}const sw=selectedWalletData();if(flow.tipo==='PROCESAR_RETIRO'){const ok24=await controlRetiro24hPanel(user,flow.monto||$("nodoCleanMonto")?.value||0);if(!ok24){if(msg)msg.innerHTML='<div class="warn">Retiro cancelado por control 24 hs.</div>';return}}rememberPending(user,flow.tipo,flow,sw?.id||'',sw?.name||'');if(flow.tipo==='CREAR_USUARIO')rememberCreatedWatch(user,$("nodoCleanClave")?.value||'12345a');try{if(msg)msg.innerHTML='<div class="ok">Enviando al worker...</div>';syncOld(flow);if(flow.tipo==='CREAR_USUARIO'||flow.tipo==='CAMBIAR_CLAVE'){const r=await crearUsuarioJobCore(user,flow);if(msg)msg.innerHTML='<div class="ok">'+(flow.tipo==='CREAR_USUARIO'?'Crear usuario':'Cambiar clave')+' enviado al worker. Job: <b>'+esc(r?.job_id||r?.id||r?.worker_job_id||'-')+'</b></div>'}else{const r=await crearWorkerJobCore(user,flow,sw);if(msg)msg.innerHTML='<div class="ok">Acción enviada al worker. Job: <b>'+esc(r?.job_id||r?.id||'-')+'</b></div>'}await cargarSaldoAgenteClean(true);[400,1300,3000,6000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms));[1800,4200,7600,11000,15000,20000].forEach(ms=>setTimeout(()=>window.nodoForceWalletRefresh&&window.nodoForceWalletRefresh('post job'),ms))}catch(e){if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>'}};
- window.nodoCleanSetAliasVariant=function(jobId,val){const inp=$('nodoRetryUsuarioCore_'+jobId);if(inp){inp.value=val;inp.focus();inp.select()}};
+ 
+function jobIdFromResult(r){return r?.job_id||r?.id||r?.worker_job_id||r?.JOB_ID||r?.WORKER_JOB_ID||''}
+function pushOptimisticJob(r,user,flow,sw){
+  const id=jobIdFromResult(r);
+  if(!id)return;
+  const now=new Date().toISOString();
+  const row={
+    id:id,
+    job_id:id,
+    pc_codigo:corePc(),
+    usuario:user,
+    tipo_accion:flow.tipo,
+    monto:flow.tipo==='VALIDAR_USUARIO'?0:flow.absAmount,
+    estado:'PENDIENTE',
+    intentos:0,
+    max_intentos:3,
+    resultado:'En cola',
+    error_mensaje:'',
+    origen:'PANEL_OPERATIVO',
+    billetera_id:sw?.id||null,
+    billetera_nombre:sw?.name||'',
+    operador:currentOperator(),
+    created_at:now,
+    updated_at:now
+  };
+  try{
+    const current=jobs().filter(j=>String(jid(j))!==String(id));
+    window.workerJobs=[row,...current].slice(0,180);
+    try{workerJobs=window.workerJobs}catch(e){}
+  }catch(e){}
+}
+function clearQueueFastInputs(flow){
+  try{
+    const u=$('nodoCleanUsuario');
+    const uop=$('nodoCleanUsuarioOp');
+    const m=$('nodoCleanMonto');
+    const obs=$('nodoCleanObs');
+
+    if(u) u.value='';
+    if(uop) uop.value='';
+    if(m) m.value='';
+    if(obs) obs.value='';
+
+    // Mantiene billetera y clave, porque aceleran el flujo.
+    setTimeout(()=>{($('nodoCleanUsuarioOp')||$('nodoCleanUsuario'))?.focus?.()},80);
+  }catch(e){}
+}
+function renderQueueFastParts(){
+  try{matchPendingJobs()}catch(e){}
+  try{renderWorker()}catch(e){}
+  try{renderHistory()}catch(e){}
+  try{renderKpis()}catch(e){}
+  try{createdWatch()}catch(e){}
+}
+async function queueFastPoll(label){
+  if(C.queueFastPollBusy)return;
+  C.queueFastPollBusy=true;
+  try{
+    await cargarWorkerJobsCleanFull();
+    matchPendingJobs();
+    renderQueueFastParts();
+
+    // Si hay movimiento pendiente/completado, refresca billeteras/fichas sin bloquear al operador.
+    if(recentMovementPending()){
+      forceWalletRefresh('queue '+(label||''));
+    }else{
+      refreshWalletsOnCompletedJobs();
+    }
+
+    // Saldo agente real también va en segundo plano.
+    cargarSaldoAgenteClean(false).then(()=>{try{renderKpis()}catch(e){}}).catch(()=>{});
+  }catch(e){
+    console.warn('queue fast poll', label, e);
+  }finally{
+    C.queueFastPollBusy=false;
+  }
+}
+function scheduleQueueFastPoll(flow){
+  const isMov=flow && (flow.tipo==='CARGAR_FICHAS'||flow.tipo==='PROCESAR_RETIRO');
+  const times=isMov
+    ? [250,700,1300,2200,3400,5200,7600,10500,14000,19000,25000]
+    : [300,900,1800,3200,5200,8500,13000];
+
+  times.forEach(ms=>setTimeout(()=>queueFastPoll(flow?.tipo||'job'),ms));
+
+  if(isMov){
+    [1600,3600,6200,9800,15000,22000,30000].forEach(ms=>{
+      setTimeout(()=>forceWalletRefresh('movement '+flow.tipo),ms);
+    });
+  }
+}
+async function controlRetiro24hRapido(user,rawMonto,msg){
+  try{
+    const check=controlRetiro24hPanel(user,rawMonto);
+    const timeout=new Promise(resolve=>setTimeout(()=>resolve(true),1200));
+    const ok=await Promise.race([check,timeout]);
+    if(!ok){
+      if(msg)msg.innerHTML='<div class="warn">Retiro cancelado por control 24 hs.</div>';
+      return false;
+    }
+  }catch(e){
+    console.warn('control 24h rápido',e);
+  }
+  return true;
+}
+window.nodoCleanRun=async function(mode){
+  const msg=$("nodoCleanMsg");
+  const user=String($("nodoCleanUsuario")?.value||'').trim();
+
+  if(!user){
+    if(msg)msg.innerHTML='<div class="warn">Ingresá un usuario.</div>';
+    return;
+  }
+
+  const flow=parseManualOperation($("nodoCleanMonto")?.value||0,mode);
+
+  if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(flow.tipo)&&!($("nodoCleanWallet")?.value||C.selectedWallet)){
+    if(msg)msg.innerHTML='<div class="warn">Seleccioná billetera para carga/retiro.</div>';
+    return;
+  }
+
+  const sw=selectedWalletData();
+
+  if(flow.tipo==='PROCESAR_RETIRO'){
+    const ok24=await controlRetiro24hRapido(user,$("nodoCleanMonto")?.value||flow.signedAmount,msg);
+    if(!ok24)return;
+  }
+
+  rememberPending(user,flow.tipo,flow,sw?.id||'',sw?.name||'');
+  if(flow.tipo==='CREAR_USUARIO')rememberCreatedWatch(user,$("nodoCleanClave")?.value||'12345a');
+
+  try{
+    if(msg)msg.innerHTML='<div class="ok">Creando job...</div>';
+
+    syncOld(flow);
+
+    let r=null;
+    if(flow.tipo==='CREAR_USUARIO'||flow.tipo==='CAMBIAR_CLAVE'){
+      r=await crearUsuarioJobCore(user,flow);
+    }else{
+      r=await crearWorkerJobCore(user,flow,sw);
+    }
+
+    const id=jobIdFromResult(r)||'-';
+
+    pushOptimisticJob(r,user,flow,sw);
+    renderQueueFastParts();
+
+    if(msg){
+      const label=flow.tipo==='CREAR_USUARIO'
+        ? 'Crear usuario'
+        : (flow.tipo==='CAMBIAR_CLAVE' ? 'Cambiar clave' : 'Acción');
+      msg.innerHTML='<div class="ok">'+label+' enviada al worker. Job: <b>'+esc(id)+'</b>. Ya podés cargar otra orden.</div>';
+    }
+
+    clearQueueFastInputs(flow);
+
+    // Importante: no esperamos el OK final. Todo esto va en segundo plano.
+    scheduleQueueFastPoll(flow);
+
+  }catch(e){
+    if(msg)msg.innerHTML='<div class="err">'+esc(e?.message||e)+'</div>';
+  }
+};
+window.nodoCleanSetAliasVariant=function(jobId,val){const inp=$('nodoRetryUsuarioCore_'+jobId);if(inp){inp.value=val;inp.focus();inp.select()}};
  async function updateJobUser(jobId,nuevoUsuario){try{const {data,error}=await supabaseClient.rpc('admin_actualizar_usuario_worker_job',{p_job_id:Number(jobId),p_usuario:nuevoUsuario});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||'No se pudo actualizar usuario');return{ok:true}}catch(e){return{ok:false,error:e.message||String(e)}}}
  function suggestions(j){const raw=String(jres(j)||'');let part='';const m=raw.match(/Sugerencias?:\s*([^\.]+)/i);if(m)part=m[1];let list=part.split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);const base=String(jusu(j)||'').trim();if(!list.length&&base)list=[base+'55',base+'1',base+'ok',base+'x',base+'vip'];return[...new Set(list)].slice(0,8)}
  window.nodoCleanRetryAlias=async function(id){const inp=$('nodoRetryUsuarioCore_'+id);const nuevo=String(inp?.value||'').trim();if(!nuevo){alert('Elegí o escribí una variante.');return}const btn=$('nodoRetryBtnCore_'+id);if(btn)btn.textContent='Reintentando...';try{const upd=await updateJobUser(id,nuevo);if(!upd.ok)throw new Error('No pude actualizar el usuario del mismo job: '+upd.error);const {data,error}=await supabaseClient.rpc('admin_reintentar_worker_job',{p_job_id:Number(id)});if(error)throw error;const r=Array.isArray(data)?data[0]:data;if(r&&r.ok===false)throw new Error(r.error||'No se pudo reintentar.');const meta=metaStore();meta[String(id)]=Object.assign({},meta[String(id)]||{},{usuario:nuevo,operator:currentOperator(),updatedAt:Date.now()});saveMeta(meta);rememberCreatedWatch(nuevo,$('nodoCleanClave')?.value||'12345a');if(typeof toast==='function')toast('Reintentando mismo job con variante','green');[500,1200,2500,4500,7500,11000].forEach(ms=>setTimeout(window.nodoCleanRefresh,ms));const box=$('nodoRetryMsgCore_'+id);if(box)box.innerHTML='<div class="ok-box">Job reintentado. Esperando respuesta del worker...</div>'}catch(e){alert('Error reintentando job: '+(e.message||e))}finally{if(btn)btn.textContent='Reintentar mismo job'}};
@@ -10305,7 +10468,31 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function wrap(name){const fn=window[name];if(typeof fn==='function'&&!fn.__cleanCore){window[name]=function(){const r=fn.apply(this,arguments);setTimeout(render,180);return r};window[name].__cleanCore=true;try{eval(name+'=window[name]')}catch(e){}}}
  function hookSaldosOperativos(){const fn=window.cargarSaldosOperativos||(typeof cargarSaldosOperativos!=='undefined'?cargarSaldosOperativos:null);if(typeof fn!=='function'||fn.__cleanWalletHook)return;const hooked=async function(){const r=await fn.apply(this,arguments);try{renderWallets();renderKpis();renderHistory();bindScroll()}catch(e){console.warn('render wallets after saldos',e)}return r};hooked.__cleanWalletHook=true;window.cargarSaldosOperativos=hooked;try{cargarSaldosOperativos=hooked}catch(e){}}
  wrap('renderInicio');wrap('renderCentroOperativo');wrap('renderWorkerJobs');wrap('renderColaUnificada');wrap('refrescarTodo');hookSaldosOperativos();
- document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},900));window.addEventListener('load',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},1500));setTimeout(()=>{cargarSaldoAgenteClean(true);render()},2200);setInterval(()=>{if(document.hidden)return;const a=document.activeElement;if(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))return;if(Date.now()<C.scrollingUntil)return;if(Date.now()-C.lastRealtime<4500)return;C.lastRealtime=Date.now();window.nodoCleanRefresh&&window.nodoCleanRefresh()},5000);setInterval(()=>{if(document.hidden||C.workerPollBusy)return;C.workerPollBusy=true;(async()=>{try{await cargarWorkerJobsCleanFull();matchPendingJobs();refreshWalletsOnCompletedJobs()}catch(e){console.warn('worker poll saldos',e)}finally{C.workerPollBusy=false}})()},2500);
+ document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},900));window.addEventListener('load',()=>setTimeout(()=>{cargarSaldoAgenteClean(true);render()},1500));setTimeout(()=>{cargarSaldoAgenteClean(true);render()},2200);setInterval(()=>{if(document.hidden)return;const a=document.activeElement;if(a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName))return;if(Date.now()<C.scrollingUntil)return;if(Date.now()-C.lastRealtime<4500)return;C.lastRealtime=Date.now();queueFastPoll&&queueFastPoll('idle')},5000);setInterval(()=>{if(document.hidden||C.workerPollBusy)return;C.workerPollBusy=true;(async()=>{try{await cargarWorkerJobsCleanFull();matchPendingJobs();refreshWalletsOnCompletedJobs()}catch(e){console.warn('worker poll saldos',e)}finally{C.workerPollBusy=false}})()},2500);
+})();
+</script>
+
+
+<style id="nodo-v21-queue-fast-css">
+body.nodo-v21-queue-fast #nodoCleanMsg .ok{
+  animation:none!important;
+}
+body.nodo-v21-queue-fast .nodo-queue-fast-note{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  font-weight:900;
+  padding:5px 8px;
+  border-radius:999px;
+  background:rgba(34,197,94,.12);
+  border:1px solid rgba(34,197,94,.22);
+  color:#bbf7d0;
+}
+</style>
+<script id="nodo-v21-queue-fast-flag-js">
+(function(){
+  document.body.classList.add('nodo-v21-queue-fast');
 })();
 </script>
 
