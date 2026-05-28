@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · Performance · Retiro24H Fix</title>
+<title>NODO · OPERATIVO V21 · Performance V2 · Retiro24H Fix</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -2090,7 +2090,7 @@ async function controlRetiro24hPanel(usuario, monto){
     const row = Array.isArray(data) ? data[0] : data;
     if(!row) return true;
 
-    const alerta = row.alerta === true || row.tiene_retiro_24h === true || Number(row.operaciones_24h || row.cantidad || 0) > 0;
+    const alerta = row.alerta === true || row.bloquear === true || row.bloqueado === true || row.tiene_retiro_24h === true || Number(row.operaciones_24h || row.cantidad || row.retiros_24h || 0) > 0;
     if(!alerta) return true;
 
     const msg = row.mensaje || ("⚠️ Este usuario ya registra retiro/movimiento en las últimas 24 hs.");
