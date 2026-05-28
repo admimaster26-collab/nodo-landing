@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -8,8 +8,8 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros</title>
-<!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
+<title>BET300 Â· Cargas/Retiros</title>
+<!-- Landing pÃºblica blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
 body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#12352f 0%,#07131f 45%,#080a10 100%);color:#f4f7fb}
@@ -62,7 +62,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <img src="logo-bet300.png" class="logo-img" alt="BET300">
 
   <div class="card" id="loginCard">
-    <h1>Ingresá tu usuario</h1>
+    <h1>IngresÃ¡ tu usuario</h1>
     <p class="muted">Primero verificamos tu usuario en la plataforma. No pedimos datos hasta confirmar que exista.</p>
     <label>Usuario *</label>
     <input id="loginUsuario" placeholder="ej: mari7854" autocomplete="username">
@@ -71,8 +71,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </div>
 
   <div class="card hidden" id="datosCard">
-    <h1>Completá tus datos</h1>
-    <p class="muted">Usuario validado. Ahora completá los datos necesarios para cargas, retiros y validación de pagos.</p>
+    <h1>CompletÃ¡ tus datos</h1>
+    <p class="muted">Usuario validado. Ahora completÃ¡ los datos necesarios para cargas, retiros y validaciÃ³n de pagos.</p>
     <div id="usuarioValidadoBox" class="result ok"></div>
     <label>Nombre completo *</label>
     <input id="regNombre" placeholder="ej: Maria Gonzalez">
@@ -90,14 +90,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <p class="muted" id="solicitudSubtitulo">Copia el alias o CBU, transferi desde tu app y volve a esta pantalla para avisarnos.</p>
 
     <div class="card transfer-card">
-      <div class="gold-title">💳 Datos para transferir</div>
+      <div class="gold-title">ðŸ’³ Datos para transferir</div>
       <span class="label">Alias</span>
       <div class="data-row"><div id="aliasBox" class="big-data">Cargando...</div><button class="copy-btn" onclick="copiarAlias()">Copiar</button></div>
       <span class="label">CBU / CVU</span>
       <div class="data-row"><div id="cbuBox" class="big-data">Cargando...</div><button class="copy-btn" onclick="copiarCbu()">Copiar</button></div>
       <div class="line"><b>Titular:</b> <span id="titularBox">Cargando...</span></div>
       <div class="line"><b>Banco:</b> <span id="bancoBox">Mercado Pago</span></div>
-      <div class="warn" id="montoMinimoTxt">⚠️ Carga mínima: $2.000</div>
+      <div class="warn" id="montoMinimoTxt">âš ï¸ Carga mÃ­nima: $2.000</div>
     </div>
 
     <div id="transferFlowBox" class="landing-flow-box">
@@ -124,11 +124,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
     <div id="datosTransferenciaBox" class="transfer-data-box">
       <div class="transfer-data-title">Datos de quien transfiere</div>
-      <div class="transfer-data-help">Completá estos datos para que podamos detectar tu pago más rápido. Puede ser tu cuenta o la cuenta de otra persona que te transfiera.</div>
+      <div class="transfer-data-help">CompletÃ¡ estos datos para que podamos detectar tu pago mÃ¡s rÃ¡pido. Puede ser tu cuenta o la cuenta de otra persona que te transfiera.</div>
       <div class="transfer-grid">
         <div class="full">
           <label>Nombre del titular que transfiere *</label>
-          <input id="titularTransferencia" placeholder="Ej: María López">
+          <input id="titularTransferencia" placeholder="Ej: MarÃ­a LÃ³pez">
         </div>
         <div>
           <label>DNI / CUIT del titular *</label>
@@ -140,7 +140,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
             <option value="">Seleccionar</option>
             <option value="MERCADO_PAGO">Mercado Pago</option>
             <option value="BANCO">Banco</option>
-            <option value="UALA">Ualá</option>
+            <option value="UALA">UalÃ¡</option>
             <option value="PERSONAL_PAY">Personal Pay</option>
             <option value="NX">NX</option>
             <option value="OTRO">Otro</option>
@@ -150,7 +150,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
     </div>
 
     <div id="retiroDatosBox" class="retiro-data-box hidden">
-      <div class="hint">Para retiros, se usará la cuenta registrada/verificada. Si es la primera vez, completala y un operador la revisa antes de aprobar.</div>
+      <div class="hint">Para retiros, se usarÃ¡ la cuenta registrada/verificada. Si es la primera vez, completala y un operador la revisa antes de aprobar.</div>
       <div id="retiroCuentaRegistradaBox" class="result ok hidden"></div>
       <label id="retiroAliasLabel">CBU / CVU / Alias de destino *</label>
       <input id="retiroAliasCbu" placeholder="ej: alias.mp o CVU/CBU completo">
@@ -162,37 +162,37 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <div id="resultado" class="result"></div>
 
     <div id="estadoEspera" class="step-box hidden">
-      <div id="step1" class="step done"><div class="step-dot">✓</div><div><div class="step-title" id="step1Title">Transferencia informada</div><div class="step-text" id="step1Text">Recibimos tu aviso.</div></div></div>
+      <div id="step1" class="step done"><div class="step-dot">âœ“</div><div><div class="step-title" id="step1Title">Transferencia informada</div><div class="step-text" id="step1Text">Recibimos tu aviso.</div></div></div>
       <div id="step2" class="step active"><div class="step-dot">2</div><div><div class="step-title" id="step2Title"><span class="loader"></span>Buscando tu pago</div><div class="step-text" id="step2Text">Si ya transferiste, puede tardar unos minutos.</div></div></div>
-      <div id="step3" class="step"><div class="step-dot">3</div><div><div class="step-title" id="step3Title">Fichas acreditadas</div><div class="step-text" id="step3Text">Cuando se apruebe, te avisamos automáticamente.</div></div></div>
-      <div class="mini">No cierres esta ventana. Si demora más de lo habitual, podés contactarnos por chat.</div>
+      <div id="step3" class="step"><div class="step-dot">3</div><div><div class="step-title" id="step3Title">Fichas acreditadas</div><div class="step-text" id="step3Text">Cuando se apruebe, te avisamos automÃ¡ticamente.</div></div></div>
+      <div class="mini">No cierres esta ventana. Si demora mÃ¡s de lo habitual, podÃ©s contactarnos por chat.</div>
     </div>
 
     <div class="actions">
-      <a id="btnPlataformaFijo" class="wa" target="_blank">🎮 Ingresar a la plataforma</a>
-      <a id="btnWhatsappFijo" class="wa secondary" target="_blank">🟢 WhatsApp</a>
-      <button id="btnContactar" class="wa secondary" type="button" onclick="abrirChatLite()">💬 Chateá con nosotros</button>
+      <a id="btnPlataformaFijo" class="wa" target="_blank">ðŸŽ® Ingresar a la plataforma</a>
+      <a id="btnWhatsappFijo" class="wa secondary" target="_blank">ðŸŸ¢ WhatsApp</a>
+      <button id="btnContactar" class="wa secondary" type="button" onclick="abrirChatLite()">ðŸ’¬ ChateÃ¡ con nosotros</button>
       <button class="btn-danger" type="button" onclick="limpiarTodo()">Cambiar de cuenta</button>
     </div>
   </div>
 
-  <div class="mini">Guardá el comprobante de transferencia hasta que se confirme la carga.</div>
+  <div class="mini">GuardÃ¡ el comprobante de transferencia hasta que se confirme la carga.</div>
 </div>
 
-<button id="chatLiteOpenBtn" class="chat-lite-btn" type="button" onclick="abrirChatLite()">💬 Chateá con nosotros</button>
+<button id="chatLiteOpenBtn" class="chat-lite-btn" type="button" onclick="abrirChatLite()">ðŸ’¬ ChateÃ¡ con nosotros</button>
 <div id="chatLite" class="chat-lite hidden">
-  <div class="chat-lite-head"><div class="chat-agent"><div class="chat-avatar">B</div><div><div class="chat-title">Soporte BET300</div><div id="chatLiteStatus" class="chat-status">Disponible para ayudarte</div></div></div><button class="chat-close" type="button" onclick="cerrarChatLite()">×</button></div>
-  <div id="chatLiteBody" class="chat-lite-body"><div class="chat-day">Chat de soporte</div><div class="chat-msg operator"><div class="chat-bubble">Hola 👋 Escribinos tu consulta o adjuntá el comprobante si necesitás ayuda.</div><div class="chat-meta">Soporte</div></div></div>
-  <div class="chat-lite-compose"><div id="chatLitePreview" class="chat-preview"><div style="display:flex;align-items:center;gap:10px"><img id="chatLitePreviewImg" src="" alt="Comprobante"><div><b>Imagen adjunta</b><div class="chat-meta">Lista para enviar</div></div></div><button type="button" onclick="quitarImagenChatLite()">×</button></div><div class="chat-input-row"><button class="chat-file-btn" type="button" onclick="document.getElementById('chatLiteFile').click()">📎</button><textarea id="chatLiteInput" rows="1" placeholder="Escribí tu mensaje..."></textarea><button class="chat-send-btn" type="button" onclick="enviarChatLite()">➤</button></div><input id="chatLiteFile" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="tomarImagenChatLiteFile()"><div class="chat-hint">Podés adjuntar comprobante o pegar captura con Ctrl + V.</div></div>
+  <div class="chat-lite-head"><div class="chat-agent"><div class="chat-avatar">B</div><div><div class="chat-title">Soporte BET300</div><div id="chatLiteStatus" class="chat-status">Disponible para ayudarte</div></div></div><button class="chat-close" type="button" onclick="cerrarChatLite()">Ã—</button></div>
+  <div id="chatLiteBody" class="chat-lite-body"><div class="chat-day">Chat de soporte</div><div class="chat-msg operator"><div class="chat-bubble">Hola ðŸ‘‹ Escribinos tu consulta o adjuntÃ¡ el comprobante si necesitÃ¡s ayuda.</div><div class="chat-meta">Soporte</div></div></div>
+  <div class="chat-lite-compose"><div id="chatLitePreview" class="chat-preview"><div style="display:flex;align-items:center;gap:10px"><img id="chatLitePreviewImg" src="" alt="Comprobante"><div><b>Imagen adjunta</b><div class="chat-meta">Lista para enviar</div></div></div><button type="button" onclick="quitarImagenChatLite()">Ã—</button></div><div class="chat-input-row"><button class="chat-file-btn" type="button" onclick="document.getElementById('chatLiteFile').click()">ðŸ“Ž</button><textarea id="chatLiteInput" rows="1" placeholder="EscribÃ­ tu mensaje..."></textarea><button class="chat-send-btn" type="button" onclick="enviarChatLite()">âž¤</button></div><input id="chatLiteFile" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="tomarImagenChatLiteFile()"><div class="chat-hint">PodÃ©s adjuntar comprobante o pegar captura con Ctrl + V.</div></div>
 </div>
 
 <div id="successModal" class="success-modal hidden">
   <div class="success-box">
-    <button class="close-modal" onclick="cerrarModalExito()">×</button>
-    <div class="success-icon">✅</div>
-    <h2>¡Fichas cargadas!</h2>
+    <button class="close-modal" onclick="cerrarModalExito()">Ã—</button>
+    <div class="success-icon">âœ…</div>
+    <h2>Â¡Fichas cargadas!</h2>
     <p>Tu carga fue acreditada correctamente.</p>
-    <button onclick="irPlataforma()">🎮 INGRESAR A LA PLATAFORMA</button>
+    <button onclick="irPlataforma()">ðŸŽ® INGRESAR A LA PLATAFORMA</button>
   </div>
 </div>
 
@@ -203,7 +203,7 @@ const SUPABASE_KEY = "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const DEBUG = false;
 
-// Landing pública: no imprimir datos técnicos en consola.
+// Landing pÃºblica: no imprimir datos tÃ©cnicos en consola.
 
 const WHATSAPP_POR_PC = {P1:"5492235181171",P2:"5491157718506",P3:"5491127140155",P4:"5492233391195",P5:"5491166587968"};
 const LINKS_PLATAFORMA = {P1:"https://www.bet-300.pw/",P2:"https://www.bet-300.pw/",P3:"https://www.bet-300.pw/",P4:"https://www.bet-300.pw/",P5:"https://www.bet-300.pw/"};
@@ -253,7 +253,7 @@ function iniciarCooldownBoton(msInicial){
     const restante = getSolicitudCooldownRestante() || Number(msInicial || 0);
     if(restante > 0){
       btn.disabled = true;
-      btn.innerText = "Esperá " + formatearCooldown(restante);
+      btn.innerText = "EsperÃ¡ " + formatearCooldown(restante);
       return true;
     }
 
@@ -281,7 +281,7 @@ function bloquearSiSolicitudReciente(){
   if(restante <= 0) return false;
 
   mostrarResultado(
-    `Ya enviaste una solicitud hace poco. Para evitar duplicados, podés enviar otra en <b>${formatearCooldown(restante)}</b>.`,
+    `Ya enviaste una solicitud hace poco. Para evitar duplicados, podÃ©s enviar otra en <b>${formatearCooldown(restante)}</b>.`,
     false
   );
   iniciarCooldownBoton(restante);
@@ -297,7 +297,7 @@ window.onload = async () => {
   limpiarChatSeguroSiFaltaToken();
   cargarEstadoGuardado();
   recuperarSolicitudPendiente();
-  // La billetera NO se pide al abrir la página: se carga recién al confirmar datos del usuario.
+  // La billetera NO se pide al abrir la pÃ¡gina: se carga reciÃ©n al confirmar datos del usuario.
 };
 
 function $(id){return document.getElementById(id)}
@@ -321,7 +321,7 @@ function cargarEstadoGuardado(){
 
 async function verificarUsuarioInicial(){
   const usuario=$("loginUsuario").value.trim();
-  if(!usuario){msg("loginMsg","Ingresá tu usuario.", "err");return}
+  if(!usuario){msg("loginMsg","IngresÃ¡ tu usuario.", "err");return}
   $("btnVerificarUsuario").disabled=true;$("btnVerificarUsuario").innerText="Verificando...";
   msg("loginMsg",renderValidacionUsuarioBox(15,"Aguarde, estamos verificando su usuario. No cierre esta ventana."),"info");
 
@@ -330,7 +330,7 @@ async function verificarUsuarioInicial(){
     p_pc_codigo:PC
   });
 
-  if(error){DEBUG && console.error(error);$("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";msg("loginMsg","No pudimos iniciar la validación. Intentá nuevamente o consultanos por chat.","err");return}
+  if(error){DEBUG && console.error(error);$("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";msg("loginMsg","No pudimos iniciar la validaciÃ³n. IntentÃ¡ nuevamente o consultanos por chat.","err");return}
 
   const row=Array.isArray(data)?data[0]:data;
   if(!row){$("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";msg("loginMsg","No pudimos validar el usuario. Consultanos por chat.","err");return}
@@ -361,23 +361,23 @@ async function esperarValidacionInicial(usuario,validacionId){
       msg("loginMsg",renderValidacionErrorBox(),"err");return
     }
     const pct=Math.min(92,15+Math.round((i/max)*77));
-    msg("loginMsg",renderValidacionUsuarioBox(pct,i<8?"Buscando tu usuario en Agentes...":"La validación sigue en curso. No cierres esta ventana."),"info");
+    msg("loginMsg",renderValidacionUsuarioBox(pct,i<8?"Buscando tu usuario en Agentes...":"La validaciÃ³n sigue en curso. No cierres esta ventana."),"info");
   }
   $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-  msg("loginMsg","La validación está demorando más de lo habitual. Intentá nuevamente o consultanos por chat.","err");
+  msg("loginMsg","La validaciÃ³n estÃ¡ demorando mÃ¡s de lo habitual. IntentÃ¡ nuevamente o consultanos por chat.","err");
 }
 
 function finalizarLoginValidado(usuario,validacionId){
   userLogin={usuario,validacion_id:validacionId,validado_at:new Date().toISOString()};
   sessionStorage.setItem(LS_LOGIN,JSON.stringify(userLogin));
   $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-  msg("loginMsg","Usuario validado correctamente ✅","ok");
+  msg("loginMsg","Usuario validado correctamente âœ…","ok");
   mostrarDatos();
 }
 
 function mostrarDatos(){
   setVista("datosCard");
-  $("usuarioValidadoBox").innerHTML=`<b>Usuario validado:</b> ${escapeHtml(userLogin?.usuario||"")} ✅`;
+  $("usuarioValidadoBox").innerHTML=`<b>Usuario validado:</b> ${escapeHtml(userLogin?.usuario||"")} âœ…`;
   if(userData){$("regNombre").value=userData.nombre||"";$("regTelefono").value=userData.telefono||"";$("regDni").value=userData.dni||""}
 }
 
@@ -387,13 +387,13 @@ async function guardarDatosCuenta(){
   const dni=normalizarDni($("regDni").value);
 
   if(!userLogin?.usuario){
-    msg("datosMsg","Primero verificá tu usuario.","err");
+    msg("datosMsg","Primero verificÃ¡ tu usuario.","err");
     setVista("loginCard");
     return;
   }
 
   if(!nombre||telefono.length<8||dni.length<7){
-    msg("datosMsg","Completá nombre, WhatsApp válido y DNI válido.","err");
+    msg("datosMsg","CompletÃ¡ nombre, WhatsApp vÃ¡lido y DNI vÃ¡lido.","err");
     return;
   }
 
@@ -425,7 +425,7 @@ async function guardarDatosCuenta(){
   };
 
   sessionStorage.setItem(LS_USER,JSON.stringify(userData));
-  msg("datosMsg","Datos confirmados correctamente ✅","ok");
+  msg("datosMsg","Datos confirmados correctamente âœ…","ok");
   mostrarCarga();
 }
 
@@ -433,7 +433,7 @@ async function validarUsuarioConDatosFinales(usuario,nombre,telefono,dni){
   if(!userLogin?.validacion_id){
     return {
       ok:false,
-      error:"No encontramos una validación activa. Volvé a verificar tu usuario."
+      error:"No encontramos una validaciÃ³n activa. VolvÃ© a verificar tu usuario."
     };
   }
 
@@ -460,7 +460,7 @@ async function validarUsuarioConDatosFinales(usuario,nombre,telefono,dni){
   if(!row || !["EXISTE","EXISTIR"].includes(estado)){
     return {
       ok:false,
-      error:"El usuario todavía no figura validado en Agentes. Volvé a verificar o consultanos por chat."
+      error:"El usuario todavÃ­a no figura validado en Agentes. VolvÃ© a verificar o consultanos por chat."
     };
   }
 
@@ -472,7 +472,7 @@ async function validarUsuarioConDatosFinales(usuario,nombre,telefono,dni){
 
 function mostrarCarga(){setTimeout(actualizarCamposPorTipoSolicitud,0);
   setVista("cargaCard");
-  $("datosUsuarioBox").innerHTML=`<b>Usuario:</b> ${escapeHtml(userData.usuario)}<br><b>Nombre:</b> ${escapeHtml(userData.nombre)}<br><b>WhatsApp:</b> ${escapeHtml(userData.telefono)}<br><b>DNI:</b> ${escapeHtml(userData.dni)}<br><b>Validación:</b> Usuario encontrado en Agentes ✅`;
+  $("datosUsuarioBox").innerHTML=`<b>Usuario:</b> ${escapeHtml(userData.usuario)}<br><b>Nombre:</b> ${escapeHtml(userData.nombre)}<br><b>WhatsApp:</b> ${escapeHtml(userData.telefono)}<br><b>DNI:</b> ${escapeHtml(userData.dni)}<br><b>ValidaciÃ³n:</b> Usuario encontrado en Agentes âœ…`;
   if(!billeteraActiva){ cargarBilletera(); }
   const restante = getSolicitudCooldownRestante();
   if(restante > 0){ iniciarCooldownBoton(restante); }
@@ -482,9 +482,9 @@ function volverAUsuario(){sessionStorage.removeItem(LS_LOGIN);sessionStorage.rem
 function volverADatos(){mostrarDatos()}
 function limpiarTodo(){sessionStorage.removeItem(LS_LOGIN);sessionStorage.removeItem(LS_USER);sessionStorage.removeItem(LS_CHAT);sessionStorage.removeItem(LS_CHAT_TOKEN);sessionStorage.removeItem(LS_SOLICITUD);location.reload()}
 
-function renderValidacionUsuarioBox(pct=20,sub="Buscando tu usuario en Agentes..."){return `<div class="validation-card"><div class="validation-head"><div class="validation-icon"><span class="loader"></span></div><div><div class="validation-title">Validando tu usuario</div><div class="validation-sub">${escapeHtml(sub)}</div></div></div><div class="validation-bar"><div class="validation-fill" style="width:${Math.max(8,Math.min(100,Number(pct||20)))}%"></div></div><div class="validation-footer">Aguarde que se está verificando su usuario. No cierre esta ventana.</div></div>`}
-function renderValidacionNoExisteBox(){return `<div class="validation-card" style="border-color:rgba(239,68,68,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(239,68,68,.15);color:#fca5a5">!</div><div><div class="validation-title">No encontramos ese usuario</div><div class="validation-sub">Revisá que esté escrito igual que en la plataforma.</div></div></div><button type="button" onclick="document.getElementById('loginUsuario').focus()">Intentar nuevamente</button><button class="btn-dark" type="button" onclick="abrirChatLite()">💬 Consultar por chat</button></div>`}
-function renderValidacionErrorBox(){return `<div class="validation-card" style="border-color:rgba(245,158,11,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(245,158,11,.15);color:#fcd34d">?</div><div><div class="validation-title">No pudimos validar automáticamente</div><div class="validation-sub">Intentá nuevamente o consultanos por chat.</div></div></div><button type="button" onclick="abrirChatLite()">💬 Consultar por chat</button></div>`}
+function renderValidacionUsuarioBox(pct=20,sub="Buscando tu usuario en Agentes..."){return `<div class="validation-card"><div class="validation-head"><div class="validation-icon"><span class="loader"></span></div><div><div class="validation-title">Validando tu usuario</div><div class="validation-sub">${escapeHtml(sub)}</div></div></div><div class="validation-bar"><div class="validation-fill" style="width:${Math.max(8,Math.min(100,Number(pct||20)))}%"></div></div><div class="validation-footer">Aguarde que se estÃ¡ verificando su usuario. No cierre esta ventana.</div></div>`}
+function renderValidacionNoExisteBox(){return `<div class="validation-card" style="border-color:rgba(239,68,68,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(239,68,68,.15);color:#fca5a5">!</div><div><div class="validation-title">No encontramos ese usuario</div><div class="validation-sub">RevisÃ¡ que estÃ© escrito igual que en la plataforma.</div></div></div><button type="button" onclick="document.getElementById('loginUsuario').focus()">Intentar nuevamente</button><button class="btn-dark" type="button" onclick="abrirChatLite()">ðŸ’¬ Consultar por chat</button></div>`}
+function renderValidacionErrorBox(){return `<div class="validation-card" style="border-color:rgba(245,158,11,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(245,158,11,.15);color:#fcd34d">?</div><div><div class="validation-title">No pudimos validar automÃ¡ticamente</div><div class="validation-sub">IntentÃ¡ nuevamente o consultanos por chat.</div></div></div><button type="button" onclick="abrirChatLite()">ðŸ’¬ Consultar por chat</button></div>`}
 
 async function cargarBilletera(){
   let encontrada=null, ultimoError=null;
@@ -514,8 +514,8 @@ function copiarAlias(){copiarTextoDato("aliasBox","Alias")} function copiarCbu()
 function seleccionarTipoSolicitud(tipo){
   tipoSolicitudActual=String(tipo||"CARGA").toUpperCase(); const esRetiro=tipoSolicitudActual==="RETIRO";
   $("tipoCargaBtn").classList.toggle("active",!esRetiro);$("tipoRetiroBtn").classList.toggle("active",esRetiro);
-  $("montoLabel").innerText=esRetiro?"Monto a retirar *":"Monto transferido *";$("monto").placeholder=esRetiro?"mínimo: 5000":"ej: 5000";$("btnEnviar").innerText=esRetiro?"Enviar solicitud de retiro":"Ya transferi, enviar aviso";
-  $("retiroDatosBox").classList.toggle("hidden",!esRetiro);$("montoMinimoTxt").innerText=esRetiro?"⚠️ Retiro mínimo: $5.000":"⚠️ Carga mínima: $2.000";
+  $("montoLabel").innerText=esRetiro?"Monto a retirar *":"Monto transferido *";$("monto").placeholder=esRetiro?"mÃ­nimo: 5000":"ej: 5000";$("btnEnviar").innerText=esRetiro?"Enviar solicitud de retiro":"Ya transferi, enviar aviso";
+  $("retiroDatosBox").classList.toggle("hidden",!esRetiro);$("montoMinimoTxt").innerText=esRetiro?"âš ï¸ Retiro mÃ­nimo: $5.000":"âš ï¸ Carga mÃ­nima: $2.000";
   $("solicitudTitulo").innerText=esRetiro?"Solicitar retiro":"Primero transferi";
   $("solicitudSubtitulo").innerText=esRetiro?"Completa el monto y la cuenta de destino para pedir el retiro.":"Copia el alias o CBU, transferi desde tu app y volve a esta pantalla para avisarnos.";
   $("transferFlowBox")?.classList.toggle("hidden", esRetiro);
@@ -533,16 +533,16 @@ function actualizarVistaCuentaRetiro(){
   const box=$("retiroCuentaRegistradaBox"), a=$("retiroAliasCbu"), t=$("retiroTitular");
   if(!box||!a||!t)return;
   if(cuentaRetiroVerificada?.cuenta_id){
-    box.classList.remove("hidden");box.innerHTML=`<b>Cuenta de retiro verificada</b><br><b>Titular:</b> ${escapeHtml(cuentaRetiroVerificada.titular||"")}<br><b>Alias/CBU:</b> ${escapeHtml(cuentaRetiroVerificada.alias_cbu||"")}<br><span class="mini">Por seguridad, los retiros se envían a la cuenta registrada. Para cambiarla, consultá por chat.</span>`;
+    box.classList.remove("hidden");box.innerHTML=`<b>Cuenta de retiro verificada</b><br><b>Titular:</b> ${escapeHtml(cuentaRetiroVerificada.titular||"")}<br><b>Alias/CBU:</b> ${escapeHtml(cuentaRetiroVerificada.alias_cbu||"")}<br><span class="mini">Por seguridad, los retiros se envÃ­an a la cuenta registrada. Para cambiarla, consultÃ¡ por chat.</span>`;
     a.value=cuentaRetiroVerificada.alias_cbu||"";t.value=cuentaRetiroVerificada.titular||"";a.disabled=true;t.disabled=true;
   }else{box.classList.add("hidden");box.innerHTML="";a.disabled=false;t.disabled=false}
 }
 function fechaBA(f){try{return new Date(f).toLocaleString("es-AR",{timeZone:"America/Argentina/Buenos_Aires",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).replace(","," a las")}catch(e){return String(f||"")}}
 async function puedeSolicitarRetiro(){
   const {data,error}=await supabaseClient.rpc("landing_puede_solicitar_retiro",{p_usuario:userData.usuario,p_dni:userData.dni,p_pc_codigo:PC});
-  if(error){DEBUG && console.error(error);return{ok:false,error:"No pudimos validar si podés retirar ahora. Consultanos por chat."}}
+  if(error){DEBUG && console.error(error);return{ok:false,error:"No pudimos validar si podÃ©s retirar ahora. Consultanos por chat."}}
   const row=Array.isArray(data)?data[0]:data; if(!row)return{ok:false,error:"No pudimos validar el retiro. Consultanos por chat."}
-  if(row.ok===false){let msg=row.mensaje||"Ya tenés un retiro registrado en las últimas 24 hs."; const desde=row.puede_desde||row.disponible_desde||row.proximo_retiro_at||row.next_available_at; if(desde)msg+=`<br>Podés volver a solicitarlo a partir del ${fechaBA(desde)} hs.`; return{ok:false,error:msg}}
+  if(row.ok===false){let msg=row.mensaje||"Ya tenÃ©s un retiro registrado en las Ãºltimas 24 hs."; const desde=row.puede_desde||row.disponible_desde||row.proximo_retiro_at||row.next_available_at; if(desde)msg+=`<br>PodÃ©s volver a solicitarlo a partir del ${fechaBA(desde)} hs.`; return{ok:false,error:msg}}
   return{ok:true}
 }
 
@@ -558,27 +558,30 @@ function limpiarDatosTransferencia(){
   if($("dniTransferencia")) $("dniTransferencia").value="";
   if($("medioTransferencia")) $("medioTransferencia").value="";
 }
-function actualizarCamposPorTipoSolicitud(){
+function debeReintentarSolicitudLegacy(error){
+  const msg=String(error?.message||error?.details||error?.hint||"").toLowerCase();
+  return msg.includes("function")&&msg.includes("landing_crear_solicitud_segura") || msg.includes("p_titular_transferencia") || msg.includes("p_dni_transferencia") || msg.includes("p_medio_transferencia");
+}function actualizarCamposPorTipoSolicitud(){
   const esRetiro = String(tipoSolicitudActual||"CARGA").toUpperCase()==="RETIRO";
   $("datosTransferenciaBox")?.classList.toggle("hidden", esRetiro);
 }
 
 async function crearSolicitud(){
   const monto=Number($("monto").value||0), tipo=String(tipoSolicitudActual||"CARGA").toUpperCase(), esRetiro=tipo==="RETIRO";
-  if(!userData?.usuario||!userData?.validacion_id){mostrarResultado("Primero verificá tu usuario en Agentes.",false);setVista("loginCard");return}
-  if(!monto){mostrarResultado(esRetiro?"Completá el monto a retirar.":"Completá el monto a cargar.",false);return}
-  if(!esRetiro&&monto<2000){mostrarResultado("El monto mínimo de carga es $2.000.",false);return}
-  if(esRetiro&&monto<5000){mostrarResultado("El monto mínimo de retiro es $5.000.",false);return}
+  if(!userData?.usuario||!userData?.validacion_id){mostrarResultado("Primero verificÃ¡ tu usuario en Agentes.",false);setVista("loginCard");return}
+  if(!monto){mostrarResultado(esRetiro?"CompletÃ¡ el monto a retirar.":"CompletÃ¡ el monto a cargar.",false);return}
+  if(!esRetiro&&monto<2000){mostrarResultado("El monto mÃ­nimo de carga es $2.000.",false);return}
+  if(esRetiro&&monto<5000){mostrarResultado("El monto mÃ­nimo de retiro es $5.000.",false);return}
   if(esRetiro){
     const destino=($("retiroAliasCbu")?.value||"").trim(), titular=($("retiroTitular")?.value||"").trim();
-    if(!destino||!titular){mostrarResultado("Completá la cuenta de destino y titular para el retiro.",false);return}
+    if(!destino||!titular){mostrarResultado("CompletÃ¡ la cuenta de destino y titular para el retiro.",false);return}
     const v=await puedeSolicitarRetiro(); if(!v.ok){mostrarResultado(v.error,false);return}
   }
   if(!esRetiro){
     const dt=datosTransferenciaActuales();
-    if(!dt.titular||dt.titular.length<4){mostrarResultado("Completá el nombre del titular que transfiere.",false);return}
-    if(!dt.dni||dt.dni.length<7){mostrarResultado("Completá el DNI/CUIT del titular que transfiere.",false);return}
-    if(!dt.medio){mostrarResultado("Seleccioná desde qué medio/billetera se realiza la transferencia.",false);return}
+    if(!dt.titular||dt.titular.length<4){mostrarResultado("CompletÃ¡ el nombre del titular que transfiere.",false);return}
+    if(!dt.dni||dt.dni.length<7){mostrarResultado("CompletÃ¡ el DNI/CUIT del titular que transfiere.",false);return}
+    if(!dt.medio){mostrarResultado("SeleccionÃ¡ desde quÃ© medio/billetera se realiza la transferencia.",false);return}
   }
   if(!esRetiro&&!billeteraActiva){mostrarResultado("No hay billetera disponible. Contactanos por chat.",false);return}
   if(bloquearSiSolicitudReciente()) return;
@@ -590,7 +593,7 @@ async function crearSolicitud(){
   guardarSolicitudLocal(r.solicitud.id,r.solicitud.chat_id,r.solicitud.chat_token,tipo);
   if(r.solicitud.chat_id&&r.solicitud.chat_token){chatSessionId=String(r.solicitud.chat_id);chatSessionToken=String(r.solicitud.chat_token);sessionStorage.setItem(LS_CHAT,chatSessionId);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken);iniciarRealtimeChatLanding()}
   referenciaPagoActual=r.solicitud.referencia_pago||"";mostrarReferenciaPago(r.solicitud);
-  mostrarResultado(esRetiro?`✅ Solicitud de retiro recibida.<br><br>Estamos revisando tu pedido.`:`✅ Aviso recibido.<br><br>Estamos buscando tu pago. Si ya transferiste, no envies otra solicitud por el mismo movimiento.`,true);
+  mostrarResultado(esRetiro?`âœ… Solicitud de retiro recibida.<br><br>Estamos revisando tu pedido.`:`âœ… Aviso recibido.<br><br>Estamos buscando tu pago. Si ya transferiste, no envies otra solicitud por el mismo movimiento.`,true);
   mostrarEstadoEspera(r.solicitud.estado||"PENDIENTE");iniciarEscuchaEstado();$("monto").value="";if(!esRetiro)limpiarDatosTransferencia();
 }
 async function crearSolicitudSupabase(monto,tipo="CARGA"){
@@ -605,16 +608,27 @@ async function crearSolicitudSupabase(monto,tipo="CARGA"){
     p_medio_transferencia:dt.medio
   };
 
-  const {data,error}=await supabaseClient.rpc("landing_crear_solicitud_segura",params);
+  let {data,error}=await supabaseClient.rpc("landing_crear_solicitud_segura",params);
+  if(error && debeReintentarSolicitudLegacy(error)){
+    const legacyParams={...params};
+    delete legacyParams.p_titular_transferencia;
+    delete legacyParams.p_dni_transferencia;
+    delete legacyParams.p_medio_transferencia;
+    const retry=await supabaseClient.rpc("landing_crear_solicitud_segura",legacyParams);
+    data=retry.data;
+    error=retry.error;
+  }
   if(error){
     DEBUG && console.error(error);
     const em = String(error.message || "");
     if(em.includes("ESPERA_5_MIN")){
       return {ok:false,error:em.replace("ESPERA_5_MIN:", "")};
     }
-    return{ok:false,error:"No se pudo crear la solicitud. Intentá nuevamente o consultanos por chat."}
+    return{ok:false,error:"No se pudo crear la solicitud. IntentÃ¡ nuevamente o consultanos por chat."}
   }
-  const row=Array.isArray(data)?data[0]:data; if(!row?.solicitud_id)return{ok:false,error:"La solicitud no devolvió ID."}
+  const row=Array.isArray(data)?data[0]:data;
+  if(row?.ok===false)return{ok:false,error:row.mensaje||row.error||"No se pudo crear la solicitud."}
+  if(!row?.solicitud_id)return{ok:false,error:"La solicitud no devolviÃ³ ID."}
 
   solicitudActual=row.solicitud_id; solicitudChatId=row.chat_id||"";
   return{ok:true,solicitud:{id:row.solicitud_id,chat_id:row.chat_id,chat_token:row.chat_token||"",estado:row.estado||"PENDIENTE",created_at:row.created_at,tipo:esRetiro?"RETIRO":"CARGA",referencia_pago:row.referencia_pago||"",referencia_pago_visible:row.referencia_pago_visible||row.referencia_pago||"",retiro_requiere_revision:row.retiro_requiere_revision||false}}
@@ -652,7 +666,7 @@ function recuperarSolicitudPendiente(){
     iniciarEscuchaEstado();
   }
 }
-function mostrarReferenciaPago(s){const box=$("referenciaPagoBox");if(!box)return;const tipo=String(s?.tipo||tipoSolicitudActual||"CARGA").toUpperCase(), ref=s?.referencia_pago||s?.referencia_pago_visible||"";if(tipo!=="CARGA"||!ref){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=`<b>Referencia de carga:</b> ${escapeHtml(ref)}<br><span class="mini">Si tu billetera permite agregar nota o motivo, escribí esta referencia. Esto ayuda a validar tu pago más rápido.</span><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText('${escapeAttr(ref)}')">Copiar referencia</button>`}
+function mostrarReferenciaPago(s){const box=$("referenciaPagoBox");if(!box)return;const tipo=String(s?.tipo||tipoSolicitudActual||"CARGA").toUpperCase(), ref=s?.referencia_pago||s?.referencia_pago_visible||"";if(tipo!=="CARGA"||!ref){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=`<b>Referencia de carga:</b> ${escapeHtml(ref)}<br><span class="mini">Si tu billetera permite agregar nota o motivo, escribÃ­ esta referencia. Esto ayuda a validar tu pago mÃ¡s rÃ¡pido.</span><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText('${escapeAttr(ref)}')">Copiar referencia</button>`}
 function mostrarResultado(texto,ok){const box=$("resultado");box.innerHTML=texto;box.className="result "+(ok?"ok":"err")}
 function mostrarEstadoEspera(e="PENDIENTE"){$("estadoEspera").classList.remove("hidden");renderProgresoSolicitud(e)}
 function renderProgresoSolicitud(estado){
@@ -694,7 +708,7 @@ function iniciarEscuchaEstado(){
     const s = Array.isArray(data) ? data[0] : data;
 
     if(!s){
-      DEBUG && console.warn("landing_estado_solicitud no devolvió datos", {
+      DEBUG && console.warn("landing_estado_solicitud no devolviÃ³ datos", {
         solicitudActual,
         chatParam,
         data
@@ -721,7 +735,7 @@ function iniciarEscuchaEstado(){
       intervaloEstado = null;
 
       if(tipo === "RETIRO"){
-        mostrarResultado("✅ Tu retiro fue marcado como pagado/aprobado.", true);
+        mostrarResultado("âœ… Tu retiro fue marcado como pagado/aprobado.", true);
 
         setTimeout(() => {
           resetLandingEstado();
@@ -768,13 +782,13 @@ function cerrarModalExito(){$("successModal").classList.add("hidden");resetLandi
 function limpiarChatSeguroSiFaltaToken(){if(chatSessionId&&!chatSessionToken){sessionStorage.removeItem(LS_CHAT);sessionStorage.removeItem(LS_CHAT_TOKEN);chatSessionId="";chatSessionToken=""}}
 async function asegurarChatLite(){
   if(chatSessionId&&chatSessionToken){iniciarRealtimeChatLanding();return chatSessionId}
-  if(!userLogin?.usuario){throw new Error("Primero verificá tu usuario.")}
+  if(!userLogin?.usuario){throw new Error("Primero verificÃ¡ tu usuario.")}
   const {data,error}=await supabaseClient.rpc("landing_crear_chat_v2",{p_usuario:userLogin.usuario,p_telefono:userData?.telefono||"",p_pc_codigo:PC,p_solicitud_id:solicitudActual?Number(solicitudActual):null});
   if(error){DEBUG && console.error(error);throw new Error("No se pudo iniciar el chat.")}
   const row=Array.isArray(data)?data[0]:data; if(!row?.chat_id||!row?.chat_token)throw new Error("No se pudo iniciar el chat seguro.");
   chatSessionId=String(row.chat_id);chatSessionToken=String(row.chat_token);sessionStorage.setItem(LS_CHAT,chatSessionId);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken);iniciarRealtimeChatLanding();return chatSessionId
 }
-async function abrirChatLite(){if(!userLogin?.usuario){msg("loginMsg","Primero ingresá tu usuario para iniciar el chat.","err");setVista("loginCard");return}$("chatLite").classList.remove("hidden");try{await asegurarChatLite();await cargarChatLite();iniciarTimerChatLite()}catch(e){$("chatLiteStatus").innerText="No se pudo conectar";alert("No se pudo conectar el chat. Intentá nuevamente o escribinos por WhatsApp.")}}
+async function abrirChatLite(){if(!userLogin?.usuario){msg("loginMsg","Primero ingresÃ¡ tu usuario para iniciar el chat.","err");setVista("loginCard");return}$("chatLite").classList.remove("hidden");try{await asegurarChatLite();await cargarChatLite();iniciarTimerChatLite()}catch(e){$("chatLiteStatus").innerText="No se pudo conectar";alert("No se pudo conectar el chat. IntentÃ¡ nuevamente o escribinos por WhatsApp.")}}
 function cerrarChatLite(){$("chatLite").classList.add("hidden")}function iniciarTimerChatLite(){if(chatLiteTimer)clearInterval(chatLiteTimer);chatLiteTimer=setInterval(cargarChatLite,2500)}
 async function cargarChatLite(){if(!chatSessionId||!chatSessionToken)return;const {data,error}=await supabaseClient.rpc("landing_leer_chat_v2",{p_chat_id:Number(chatSessionId),p_chat_token:chatSessionToken});if(error){DEBUG && console.error(error);return}renderChatLite((data||[]).map(m=>({TIPO_EMISOR:m.tipo_emisor,MENSAJE:m.mensaje,IMAGEN_URL:m.imagen_url,FECHA:m.created_at,LEIDO:m.leido?"SI":"NO"})))}
 async function enviarChatLite(){const input=$("chatLiteInput");const mensaje=(input.value||"").trim();if(!mensaje&&!chatLiteImagenBase64)return;try{await asegurarChatLite()}catch(e){alert("No se pudo enviar el mensaje.");return}const {error}=await supabaseClient.rpc("landing_enviar_mensaje_v2",{p_chat_id:Number(chatSessionId),p_chat_token:chatSessionToken,p_emisor:userLogin?.usuario||"Usuario",p_mensaje:mensaje||"",p_imagen_url:chatLiteImagenBase64||""});if(error){DEBUG && console.error(error);alert("No se pudo enviar el mensaje.");return}input.value="";chatLiteImagenBase64="";quitarImagenChatLite();await cargarChatLite()}
@@ -808,7 +822,7 @@ function renderMensajeChatLite(texto){
         min-width:240px;
       ">
         <div style="font-weight:900;color:#f7d774;margin-bottom:10px;">
-          💳 ${nombre}
+          ðŸ’³ ${nombre}
         </div>
 
         ${alias ? `
@@ -906,7 +920,7 @@ function copiarDesdeTarjeta(elementId, mensajeOk){
       setTimeout(() => aviso.remove(), 1400);
     })
     .catch(() => {
-      alert("No se pudo copiar. Mantené presionado el dato y copialo manualmente.");
+      alert("No se pudo copiar. MantenÃ© presionado el dato y copialo manualmente.");
     });
 }  
 function renderMensajeChatLite(texto){
@@ -949,7 +963,7 @@ function renderMensajeChatLite(texto){
         box-shadow:0 10px 24px rgba(0,0,0,.28);
       ">
         <div style="font-weight:900;color:#f7d774;margin-bottom:10px;font-size:15px;">
-          💳 ${nombre}
+          ðŸ’³ ${nombre}
         </div>
 
         ${alias ? `
@@ -1040,7 +1054,7 @@ function renderMensajeChatLite(texto){
           line-height:1.35;
           font-weight:700;
         ">
-          Cuando realices la transferencia, enviá el comprobante por acá.
+          Cuando realices la transferencia, enviÃ¡ el comprobante por acÃ¡.
         </div>
       </div>
     `;
@@ -1103,12 +1117,12 @@ function copiarFallback(texto){
   try{
     document.execCommand("copy");
   }catch(e){
-    alert("No se pudo copiar. Mantené presionado el dato y copialo manualmente.");
+    alert("No se pudo copiar. MantenÃ© presionado el dato y copialo manualmente.");
   }
 
   area.remove();
 }  
-function renderChatLite(mensajes){const box=$("chatLiteBody");let html=`<div class="chat-day">Chat de soporte</div>`;if(!mensajes.length)html+=`<div class="chat-msg operator"><div class="chat-bubble">Hola 👋 Escribinos tu consulta o adjuntá el comprobante si necesitás ayuda.</div><div class="chat-meta">Soporte</div></div>`;mensajes.forEach(m=>{const es=String(m.TIPO_EMISOR||"").toUpperCase()==="USUARIO", cls=es?"user":"operator", h=formatearHoraChat(m.FECHA), leido=String(m.LEIDO||"").toUpperCase()==="SI";html+=`<div class="chat-msg ${cls}"><div class="chat-bubble">${renderMensajeChatLite(m.MENSAJE||"")}${m.IMAGEN_URL?`<img src="${normalizarImagenUrl(m.IMAGEN_URL)}" alt="Imagen adjunta">`:""}</div><div class="chat-meta">${es?(leido?"✓✓ recibido":"✓ enviado"):"Soporte"} · ${h}</div></div>`});box.innerHTML=html;box.scrollTop=box.scrollHeight}
+function renderChatLite(mensajes){const box=$("chatLiteBody");let html=`<div class="chat-day">Chat de soporte</div>`;if(!mensajes.length)html+=`<div class="chat-msg operator"><div class="chat-bubble">Hola ðŸ‘‹ Escribinos tu consulta o adjuntÃ¡ el comprobante si necesitÃ¡s ayuda.</div><div class="chat-meta">Soporte</div></div>`;mensajes.forEach(m=>{const es=String(m.TIPO_EMISOR||"").toUpperCase()==="USUARIO", cls=es?"user":"operator", h=formatearHoraChat(m.FECHA), leido=String(m.LEIDO||"").toUpperCase()==="SI";html+=`<div class="chat-msg ${cls}"><div class="chat-bubble">${renderMensajeChatLite(m.MENSAJE||"")}${m.IMAGEN_URL?`<img src="${normalizarImagenUrl(m.IMAGEN_URL)}" alt="Imagen adjunta">`:""}</div><div class="chat-meta">${es?(leido?"âœ“âœ“ recibido":"âœ“ enviado"):"Soporte"} Â· ${h}</div></div>`});box.innerHTML=html;box.scrollTop=box.scrollHeight}
 function normalizarImagenUrl(u){u=String(u||"");return u.startsWith("data:image")?u:u}
 function formatearHoraChat(f){try{return new Date(f).toLocaleTimeString("es-AR",{timeZone:"America/Argentina/Buenos_Aires",hour:"2-digit",minute:"2-digit",hour12:false})}catch(e){return""}}
 function comprimirImagenChat(file,cb){const img=new Image(),reader=new FileReader();reader.onload=()=>{img.onload=()=>{const max=560;let w=img.width,h=img.height;if(w>h&&w>max){h=Math.round(h*max/w);w=max}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max}const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);cb(canvas.toDataURL("image/jpeg",.52))};img.src=reader.result};reader.readAsDataURL(file)}
@@ -1125,7 +1139,7 @@ function iniciarRealtimeChatLanding(){return}
 </style>
 <script>
 /* =========================================================
-   LANDING CHAT · FIX TARJETAS COPIABLES
+   LANDING CHAT Â· FIX TARJETAS COPIABLES
 ========================================================= */
 (function(){
   function esc(s){return typeof escapeHtml==='function'?escapeHtml(s):String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
@@ -1137,13 +1151,13 @@ function iniciarRealtimeChatLanding(){return}
     if(/Billetera\s*:/i.test(raw)&&(/Alias\s*:/i.test(raw)||/CBU\/CVU\s*:/i.test(raw))){const g=re=>{const m=raw.match(re);return m?m[1].trim():''}; return {nombre_visible:g(/Billetera\s*:\s*([^\n]+)/i),titular:g(/Titular\s*:\s*([^\n]+)/i),alias:g(/Alias\s*:\s*([^\n]+)/i),cbu:g(/CBU\/CVU\s*:\s*([^\n]+)/i),banco:g(/Banco\s*:\s*([^\n]+)/i)};}
     return null;
   }
-  window.copiarDesdeTarjeta=window.copiarDesdeTarjeta||function(id,msg){const el=document.getElementById(id);const t=(el?.innerText||'').trim(); if(!t){alert('No hay dato para copiar.');return;} navigator.clipboard.writeText(t).then(()=>{const a=document.createElement('div');a.innerText=msg||'Copiado';a.style.cssText='position:fixed;left:50%;bottom:95px;transform:translateX(-50%);background:rgba(22,163,74,.96);color:white;padding:10px 14px;border-radius:999px;font-weight:900;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,.35)';document.body.appendChild(a);setTimeout(()=>a.remove(),1400)}).catch(()=>alert('No se pudo copiar. Mantené presionado el dato y copialo manualmente.'));};
+  window.copiarDesdeTarjeta=window.copiarDesdeTarjeta||function(id,msg){const el=document.getElementById(id);const t=(el?.innerText||'').trim(); if(!t){alert('No hay dato para copiar.');return;} navigator.clipboard.writeText(t).then(()=>{const a=document.createElement('div');a.innerText=msg||'Copiado';a.style.cssText='position:fixed;left:50%;bottom:95px;transform:translateX(-50%);background:rgba(22,163,74,.96);color:white;padding:10px 14px;border-radius:999px;font-weight:900;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,.35)';document.body.appendChild(a);setTimeout(()=>a.remove(),1400)}).catch(()=>alert('No se pudo copiar. MantenÃ© presionado el dato y copialo manualmente.'));};
   window.renderMensajeChatLite=function(texto){
     const card=parseCard(texto);
     if(!card) return esc(texto||'').replace(/\n/g,'<br>');
     const nombre=card.nombre_visible||card.nombre||'Datos para transferir', titular=card.titular||'', alias=card.alias||'', cbu=card.cbu||card.cvu||card.cvu_cbu||'', banco=card.banco||card.tipo||'';
     const aid='alias_'+Math.random().toString(36).slice(2), cid='cbu_'+Math.random().toString(36).slice(2);
-    return `<div class="transfer-lite-card"><div class="transfer-lite-title">💳 ${esc(nombre)}</div>${alias?`<div class="transfer-lite-label">ALIAS</div><div id="${aid}" class="transfer-lite-value">${esc(alias)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${aid}','Alias copiado')">Copiar alias</button>`:''}${cbu?`<div class="transfer-lite-label">CBU / CVU</div><div id="${cid}" class="transfer-lite-value">${esc(cbu)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${cid}','CBU/CVU copiado')">Copiar CBU / CVU</button>`:''}${titular?`<div class="transfer-lite-label">TITULAR</div><div style="font-weight:900;margin-bottom:9px;word-break:break-word">${esc(titular)}</div>`:''}${banco?`<div style="font-size:12px;color:#cbd5e1;font-weight:800;margin-top:6px">Banco: ${esc(banco)}</div>`:''}<div class="transfer-lite-note">Cuando realices la transferencia, enviá el comprobante por acá.</div></div>`;
+    return `<div class="transfer-lite-card"><div class="transfer-lite-title">ðŸ’³ ${esc(nombre)}</div>${alias?`<div class="transfer-lite-label">ALIAS</div><div id="${aid}" class="transfer-lite-value">${esc(alias)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${aid}','Alias copiado')">Copiar alias</button>`:''}${cbu?`<div class="transfer-lite-label">CBU / CVU</div><div id="${cid}" class="transfer-lite-value">${esc(cbu)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${cid}','CBU/CVU copiado')">Copiar CBU / CVU</button>`:''}${titular?`<div class="transfer-lite-label">TITULAR</div><div style="font-weight:900;margin-bottom:9px;word-break:break-word">${esc(titular)}</div>`:''}${banco?`<div style="font-size:12px;color:#cbd5e1;font-weight:800;margin-top:6px">Banco: ${esc(banco)}</div>`:''}<div class="transfer-lite-note">Cuando realices la transferencia, enviÃ¡ el comprobante por acÃ¡.</div></div>`;
   };
 })();
 </script>
