@@ -8,7 +8,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Estado fix</title>
+<title>BET300 · Cargas/Retiros · Estado V2 · Estado fix</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -623,7 +623,7 @@ async function crearSolicitud(){
   if(r.solicitud.chat_id&&r.solicitud.chat_token){chatSessionId=String(r.solicitud.chat_id);chatSessionToken=String(r.solicitud.chat_token);sessionStorage.setItem(LS_CHAT,chatSessionId);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken);iniciarRealtimeChatLanding()}
   referenciaPagoActual=r.solicitud.referencia_pago||"";mostrarReferenciaPago(r.solicitud);
   mostrarResultado(esRetiro?`OK Solicitud de retiro recibida.<br><br>Estamos revisando tu pedido.`:`OK Aviso recibido.<br><br>Estamos buscando tu pago. Si ya transferiste, no envies otra solicitud por el mismo movimiento.`,true);
-  mostrarEstadoEspera(r.solicitud.estado||"PENDIENTE");iniciarEscuchaEstado();$("monto").value="";if(!esRetiro)limpiarDatosTransferencia();
+  mostrarEstadoEspera(r.solicitud.estado||"PENDIENTE");iniciarEscuchaEstado();setTimeout(()=>iniciarEscuchaEstado(),250);$("monto").value="";if(!esRetiro)limpiarDatosTransferencia();
 }
 async function renovarValidacionParaSolicitud(){
   if(!userData?.usuario||!userData?.nombre||!userData?.telefono||!userData?.dni)return false;
@@ -730,12 +730,13 @@ function recuperarSolicitudPendiente(){
   if(solicitudActual){
     mostrarEstadoEspera("PENDIENTE");
     iniciarEscuchaEstado();
+    setTimeout(()=>iniciarEscuchaEstado(),250);
   }
 }
 function mostrarReferenciaPago(s){const box=$("referenciaPagoBox");if(!box)return;const tipo=String(s?.tipo||tipoSolicitudActual||"CARGA").toUpperCase(), ref=s?.referencia_pago||s?.referencia_pago_visible||"";if(tipo!=="CARGA"||!ref){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=`<b>Referencia de carga:</b> ${escapeHtml(ref)}<br><span class="mini">Si tu billetera permite agregar nota o motivo, escribí esta referencia. Esto ayuda a validar tu pago más rápido.</span><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText('${escapeAttr(ref)}')">Copiar referencia</button>`}
 function mostrarResultado(texto,ok){const box=$("resultado");box.innerHTML=texto;box.className="result "+(ok?"ok":"err")}
 function mostrarEstadoEspera(e="PENDIENTE"){$("estadoEspera").classList.remove("hidden");renderProgresoSolicitud(e)}
-function esEstadoSolicitudOk(estado){const e=String(estado||"").toUpperCase();return ["ACREDITADA","PAGADA","APROBADA","APROBADO","REALIZADA","REALIZADO","COMPLETADA","COMPLETADO","OK","FINALIZADA","FINALIZADO"].includes(e)}
+function esEstadoSolicitudOk(estado){const e=String(estado||"").toUpperCase().trim();return ["ACREDITADA","PAGADA","APROBADA","APROBADO","REALIZADA","REALIZADO","COMPLETADA","COMPLETADO","OK","FINALIZADA","FINALIZADO","CERRADA","CERRADO"].includes(e)}
 function esEstadoSolicitudCancelado(estado){const e=String(estado||"").toUpperCase();return e.includes("RECHAZ")||e.includes("ERROR")||e.includes("CANCEL")||e.includes("ANUL")}
 function renderProgresoSolicitud(estado){
   const e=String(estado||"PENDIENTE").toUpperCase(), esRetiro=String(tipoSolicitudActual||"CARGA").toUpperCase()==="RETIRO", ok=esEstadoSolicitudOk(e), bad=esEstadoSolicitudCancelado(e);
@@ -765,14 +766,9 @@ function iniciarEscuchaEstado(){
 
     const chatParam = String(solicitudChatId || chatSessionId || "").trim();
 
-    if(!chatParam){
-      DEBUG && console.warn("No hay chat asociado para consultar estado.");
-      return;
-    }
-
     const {data,error} = await supabaseClient.rpc("landing_estado_solicitud_segura",{
       p_solicitud_id: Number(solicitudActual),
-      p_chat_id: Number(chatParam),
+      p_chat_id: chatParam ? Number(chatParam) : null,
       p_chat_token: chatSessionToken || sessionStorage.getItem(LS_CHAT_TOKEN) || ""
     });
 
