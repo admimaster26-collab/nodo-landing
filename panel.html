@@ -1079,15 +1079,21 @@ async function validarSesionGuardada(token, pc){
 
   const pcsDisponibles = await obtenerPcsDisponiblesOperador(operador);
   const pcSolicitada = String(pc || "").trim().toUpperCase();
-  pcOperativa = pcsDisponibles.includes(pcSolicitada)
-    ? pcSolicitada
-    : String(pcsDisponibles[0] || row.pc_codigo || "").toUpperCase();
 
-  if(pcSolicitada && pcSolicitada !== pcOperativa){
-    localStorage.setItem(LS_PC, pcOperativa);
+  if(operadorRequiereSelectorPc(operador)){
+    localStorage.removeItem(LS_PC);
+    abrirSelectorPc(pcsDisponibles);
+    return true;
   }
 
-  finalizarLogin(false);
+  if(pcSolicitada && pcsDisponibles.includes(pcSolicitada)){
+    pcOperativa = pcSolicitada;
+    finalizarLogin(false);
+    return true;
+  }
+
+  localStorage.removeItem(LS_PC);
+  abrirSelectorPc(pcsDisponibles);
   return true;
 }
 
@@ -1393,18 +1399,21 @@ function comprimirImagenChat(file, cb){
   reader.readAsDataURL(file);
 }
 
+function operadorRequiereSelectorPc(op){
+  const rol = normalizar(op?.rol || op?.ROL);
+  const tipo = normalizar(op?.tipo || op?.tipoOperador || "");
+  return rol === "ADMIN" || rol === "ENCARGADO" || rol === "SUPERVISOR" || rol === "SUPERADMIN" || tipo === "FRANQUERO" || tipo === "FRAMQUERO";
+}
+
 async function obtenerPcsDisponiblesOperador(op){
-  const rol = normalizar(op.rol || op.ROL);
-  const tipo = normalizar(op.tipo || op.tipoOperador || "");
   const pcRaw = String(op.pc_codigo || op.pc || op.PC || "").trim();
+
+  if(operadorRequiereSelectorPc(op)){
+    return ["P1","P2","P3","P4","P5"];
+  }
 
   if(pcRaw){
     return pcRaw.split(/[;,]/).map(x => x.trim().toUpperCase()).filter(Boolean);
-  }
-
-  if(rol === "ADMIN" || rol === "ENCARGADO" || rol === "SUPERVISOR" || rol === "SUPERADMIN" || tipo === "FRANQUERO" || tipo === "FRAMQUERO"){
-    // Solo si la sesión no trae PCs explícitas, habilitamos el selector amplio.
-    return ["P1","P2","P3","P4","P5"];
   }
 
   return [];
@@ -1459,7 +1468,7 @@ async function login(){
   const rol = normalizar(operador.rol);
   const tipo = normalizar(operador.tipo || operador.tipoOperador);
 
-  if(rol === "ADMIN" || rol === "ENCARGADO" || rol === "SUPERVISOR" || rol === "SUPERADMIN" || tipo === "FRANQUERO" || tipo === "FRAMQUERO" || pcsDisponibles.length !== 1){
+  if(operadorRequiereSelectorPc(operador) || pcsDisponibles.length !== 1){
     abrirSelectorPc(pcsDisponibles);
     return;
   }
@@ -10180,7 +10189,7 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function rememberCreatedWatch(usuario,clave){try{localStorage.setItem('nodo_v21_core_created_watch',JSON.stringify({usuario,clave:clave||'12345a',link:'http://bet-300.pw/',desde:Date.now(),hasta:Date.now()+180000,shown:false}))}catch(e){}}
  function selectedWalletData(){const id=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const w=billeteras().find(x=>String(wid(x))===id);return w?{id:String(wid(w)),name:wname(w),tipo:wtipo(w)}:(id?{id,name:'ID '+id,tipo:''}:null)}
  function isMovementTipo(t,m){const n=norm(t);return n.includes('CARGA')||n.includes('RETIRO')||n.includes('FICHAS')||Number(m||0)!==0}
- function corePc(){try{const cur=String(window.pcOperativa||(typeof pcOperativa!=='undefined'?pcOperativa:'')||'').trim().toUpperCase();const op=window.operador||(typeof operador!=='undefined'?operador:null)||{};const raw=String(op.pc_codigo||op.pc||op.PC||'').trim();const allowed=raw?raw.split(/[;,]/).map(x=>x.trim().toUpperCase()).filter(Boolean):[];if(allowed.length&&!allowed.includes(cur))return allowed[0];return cur||allowed[0]||''}catch(e){return String(localStorage.getItem('nodo_pc_operativa_lite')||localStorage.getItem('pcOperativa')||'').trim().toUpperCase()}}
+ function corePc(){try{return String(window.pcOperativa||(typeof pcOperativa!=='undefined'?pcOperativa:'')||localStorage.getItem('nodo_pc_operativa_lite')||'').trim().toUpperCase()}catch(e){return String(localStorage.getItem('nodo_pc_operativa_lite')||localStorage.getItem('pcOperativa')||'').trim().toUpperCase()}}
  function coreToken(){try{if(typeof window.requireSessionToken==='function')return window.requireSessionToken();if(typeof requireSessionToken==='function')return requireSessionToken()}catch(e){}try{return window.panelSessionToken||(typeof panelSessionToken!=='undefined'?panelSessionToken:'')||''}catch(e){return ''}}
  function parseManualOperation(raw,mode){const clean=String(raw??'').trim().replace(/,/g,'.');const amount=Number(clean||0);let tipo='VALIDAR_USUARIO';if(mode==='CREAR')tipo='CREAR_USUARIO';else if(mode==='CLAVE')tipo='CAMBIAR_CLAVE';else if(mode==='VALIDAR')tipo='VALIDAR_USUARIO';else if(amount>0)tipo='CARGAR_FICHAS';else if(amount<0)tipo='PROCESAR_RETIRO';const absAmount=Math.abs(Number.isFinite(amount)?amount:0);const signoFlujo=tipo==='PROCESAR_RETIRO'?-1:(tipo==='CARGAR_FICHAS'?1:0);return{rawAmount:raw,signedAmount:Number.isFinite(amount)?amount:0,absAmount,tipo,signoFlujo}}
  function matchPendingJobs(){const pending=pendingOps().filter(p=>Date.now()-(p.createdAt||0)<20*60*1000);if(!pending.length)return;const meta=metaStore();let changed=false;jobs().forEach(j=>{const id=String(jid(j)||'');if(!id||meta[id]?.walletId)return;const ju=norm(jusu(j)),jt=norm(jtipo(j)),jm=Math.abs(Number(jmonto(j)||0));const hit=pending.find(p=>{if(norm(p.usuario)!==ju)return false;const pt=norm(p.tipo);if(pt.includes('CARGA')&&!jt.includes('CARGA'))return false;if(pt.includes('RETIRO')&&!jt.includes('RETIRO'))return false;if(pt.includes('CREAR')&&!jt.includes('CREAR'))return false;if(pt.includes('CLAVE')&&!jt.includes('CLAVE'))return false;if(pt.includes('VALIDAR')&&!jt.includes('VALIDAR'))return false;if(Number.isFinite(Number(p.monto))&&Math.abs(Number(p.monto||0))!==jm)return false;return true});if(hit){meta[id]=Object.assign({},meta[id]||{},{walletId:hit.walletId||'',walletName:hit.walletName||'',operator:hit.operator||currentOperator(),usuario:hit.usuario,tipo:hit.tipo,monto:hit.monto,signedAmount:hit.signedAmount??hit.monto,signoFlujo:hit.signoFlujo??0,updatedAt:Date.now()});changed=true}});if(changed)saveMeta(meta);savePendingOps(pending)}
@@ -10243,3 +10252,4 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
 
 </body>
 </html>
+
