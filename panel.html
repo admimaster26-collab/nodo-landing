@@ -3237,8 +3237,79 @@ function renderColaUnificada(){
 }
 function renderWalletSelectWorkerInicio(){const sel=document.getElementById("manualWorkerBilleteraInicio");if(!sel)return;const tipo=val("manualWorkerTipoInicio");const lista=saldosOperativos?.billeteras||[];sel.innerHTML=`<option value="">${tipo==="VALIDAR_USUARIO"?"No aplica para validar":"Seleccionar billetera"}</option>`+lista.map(b=>`<option value="${escapeAttr(b.id)}">${escapeHtml(b.nombre_visible||"Billetera")} · ${escapeHtml(b.banco||"")} · ${money(b.saldo||0)}</option>`).join("");}
 function ajustarMontoWorkerManualInicio(){const tipo=val("manualWorkerTipoInicio"),m=document.getElementById("manualWorkerMontoInicio"),w=document.getElementById("manualWorkerBilleteraInicio");if(tipo==="VALIDAR_USUARIO"){if(m){m.value="0";m.disabled=true}if(w){w.value="";w.disabled=true}}else{if(m)m.disabled=false;if(w)w.disabled=false}renderWalletSelectWorkerInicio();}
-async function crearWorkerJobManualInicio(){document.getElementById("manualWorkerUsuario").value=val("manualWorkerUsuarioInicio");document.getElementById("manualWorkerTipo").value=val("manualWorkerTipoInicio");document.getElementById("manualWorkerMonto").value=val("manualWorkerMontoInicio");document.getElementById("manualWorkerBilletera").value=val("manualWorkerBilleteraInicio");document.getElementById("manualWorkerObs").value=val("manualWorkerObsInicio");await crearWorkerJobManualDesdePanel();setBox("manualWorkerResultadoInicio",document.getElementById("manualWorkerResultado")?.innerHTML||"");await refrescarTodo(false);}
-function renderSelectsAjustes(){const sel=document.getElementById("ajusteBilleteraId");if(!sel)return;sel.innerHTML=(saldosOperativos?.billeteras||[]).map(b=>`<option value="${escapeAttr(b.id)}">${escapeHtml(b.nombre_visible||"Billetera")} · ${money(b.saldo||0)}</option>`).join("");}
+window.crearWorkerJobManualInicio = async function() {
+  const usuario = str(val('manualWorkerUsuarioInicio')).trim();
+  const montoRaw = parseMonto(val('manualWorkerMontoInicio')); // Mantiene el signo original (-2000, etc.)
+  const billeteraId = str(val('manualWorkerBilleteraInicio')).trim();
+  const out = 'manualWorkerResultadoInicio';
+
+  if(!usuario){
+    setBoxSafe(out, '<div class="err-box">Ingresá un usuario.</div>');
+    return;
+  }
+  if(!Number.isFinite(montoRaw)){
+    setBoxSafe(out, '<div class="err-box">El monto no es válido.</div>');
+    return;
+  }
+
+  // DETECCIÓN DE ACCIÓN BASADA EN EL MONTO NEGATIVO REAL
+  const tipo = montoRaw === 0 ? 'VALIDAR_USUARIO' : (montoRaw > 0 ? 'CARGAR_FICHAS' : 'PROCESAR_RETIRO');
+  
+  // Guardamos el monto para el payload operativo. 
+  // Si la función que activa el retiro requiere el valor negativo original, usamos montoRaw; 
+  // si tu RPC de base de datos requiere valor absoluto estricto, usamos Math.abs(montoRaw).
+  // Para asegurar compatibilidad total con tu función de retiro activa, preservamos el valor original firmado:
+  const montoFinalAEnviar = (tipo === 'PROCESAR_RETIRO') ? montoRaw : Math.abs(montoRaw);
+
+  if(tipo !== 'VALIDAR_USUARIO' && !billeteraId){
+    setBoxSafe(out, '<div class="err-box">Seleccioná la billetera impactada.</div>');
+    return;
+  }
+
+  if(billeteraId){
+    localStorage.setItem(LS_WALLET_V17, billeteraId);
+    localStorage.setItem('nodoUltimaBilleteraImpactada', billeteraId);
+  }
+
+  S.editing = true;
+  setBoxSafe(out, '<div class="alert-box">Procesando solicitud de ' + tipo + ' (' + montoFinalAEnviar + ')...</div>');
+
+  try {
+    const billeteraObj = typeof getWalletById === 'function' ? getWalletById(billeteraId) : null;
+    
+    // Llamada RPC enviando el monto con su naturaleza intacta para que se active el retiro
+    const { data, error } = await supabaseClient.rpc("operativo_crear_worker_job_manual_v2", {
+      p_pc_codigo: pc(),
+      p_usuario: usuario,
+      p_tipo_accion: tipo,
+      p_monto: tipo === 'VALIDAR_USUARIO' ? 0 : montoFinalAEnviar, // Aquí viaja el valor corregido
+      p_origen: "PANEL_OPERATIVO",
+      p_billetera_id: billeteraId ? Number(billeteraId) : null,
+      p_observacion: "Acción manual rápida panel V21 | " + tipo
+    });
+
+    if(error) {
+      setBoxSafe(out, '<div class="err-box">Error creando job: ' + esc(error.message) + '</div>');
+      return;
+    }
+
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false){
+      setBoxSafe(out, '<div class="err-box">' + esc(r.error || "No se pudo procesar la orden.") + '</div>');
+      return;
+    }
+
+    setBoxSafe(out, '<div class="ok-box">Job enviado correctamente. ID: <b>' + esc(r?.job_id || "-") + '</b></div>');
+    toast("Orden de " + tipo + " enviada al worker con éxito", "green");
+    
+    if(typeof cargarWorkerJobs === 'function') await cargarWorkerJobs(true);
+    if(typeof cargarSaldoAgenteV16 === 'function') await cargarSaldoAgenteV16(true);
+  } catch(err) {
+    setBoxSafe(out, '<div class="err-box">Falla crítica: ' + esc(err.message || err) + '</div>');
+  } finally {
+    S.editing = false;
+  }
+};
 function abrirAjusteFichas(){mostrarVista("ajustes");setTimeout(()=>document.getElementById("ajusteFichasMonto")?.focus(),100)}
 function abrirAjusteBilletera(id=""){mostrarVista("ajustes");setTimeout(()=>{if(id)document.getElementById("ajusteBilleteraId").value=id;document.getElementById("ajusteBilleteraMonto")?.focus()},100)}
 async function guardarAjusteFichas(){const monto=Number(val("ajusteFichasMonto")||0),signo=Number(val("ajusteFichasSigno")||0),motivo=val("ajusteFichasMotivo").trim(),usuario=val("ajusteFichasUsuario").trim();if(!monto||monto<=0||!motivo){setBox("ajusteFichasResultado",`<div class="err-box">Monto y motivo son obligatorios.</div>`);return;}const {error}=await supabaseClient.rpc("admin_registrar_fichas_movimiento",{p_session_token:requireSessionToken(),p_pc_codigo:pcOperativa,p_tipo_movimiento:signo===1?"AJUSTE_FICHAS_POSITIVO":"AJUSTE_FICHAS_NEGATIVO",p_monto:monto,p_signo:signo,p_motivo:motivo,p_origen:"PANEL_OPERATIVO_AJUSTE",p_usuario:usuario||null,p_solicitud_id:null,p_worker_job_id:null});if(error){setBox("ajusteFichasResultado",`<div class="err-box">${escapeHtml(error.message)}</div>`);return;}setBox("ajusteFichasResultado",`<div class="ok-box">Ajuste guardado.</div>`);await cargarSaldosOperativos(true);renderCentroOperativo();}
@@ -10171,7 +10242,53 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
  function selectedWalletData(){const id=String(C.selectedWallet||localStorage.getItem('nodoCleanWallet')||localStorage.getItem('nodoUltimaBilleteraImpactada')||'').trim();const w=billeteras().find(x=>String(wid(x))===id);return w?{id:String(wid(w)),name:wname(w),tipo:wtipo(w)}:(id?{id,name:'ID '+id,tipo:''}:null)}
  function isMovementTipo(t,m){const n=norm(t);return n.includes('CARGA')||n.includes('RETIRO')||n.includes('FICHAS')||Number(m||0)!==0}
  function matchPendingJobs(){const pending=pendingOps().filter(p=>Date.now()-(p.createdAt||0)<20*60*1000);if(!pending.length)return;const meta=metaStore();let changed=false;jobs().forEach(j=>{const id=String(jid(j)||'');if(!id||meta[id]?.walletId)return;const ju=norm(jusu(j)),jt=norm(jtipo(j)),jm=Math.abs(Number(jmonto(j)||0));const hit=pending.find(p=>{if(norm(p.usuario)!==ju)return false;const pt=norm(p.tipo);if(pt.includes('CARGA')&&!jt.includes('CARGA'))return false;if(pt.includes('RETIRO')&&!jt.includes('RETIRO'))return false;if(pt.includes('CREAR')&&!jt.includes('CREAR'))return false;if(pt.includes('CLAVE')&&!jt.includes('CLAVE'))return false;if(pt.includes('VALIDAR')&&!jt.includes('VALIDAR'))return false;if(Number.isFinite(Number(p.monto))&&Math.abs(Number(p.monto||0))!==jm)return false;return true});if(hit){meta[id]=Object.assign({},meta[id]||{},{walletId:hit.walletId||'',walletName:hit.walletName||'',operator:hit.operator||currentOperator(),usuario:hit.usuario,tipo:hit.tipo,monto:hit.monto,updatedAt:Date.now()});changed=true}});if(changed)saveMeta(meta);savePendingOps(pending)}
- async function cargarSaldoAgenteClean(force){if(C.saldoAgenteLoading)return;const now=Date.now();if(!force&&C.saldoAgente&&now-(C.saldoAgente.ts||0)<12000)return;C.saldoAgenteLoading=true;try{if(typeof supabaseClient==='undefined')return;const rpc='panel_operativo_get_saldo_agente_estado';const args={p_session_token:token(),p_pc_codigo:pc()};const {data,error}=await supabaseClient.rpc(rpc,args);if(error)throw error;const row=Array.isArray(data)?data[0]:data;if(row){C.saldoAgente=Object.assign({},row,{ts:Date.now()});try{localStorage.setItem('nodo_v21_saldo_agente_cache',JSON.stringify(C.saldoAgente))}catch(e){}}}catch(e){try{C.saldoAgente=JSON.parse(localStorage.getItem('nodo_v21_saldo_agente_cache')||'null')}catch(_){}}finally{C.saldoAgenteLoading=false}}
+ async function cargarSaldoAgenteV16(force=false){
+  if(!window.supabaseClient) return null;
+  const now = Date.now();
+  // Evitar sobrecarga si ya cargó hace menos de 12 segundos
+  if(!force && C.saldoAgente && now - (C.saldoAgente.ts || 0) < 12000) return C.saldoAgente;
+  
+  C.saldoAgenteLoading = true;
+  try {
+    const rpc = 'panel_operativo_get_saldo_agente_estado';
+    const args = { p_session_token: token(), p_pc_codigo: pc() };
+    const { data, error } = await supabaseClient.rpc(rpc, args);
+    if(error) throw error;
+    
+    const row = Array.isArray(data) ? data[0] : data;
+    if(row) {
+      C.saldoAgente = Object.assign({}, row, { ts: Date.now() });
+      try {
+        localStorage.setItem('nodo_v21_saldo_agente_cache', JSON.stringify(C.saldoAgente));
+      } catch(e) {}
+      
+      // FORZAR ACTUALIZACIÓN EN PANTALLA INMEDIATA
+      const saldoHtml = saldoAgenteValue();
+      const subHtml = saldoAgenteSub();
+      
+      // Buscar elementos comunes de saldo en los KPIs del DOM e inyectarlos
+      const elSaldo = document.querySelector('.balance-card .balance-value') || document.getElementById('kpi-saldo-agente-real');
+      if(elSaldo) elSaldo.innerHTML = saldoHtml;
+      
+      const elSub = document.querySelector('.balance-card .balance-sub') || document.getElementById('kpi-saldo-agente-sub');
+      if(elSub) elSub.innerHTML = subHtml;
+      
+      if(typeof updateKpisOnly === 'function') updateKpisOnly();
+      if(typeof renderSaldosOperativos === 'function') renderSaldosOperativos();
+    }
+    return row;
+  } catch(e) {
+    console.warn('Error en saldo agente v16/v21:', e.message || e);
+    try {
+      C.saldoAgente = JSON.parse(localStorage.getItem('nodo_v21_saldo_agente_cache') || 'null');
+    } catch(_) {}
+    return C.saldoAgente;
+  } finally {
+    C.saldoAgenteLoading = false;
+  }
+}
+// Vinculamos al flujo realtime global del nodo
+window.cargarSaldoAgenteRealtime = cargarSaldoAgenteV16;
  function saldoAgenteValue(){const s=C.saldoAgente;const val=s?(s.saldo_agente??s.saldo??s.saldo_real??null):null;return val===null||val===undefined?'Sin dato':money(Number(val||0))}
  function saldoAgenteSub(){const s=C.saldoAgente;return s?`Último: ${esc(s.ultimo_tipo||s.tipo||'-')} · ${esc(s.ultimo_usuario||s.usuario||'-')}`:'Se actualiza cuando trabaja el worker'}
  function createdWatch(){let w=null;try{w=JSON.parse(localStorage.getItem('nodo_v21_core_created_watch')||'null')}catch(e){}if(!w||w.shown||Date.now()>Number(w.hasta||0))return;const hit=jobs().find(j=>norm(jusu(j))===norm(w.usuario)&&norm(jtipo(j)).includes('CREAR')&&['COMPLETADO','OK','FINALIZADO'].includes(norm(jest(j)))&&new Date(j.updated_at||j.created_at||0).getTime()>=Number(w.desde||0)-30000);if(!hit)return;w.shown=true;localStorage.setItem('nodo_v21_core_created_watch',JSON.stringify(w));showCreatedModal({usuario:jusu(hit)||w.usuario,clave:w.clave||'12345a',link:w.link||'http://bet-300.pw/'})}
