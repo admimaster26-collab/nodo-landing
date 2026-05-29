@@ -673,6 +673,7 @@ async function llamarCrearSolicitudSegura(params){
 
 function errorLegibleSolicitud(error){
   const em=String(error?.message||error?.details||error?.hint||"").trim();
+  if(em.includes("landing_crear_solicitud_v3") && em.includes("does not exist")) return "Estamos actualizando el canal. Probá nuevamente en unos segundos.";
   if(em.includes("ESPERA_5_MIN"))return em.replace("ESPERA_5_MIN:","");
   if(em.includes("Validaci")&&em.includes("no encontrada"))return "Necesitamos volver a verificar tu usuario. Tocá Cambiar de cuenta e ingresá otra vez.";
   return em||"No se pudo crear la solicitud. Intentá nuevamente o consultanos por chat.";
