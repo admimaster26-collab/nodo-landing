@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Blindada V6 · Mobile compacto</title>
+<title>BET300 · Cargas/Retiros · Blindada V7 · Mobile flujo</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -1804,6 +1804,442 @@ function iniciarRealtimeChatLanding(){return}
   document.addEventListener('DOMContentLoaded', compactarMobile);
   window.addEventListener('load', ()=>setTimeout(compactarMobile,300));
   window.addEventListener('resize', ()=>setTimeout(compactarMobile,150));
+})();
+</script>
+
+
+<style id="landing-v7-mobile-flujo">
+/* =========================================================
+   V7 MOBILE FLUJO
+   Objetivo:
+   - Menos scroll real en carga/retiro.
+   - CBU/CVU en una línea si entra.
+   - Usuario en menú compacto.
+   - Carga muestra datos de quien transfiere.
+   - Retiro oculta datos de quien transfiere y muestra solo cuenta retiro.
+   - Chat visible sin tapar media pantalla.
+   ========================================================= */
+
+@media (max-width:640px){
+
+  body{
+    padding:8px!important;
+  }
+
+  .card:first-of-type,
+  #cargaCard{
+    padding:16px 14px!important;
+    border-radius:22px!important;
+  }
+
+  #cargaCard h1{
+    font-size:29px!important;
+    line-height:1.02!important;
+    margin:0 0 6px!important;
+  }
+
+  #cargaCard > .muted{
+    font-size:14.5px!important;
+    line-height:1.25!important;
+    margin:0 0 10px!important;
+  }
+
+  /* Usuario arriba en modo mini */
+  #datosUsuarioBox{
+    margin:0 0 10px!important;
+  }
+
+  #datosUsuarioBox .user-info-btn,
+  #datosUsuarioBox .v7-user-mini{
+    width:100%!important;
+    min-height:38px!important;
+    padding:8px 12px!important;
+    border-radius:14px!important;
+    font-size:14px!important;
+    display:flex!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    gap:8px!important;
+    background:rgba(255,255,255,.075)!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    color:#f4f7fb!important;
+    box-shadow:none!important;
+    margin:0!important;
+  }
+
+  #datosUsuarioBox .user-info-btn span,
+  #datosUsuarioBox .v7-user-mini span{
+    display:inline!important;
+    margin:0!important;
+    color:#aeb7c6!important;
+    font-size:12px!important;
+    white-space:nowrap!important;
+  }
+
+  /* Ocultamos el botón grande "Editar mis datos", queda dentro del menú mini */
+  #cargaCard > button.btn-dark[onclick="volverADatos()"]{
+    display:none!important;
+  }
+
+  /* Tarjeta datos de transferencia más chica */
+  #cargaCard .transfer-card{
+    padding:13px 13px!important;
+    margin:10px 0!important;
+    border-radius:18px!important;
+  }
+
+  #cargaCard .transfer-card .gold-title{
+    font-size:20px!important;
+    line-height:1.1!important;
+    margin-bottom:10px!important;
+  }
+
+  #cargaCard .transfer-card .label{
+    font-size:13px!important;
+    margin:5px 0 2px!important;
+  }
+
+  #cargaCard .transfer-card .data-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 82px!important;
+    gap:8px!important;
+    align-items:center!important;
+    margin:3px 0 7px!important;
+  }
+
+  #aliasBox,
+  #cbuBox{
+    font-size:18px!important;
+    line-height:1.05!important;
+    letter-spacing:.8px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    word-break:normal!important;
+  }
+
+  /* CBU completo visible en una línea cuando el ancho lo permite */
+  #cbuBox{
+    font-size:16.5px!important;
+    letter-spacing:1.1px!important;
+  }
+
+  #cargaCard .transfer-card .copy-btn{
+    min-height:42px!important;
+    height:42px!important;
+    padding:0 10px!important;
+    font-size:14px!important;
+    border-radius:15px!important;
+  }
+
+  #cargaCard .transfer-card .line{
+    font-size:14px!important;
+    line-height:1.25!important;
+    margin:4px 0!important;
+  }
+
+  #montoMinimoTxt{
+    font-size:14px!important;
+    line-height:1.2!important;
+    padding:8px 0 0!important;
+    margin:6px 0 0!important;
+  }
+
+  /* Cómo continuar: compacto, no ocupa media pantalla */
+  #transferFlowBox{
+    padding:10px 12px!important;
+    margin:10px 0!important;
+    border-radius:16px!important;
+  }
+
+  #transferFlowBox .landing-flow-title{
+    font-size:15px!important;
+    margin-bottom:6px!important;
+  }
+
+  #transferFlowBox .landing-flow-item{
+    display:grid!important;
+    grid-template-columns:25px 1fr!important;
+    gap:8px!important;
+    align-items:center!important;
+    margin:5px 0!important;
+  }
+
+  #transferFlowBox .landing-flow-item b{
+    width:25px!important;
+    height:25px!important;
+    min-width:25px!important;
+    font-size:13px!important;
+  }
+
+  #transferFlowBox .landing-flow-item span{
+    font-size:13.5px!important;
+    line-height:1.2!important;
+  }
+
+  #transferFlowBox .landing-flow-note{
+    font-size:13px!important;
+    line-height:1.2!important;
+    margin-top:6px!important;
+  }
+
+  /* Tipo + monto: más arriba y compacto */
+  .tipo-solicitud-box{
+    gap:8px!important;
+    margin:8px 0 10px!important;
+  }
+
+  .tipo-option{
+    min-height:46px!important;
+    height:46px!important;
+    font-size:17px!important;
+    border-radius:15px!important;
+    padding:0 10px!important;
+  }
+
+  #monto{
+    height:50px!important;
+    min-height:50px!important;
+    font-size:18px!important;
+  }
+
+  /* Datos de quien transfiere en carga, compactos */
+  #datosTransferenciaBox{
+    padding:12px!important;
+    margin:10px 0!important;
+    border-radius:17px!important;
+  }
+
+  #datosTransferenciaBox .transfer-data-title{
+    font-size:17px!important;
+    margin-bottom:4px!important;
+  }
+
+  #datosTransferenciaBox .transfer-data-help{
+    font-size:12.8px!important;
+    line-height:1.2!important;
+    margin-bottom:8px!important;
+  }
+
+  #datosTransferenciaBox label,
+  #retiroDatosBox label{
+    font-size:13.5px!important;
+    margin:6px 0 4px!important;
+  }
+
+  #datosTransferenciaBox input,
+  #datosTransferenciaBox select,
+  #retiroDatosBox input{
+    height:48px!important;
+    min-height:48px!important;
+    font-size:16px!important;
+    border-radius:15px!important;
+  }
+
+  #datosTransferenciaBox .transfer-grid{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:6px!important;
+  }
+
+  /* Retiro: oculta datos de quien transfiere; usa su tarjeta propia */
+  body.tipo-retiro #datosTransferenciaBox{
+    display:none!important;
+  }
+
+  body.tipo-carga #retiroDatosBox{
+    display:none!important;
+  }
+
+  #retiroDatosBox{
+    padding:12px!important;
+    margin:10px 0!important;
+    border-radius:17px!important;
+  }
+
+  #retiroDatosBox .hint{
+    font-size:13px!important;
+    line-height:1.22!important;
+    padding:9px!important;
+    margin-bottom:8px!important;
+  }
+
+  #btnEnviar{
+    margin-top:10px!important;
+    min-height:52px!important;
+    height:52px!important;
+    font-size:18px!important;
+    border-radius:18px!important;
+  }
+
+  .actions{
+    gap:8px!important;
+    margin-top:10px!important;
+  }
+
+  .actions a,
+  .actions button{
+    min-height:48px!important;
+    height:48px!important;
+    font-size:16px!important;
+    border-radius:17px!important;
+  }
+
+  /* Chat: visible como botón flotante chico, no como barra enorme */
+  #chatLiteOpenBtn{
+    display:flex!important;
+    position:fixed!important;
+    right:12px!important;
+    bottom:12px!important;
+    width:auto!important;
+    min-width:76px!important;
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 14px!important;
+    border-radius:999px!important;
+    z-index:9998!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:14px!important;
+    font-weight:900!important;
+    color:#07131f!important;
+    background:linear-gradient(135deg,#d4af37,#f7d774)!important;
+    box-shadow:0 10px 26px rgba(0,0,0,.35)!important;
+  }
+
+  #chatLiteOpenBtn::before{
+    content:"💬 ";
+  }
+
+  /* El botón de chat dentro de acciones queda visible también cuando lleguen abajo */
+  #btnContactar{
+    display:block!important;
+  }
+
+  /* deja espacio para el botón flotante chico */
+  #cargaCard{
+    padding-bottom:62px!important;
+  }
+}
+
+@media (max-width:390px){
+  #aliasBox{font-size:16.5px!important;}
+  #cbuBox{font-size:14.8px!important;letter-spacing:.7px!important;}
+  #cargaCard h1{font-size:27px!important;}
+  #cargaCard .transfer-card .data-row{grid-template-columns:minmax(0,1fr) 74px!important;}
+}
+</style>
+
+<script id="landing-v7-mobile-flujo-js">
+(function(){
+  if(window.__LANDING_V7_MOBILE_FLUJO__) return;
+  window.__LANDING_V7_MOBILE_FLUJO__ = true;
+
+  const $ = id => document.getElementById(id);
+  const safe = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
+
+  function setBodyTipo(){
+    const tipo = String(window.tipoSolicitudActual || 'CARGA').toUpperCase();
+    document.body.classList.toggle('tipo-retiro', tipo === 'RETIRO');
+    document.body.classList.toggle('tipo-carga', tipo !== 'RETIRO');
+
+    const trans = $('datosTransferenciaBox');
+    const retiro = $('retiroDatosBox');
+    if(trans) trans.classList.toggle('hidden', tipo === 'RETIRO');
+    if(retiro) retiro.classList.toggle('hidden', tipo !== 'RETIRO');
+  }
+
+  function syncTitularBilletera(){
+    try{
+      const b = window.billeteraActiva || billeteraActiva || null;
+      if(!b) return;
+      const titular = b.titular || b.TITULAR || b.nombre_titular || b.NOMBRE_TITULAR || b.titular_cuenta || b.nombre || b.NOMBRE || b.nombre_visible || b.billetera_nombre || '';
+      const banco = b.banco || b.BANCO || b.tipo || b.TIPO || 'Mercado Pago';
+
+      if($('titularBox')) $('titularBox').textContent = titular || 'Consultar';
+      if($('bancoBox')) $('bancoBox').textContent = banco || 'Mercado Pago';
+      if($('walletTitular')) $('walletTitular').textContent = titular || 'Consultar';
+      if($('walletBanco')) $('walletBanco').textContent = banco || '';
+    }catch(e){}
+  }
+
+  // Reemplaza el menú de usuario por uno mínimo y lo sube arriba de la tarjeta de transferencia.
+  function renderUsuarioMini(){
+    const box = $('datosUsuarioBox');
+    let ud = null;
+    try{ ud = window.userData || userData || null; }catch(e){ ud = window.userData || null; }
+    if(!box || !ud) return;
+
+    box.className = 'user-compact-box';
+    box.innerHTML = `<button class="v7-user-mini" type="button" onclick="abrirDatosUsuarioModal()"><b>${safe(ud.usuario || '')}</b><span>Editar datos</span></button>`;
+
+    const carga = $('cargaCard');
+    const transfer = carga ? carga.querySelector('.transfer-card') : null;
+    if(carga && transfer && box.nextElementSibling !== transfer){
+      try{ carga.insertBefore(box, transfer); }catch(e){}
+    }
+  }
+
+  // Mantiene chat visible. V6 ocultaba duplicados y en algunos casos desaparecía.
+  function asegurarChatVisible(){
+    const btn = $('chatLiteOpenBtn');
+    if(btn){
+      btn.style.display = 'flex';
+      btn.textContent = 'Chat';
+      document.body.appendChild(btn);
+    }
+  }
+
+  const oldRenderDatos = window.renderDatosUsuarioCompacto;
+  window.renderDatosUsuarioCompacto = function(){
+    try{ oldRenderDatos && oldRenderDatos.apply(this, arguments); }catch(e){}
+    renderUsuarioMini();
+  };
+
+  const oldCargarBilletera = window.cargarBilleteraActiva;
+  if(typeof oldCargarBilletera === 'function'){
+    window.cargarBilleteraActiva = async function(){
+      const r = await oldCargarBilletera.apply(this, arguments);
+      setTimeout(syncTitularBilletera, 50);
+      return r;
+    };
+  }
+
+  const oldSeleccionarTipo = window.seleccionarTipoSolicitud;
+  window.seleccionarTipoSolicitud = function(tipo){
+    let r;
+    try{ r = oldSeleccionarTipo && oldSeleccionarTipo.apply(this, arguments); }
+    catch(e){ console.warn('seleccionarTipoSolicitud original:', e); }
+    try{ window.tipoSolicitudActual = String(tipo || 'CARGA').toUpperCase(); }catch(e){}
+    setBodyTipo();
+    setTimeout(setBodyTipo, 80);
+    return r;
+  };
+
+  const oldMostrarCarga = window.mostrarCarga;
+  if(typeof oldMostrarCarga === 'function'){
+    window.mostrarCarga = function(){
+      const r = oldMostrarCarga.apply(this, arguments);
+      setTimeout(()=>{
+        renderUsuarioMini();
+        setBodyTipo();
+        syncTitularBilletera();
+        asegurarChatVisible();
+      }, 120);
+      return r;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    setBodyTipo();
+    asegurarChatVisible();
+    setTimeout(()=>{renderUsuarioMini();syncTitularBilletera();setBodyTipo();asegurarChatVisible();},500);
+  });
+
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{renderUsuarioMini();syncTitularBilletera();setBodyTipo();asegurarChatVisible();},700);
+    setTimeout(()=>{renderUsuarioMini();syncTitularBilletera();setBodyTipo();asegurarChatVisible();},1800);
+  });
 })();
 </script>
 
