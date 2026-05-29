@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Estado V2 · Estado fix</title>
+<title>BET300 · Cargas/Retiros · Blindada V5 · Modal fix</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -1249,6 +1249,205 @@ function iniciarRealtimeChatLanding(){return}
     const aid='alias_'+Math.random().toString(36).slice(2), cid='cbu_'+Math.random().toString(36).slice(2);
     return `<div class="transfer-lite-card"><div class="transfer-lite-title">${esc(nombre)}</div>${alias?`<div class="transfer-lite-label">ALIAS</div><div id="${aid}" class="transfer-lite-value">${esc(alias)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${aid}','Alias copiado')">Copiar alias</button>`:''}${cbu?`<div class="transfer-lite-label">CBU / CVU</div><div id="${cid}" class="transfer-lite-value">${esc(cbu)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${cid}','CBU/CVU copiado')">Copiar CBU / CVU</button>`:''}${titular?`<div class="transfer-lite-label">TITULAR</div><div style="font-weight:900;margin-bottom:9px;word-break:break-word">${esc(titular)}</div>`:''}${banco?`<div style="font-size:12px;color:#cbd5e1;font-weight:800;margin-top:6px">Banco: ${esc(banco)}</div>`:''}<div class="transfer-lite-note">Cuando realices la transferencia, envia el comprobante por aca.</div></div>`;
   };
+})();
+</script>
+
+
+<script id="landing-v5-modal-confirmacion-fix">
+(function(){
+  if(window.__LANDING_V5_MODAL_CONFIRMACION_FIX__) return;
+  window.__LANDING_V5_MODAL_CONFIRMACION_FIX__ = true;
+
+  const $id = id => document.getElementById(id);
+  const norm = v => {
+    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+    catch(e){return String(v ?? '').trim().toUpperCase();}
+  };
+
+  function esOkFinal(estado){
+    const e = norm(estado);
+    return [
+      'ACREDITADA','ACREDITADO',
+      'APROBADA','APROBADO',
+      'COMPLETADA','COMPLETADO',
+      'PAGADA','PAGADO',
+      'OK',
+      'FINALIZADA','FINALIZADO',
+      'CERRADA','CERRADO',
+      'REALIZADA','REALIZADO'
+    ].includes(e);
+  }
+
+  function esCanceladoFinal(estado){
+    const e = norm(estado);
+    return e.includes('RECHAZ') || e.includes('CANCEL') || e.includes('ANUL') || e.includes('ERROR');
+  }
+
+  function estadoFromRow(row){
+    return row?.estado || row?.estado_solicitud || row?.solicitud_estado || row?.estado_final || row?.estado_panel || row?.status || row?.resultado || '';
+  }
+
+  function tipoFromRow(row){
+    return norm(row?.tipo || row?.tipo_solicitud || window.tipoSolicitudActual || 'CARGA');
+  }
+
+  function mostrarModalCargaAcreditada(row){
+    const modal = $id('successModal');
+    if(!modal) return;
+
+    const title = modal.querySelector('h2');
+    const p = modal.querySelector('p');
+
+    if(title) title.textContent = '¡Fichas cargadas!';
+    if(p){
+      const monto = row?.monto || row?.monto_final || row?.monto_aprobado || '';
+      p.innerHTML = monto
+        ? 'Tu carga fue acreditada correctamente.<br><b>Monto: $' + Number(monto || 0).toLocaleString('es-AR') + '</b>'
+        : 'Tu carga fue acreditada correctamente.';
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    try{
+      if(navigator.vibrate) navigator.vibrate([160,80,160]);
+    }catch(e){}
+
+    try{
+      sessionStorage.removeItem(window.LS_SOLICITUD || 'solicitud_actual');
+    }catch(e){}
+  }
+
+  async function consultarEstadoSolicitudUnaVez(){
+    if(!window.solicitudActual) return null;
+
+    const chatParam = String(window.solicitudChatId || window.chatSessionId || '').trim();
+    const tokenChat = window.chatSessionToken || sessionStorage.getItem(window.LS_CHAT_TOKEN || '') || '';
+
+    const {data,error} = await supabaseClient.rpc('landing_estado_solicitud_segura',{
+      p_solicitud_id: Number(window.solicitudActual),
+      p_chat_id: chatParam ? Number(chatParam) : null,
+      p_chat_token: tokenChat
+    });
+
+    if(error){
+      if(window.DEBUG) console.error('Estado solicitud error:', error);
+      return {error};
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if(!row){
+      if(window.DEBUG) console.warn('Estado solicitud vacío', {solicitudActual:window.solicitudActual, chatParam, data});
+      return null;
+    }
+
+    return row;
+  }
+
+  window.consultarEstadoSolicitudUnaVez = consultarEstadoSolicitudUnaVez;
+  window.mostrarModalCargaAcreditada = mostrarModalCargaAcreditada;
+
+  window.iniciarEscuchaEstado = function(){
+    if(window.intervaloEstado) clearInterval(window.intervaloEstado);
+
+    let cerrado = false;
+
+    const revisar = async () => {
+      if(cerrado || !window.solicitudActual) return;
+
+      const row = await consultarEstadoSolicitudUnaVez();
+      if(!row || row.error) return;
+
+      const estado = estadoFromRow(row);
+      const tipo = tipoFromRow(row);
+
+      window.tipoSolicitudActual = tipo || window.tipoSolicitudActual || 'CARGA';
+
+      try{
+        if(typeof renderProgresoSolicitud === 'function'){
+          renderProgresoSolicitud(estado || 'PENDIENTE');
+        }
+      }catch(e){}
+
+      if(esOkFinal(estado)){
+        cerrado = true;
+        if(window.intervaloEstado){
+          clearInterval(window.intervaloEstado);
+          window.intervaloEstado = null;
+        }
+
+        if(tipo === 'RETIRO'){
+          try{
+            if(typeof mostrarResultado === 'function'){
+              mostrarResultado('OK Tu retiro fue aprobado/pagado. Ya fue informado por el panel.', true);
+            }
+          }catch(e){}
+          setTimeout(()=>{
+            try{ if(typeof resetLandingEstado === 'function') resetLandingEstado(); }catch(e){}
+            location.reload();
+          }, 4200);
+        }else{
+          mostrarModalCargaAcreditada(row);
+          // Ya no recargamos automático enseguida: el usuario ve la confirmación y elige ingresar.
+        }
+
+        return;
+      }
+
+      if(esCanceladoFinal(estado)){
+        cerrado = true;
+        if(window.intervaloEstado){
+          clearInterval(window.intervaloEstado);
+          window.intervaloEstado = null;
+        }
+
+        try{
+          if(typeof mostrarResultado === 'function'){
+            mostrarResultado(
+              norm(estado).includes('CANCEL') || norm(estado).includes('ANUL')
+                ? 'La solicitud fue cancelada. Si ya transferiste, contactanos por chat.'
+                : 'La solicitud no pudo ser aprobada. Contactanos por chat.',
+              false
+            );
+          }
+        }catch(e){}
+
+        setTimeout(()=>{
+          try{ if(typeof resetLandingEstado === 'function') resetLandingEstado(); }catch(e){}
+          location.reload();
+        }, 4200);
+      }
+    };
+
+    // Revisión inmediata: evita esperar al próximo intervalo si el panel ya aprobó.
+    revisar();
+    setTimeout(revisar, 700);
+    setTimeout(revisar, 1800);
+
+    window.intervaloEstado = setInterval(revisar, 1500);
+  };
+
+  // Cierre más claro: al cerrar la confirmación se reinicia estado y recarga.
+  window.cerrarModalExito = function(){
+    const modal = $id('successModal');
+    if(modal){
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+    try{ if(typeof resetLandingEstado === 'function') resetLandingEstado(); }catch(e){}
+    setTimeout(()=>location.reload(),300);
+  };
+
+  // Si entra con una solicitud pendiente en sessionStorage, fuerza revisión al cargar.
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{
+      try{
+        if(window.solicitudActual){
+          window.iniciarEscuchaEstado();
+        }
+      }catch(e){}
+    }, 1000);
+  });
 })();
 </script>
 
