@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Blindada V8 · Modal realtime</title>
+<title>BET300 · Cargas/Retiros · Blindada V9 · Confirmación inmediata</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -2526,6 +2526,384 @@ function iniciarRealtimeChatLanding(){return}
       iniciarMonitorV8();
     }
   }, 1000);
+
+})();
+</script>
+
+
+<script id="landing-v9-confirmacion-inmediata-storage-scope">
+(function(){
+  if(window.__LANDING_V9_CONFIRMACION_INMEDIATA__) return;
+  window.__LANDING_V9_CONFIRMACION_INMEDIATA__ = true;
+
+  const $ = id => document.getElementById(id);
+
+  function norm(v){
+    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+    catch(e){return String(v ?? '').trim().toUpperCase();}
+  }
+
+  function safeParse(raw){
+    if(!raw) return null;
+    try{return JSON.parse(raw);}catch(e){return raw;}
+  }
+
+  function storageEntries(){
+    const out = [];
+    [sessionStorage, localStorage].forEach(store=>{
+      try{
+        for(let i=0;i<store.length;i++){
+          const k = store.key(i);
+          out.push({store,key:k,value:store.getItem(k)});
+        }
+      }catch(e){}
+    });
+    return out;
+  }
+
+  function getSolicitudObjV9(){
+    const candidates = [];
+
+    // 1) variables, si existieran en window
+    if(Number(window.solicitudActual)){
+      candidates.push({
+        id:Number(window.solicitudActual),
+        chat_id:Number(window.solicitudChatId || window.chatSessionId || 0) || null,
+        chat_token:window.chatSessionToken || '',
+        tipo:window.tipoSolicitudActual || 'CARGA',
+        source:'window'
+      });
+    }
+
+    // 2) cualquier clave real usada por esta landing: solicitud_actual_rt-z9p42, etc.
+    storageEntries().forEach(e=>{
+      const k = String(e.key || '');
+      if(
+        k === 'solicitud_actual' ||
+        k === 'solicitudActual' ||
+        k.includes('solicitud_actual') ||
+        k.includes('bet300_solicitud') ||
+        k.includes('landing_solicitud')
+      ){
+        const v = safeParse(e.value);
+        if(v && typeof v === 'object'){
+          const id = Number(v.id || v.solicitud_id || v.solicitudId || v.worker_solicitud_id || 0);
+          if(id){
+            candidates.push({
+              id,
+              chat_id:Number(v.chat_id || v.chatId || v.chat || 0) || null,
+              chat_token:String(v.chat_token || v.chatToken || v.token || ''),
+              tipo:String(v.tipo || v.tipo_solicitud || v.solicitud_tipo || window.tipoSolicitudActual || 'CARGA'),
+              source:k
+            });
+          }
+        }else if(Number(v)){
+          candidates.push({
+            id:Number(v),
+            chat_id:null,
+            chat_token:'',
+            tipo:String(window.tipoSolicitudActual || 'CARGA'),
+            source:k
+          });
+        }
+      }
+    });
+
+    // 3) mirror V9, si ya existe
+    const mirror = safeParse(sessionStorage.getItem('landing_v9_solicitud_actual') || localStorage.getItem('landing_v9_solicitud_actual'));
+    if(mirror && typeof mirror === 'object' && Number(mirror.id)){
+      candidates.push({...mirror, id:Number(mirror.id), source:'landing_v9_solicitud_actual'});
+    }
+
+    // Nos quedamos con el último candidato válido.
+    return candidates.length ? candidates[candidates.length - 1] : null;
+  }
+
+  function getChatIdV9(obj){
+    if(obj?.chat_id) return Number(obj.chat_id);
+
+    const entries = storageEntries();
+    for(const e of entries){
+      const k = String(e.key || '').toLowerCase();
+      if(k.includes('chat') && !k.includes('token') && Number(e.value)){
+        return Number(e.value);
+      }
+    }
+
+    if(Number(window.chatSessionId)) return Number(window.chatSessionId);
+    if(Number(window.solicitudChatId)) return Number(window.solicitudChatId);
+
+    return null;
+  }
+
+  function getChatTokenV9(obj){
+    if(obj?.chat_token) return String(obj.chat_token);
+
+    const entries = storageEntries();
+    for(const e of entries){
+      const k = String(e.key || '').toLowerCase();
+      if(k.includes('chat') && k.includes('token') && e.value){
+        return String(e.value);
+      }
+    }
+
+    return String(window.chatSessionToken || window.chatToken || '');
+  }
+
+  function estadoV9(row){
+    return (
+      row?.estado ||
+      row?.estado_solicitud ||
+      row?.solicitud_estado ||
+      row?.estado_final ||
+      row?.estado_panel ||
+      row?.estado_publico ||
+      row?.status ||
+      row?.resultado ||
+      row?.solicitud?.estado ||
+      row?.data?.estado ||
+      ''
+    );
+  }
+
+  function tipoV9(row,obj){
+    return norm(
+      row?.tipo ||
+      row?.tipo_solicitud ||
+      row?.solicitud_tipo ||
+      row?.solicitud?.tipo ||
+      row?.data?.tipo ||
+      obj?.tipo ||
+      window.tipoSolicitudActual ||
+      'CARGA'
+    );
+  }
+
+  function okFinalV9(estado){
+    const e = norm(estado);
+    return [
+      'ACREDITADA','ACREDITADO',
+      'APROBADA','APROBADO',
+      'COMPLETADA','COMPLETADO',
+      'PAGADA','PAGADO',
+      'OK',
+      'FINALIZADA','FINALIZADO',
+      'CERRADA','CERRADO',
+      'REALIZADA','REALIZADO'
+    ].includes(e);
+  }
+
+  function cancelFinalV9(estado){
+    const e = norm(estado);
+    return e.includes('RECHAZ') || e.includes('CANCEL') || e.includes('ANUL') || e.includes('ERROR');
+  }
+
+  async function consultarEstadoV9(){
+    const obj = getSolicitudObjV9();
+    if(!obj?.id || !window.supabaseClient) return null;
+
+    const payload = {
+      p_solicitud_id:Number(obj.id),
+      p_chat_id:getChatIdV9(obj),
+      p_chat_token:getChatTokenV9(obj)
+    };
+
+    try{
+      const {data,error} = await supabaseClient.rpc('landing_estado_solicitud_segura', payload);
+      if(error){
+        console.warn('[V9 confirmacion] error estado', error, payload, obj);
+        return null;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if(row){
+        window.__landingV9UltimoEstado = row;
+        window.__landingV9UltimaSolicitud = obj;
+      }
+      return row || null;
+    }catch(e){
+      console.warn('[V9 confirmacion] excepción estado', e, payload, obj);
+      return null;
+    }
+  }
+
+  function abrirModalCargaV9(row){
+    if(window.__landingV9ModalAbierto) return;
+    window.__landingV9ModalAbierto = true;
+
+    if(window.__landingV9Timer){
+      clearInterval(window.__landingV9Timer);
+      window.__landingV9Timer = null;
+    }
+
+    const modal = $('successModal') || $('modalExito') || $('modalSuccess');
+    const monto = row?.monto || row?.monto_final || row?.monto_aprobado || row?.importe || row?.solicitud?.monto || '';
+
+    if(modal){
+      const title = modal.querySelector('h1,h2,h3,.title');
+      const p = modal.querySelector('p,.modal-text,.content');
+
+      if(title) title.textContent = '¡Carga acreditada!';
+      if(p){
+        p.innerHTML = monto
+          ? 'Tu carga fue acreditada correctamente.<br><b>Monto: $' + Number(monto || 0).toLocaleString('es-AR') + '</b>'
+          : 'Tu carga fue acreditada correctamente.';
+      }
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+      modal.setAttribute('data-v9-open','1');
+    }else{
+      const div = document.createElement('div');
+      div.id = 'successModal';
+      div.setAttribute('data-v9-open','1');
+      div.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px;';
+      div.innerHTML = `
+        <div style="max-width:440px;width:100%;background:#111923;color:#fff;border:1px solid rgba(212,175,55,.55);border-radius:22px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.55);font-family:system-ui,-apple-system,Segoe UI,sans-serif;">
+          <h2 style="font-size:28px;margin:0 0 12px;">¡Carga acreditada!</h2>
+          <p style="font-size:18px;line-height:1.35;margin:0 0 18px;">Tu carga fue acreditada correctamente.</p>
+          <button type="button" id="v9CerrarModalExito" style="width:100%;height:54px;border:0;border-radius:16px;background:#d4af37;color:#061018;font-weight:900;font-size:18px;">Cerrar</button>
+        </div>
+      `;
+      document.body.appendChild(div);
+      const btn = $('v9CerrarModalExito');
+      if(btn) btn.onclick = () => {
+        limpiarSolicitudLocalV9();
+        location.reload();
+      };
+    }
+
+    try{ if(navigator.vibrate) navigator.vibrate([160,70,160]); }catch(e){}
+  }
+
+  function retiroOkV9(row){
+    if(window.__landingV9RetiroOk) return;
+    window.__landingV9RetiroOk = true;
+
+    if(window.__landingV9Timer){
+      clearInterval(window.__landingV9Timer);
+      window.__landingV9Timer = null;
+    }
+
+    try{
+      if(typeof mostrarResultado === 'function'){
+        mostrarResultado('Tu retiro fue aprobado/pagado correctamente.', true);
+      }
+    }catch(e){}
+
+    setTimeout(()=>{
+      limpiarSolicitudLocalV9();
+      location.reload();
+    }, 2800);
+  }
+
+  function limpiarSolicitudLocalV9(){
+    storageEntries().forEach(e=>{
+      const k = String(e.key || '');
+      if(
+        k === 'solicitud_actual' ||
+        k === 'solicitudActual' ||
+        k.includes('solicitud_actual') ||
+        k.includes('bet300_solicitud') ||
+        k.includes('landing_solicitud') ||
+        k === 'landing_v9_solicitud_actual'
+      ){
+        try{ e.store.removeItem(k); }catch(_){}
+      }
+    });
+    window.solicitudActual = null;
+  }
+
+  async function tickV9(){
+    const obj = getSolicitudObjV9();
+    if(!obj?.id) return;
+
+    const row = await consultarEstadoV9();
+    if(!row) return;
+
+    const estado = estadoV9(row);
+    const tipo = tipoV9(row,obj);
+
+    try{
+      if(typeof renderProgresoSolicitud === 'function'){
+        renderProgresoSolicitud(estado || 'PENDIENTE');
+      }
+    }catch(e){}
+
+    if(okFinalV9(estado)){
+      if(tipo === 'RETIRO') retiroOkV9(row);
+      else abrirModalCargaV9(row);
+      return;
+    }
+
+    if(cancelFinalV9(estado)){
+      if(window.__landingV9Timer){
+        clearInterval(window.__landingV9Timer);
+        window.__landingV9Timer = null;
+      }
+      try{
+        if(typeof mostrarResultado === 'function'){
+          mostrarResultado('La solicitud fue rechazada/cancelada. Contactanos por chat.', false);
+        }
+      }catch(e){}
+    }
+  }
+
+  function iniciarV9(){
+    if(window.__landingV9Timer) clearInterval(window.__landingV9Timer);
+
+    // Primeras consultas agresivas para que el OK aparezca casi al instante.
+    [80,250,500,900,1300,2000,3000].forEach(ms=>setTimeout(tickV9,ms));
+
+    // Luego polling rápido pero no pesado.
+    window.__landingV9Timer = setInterval(tickV9, 750);
+  }
+
+  // Espeja la solicitud cuando se guarda, para no depender del nombre dinámico interno.
+  const oldGuardar = window.guardarSolicitudLocal;
+  if(typeof oldGuardar === 'function'){
+    window.guardarSolicitudLocal = function(id,chatId,chatToken,tipo){
+      const r = oldGuardar.apply(this, arguments);
+      try{
+        const obj = {
+          id:Number(id),
+          chat_id:chatId ? Number(chatId) : null,
+          chat_token:chatToken || '',
+          tipo:tipo || window.tipoSolicitudActual || 'CARGA',
+          t:Date.now()
+        };
+        sessionStorage.setItem('landing_v9_solicitud_actual', JSON.stringify(obj));
+        window.solicitudActual = String(id || '');
+        window.solicitudChatId = chatId ? String(chatId) : '';
+        if(chatToken) window.chatSessionToken = String(chatToken);
+      }catch(e){}
+      iniciarV9();
+      return r;
+    };
+  }
+
+  window.iniciarEscuchaEstado = iniciarV9;
+  window.landingV9CheckAhora = tickV9;
+
+  window.addEventListener('load', ()=>{
+    setTimeout(iniciarV9, 300);
+    setTimeout(iniciarV9, 1200);
+  });
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden) setTimeout(tickV9, 120);
+  });
+
+  // Detecta cuando aparece una solicitud nueva por cualquier storage key.
+  let lastId = null;
+  setInterval(()=>{
+    const obj = getSolicitudObjV9();
+    const id = obj?.id || null;
+    if(id && id !== lastId){
+      lastId = id;
+      iniciarV9();
+    }
+  }, 500);
 
 })();
 </script>
