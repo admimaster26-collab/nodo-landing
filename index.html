@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Blindada V5 · Modal fix</title>
+<title>BET300 · Cargas/Retiros · Blindada V6 · Mobile compacto</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -1448,6 +1448,362 @@ function iniciarRealtimeChatLanding(){return}
       }catch(e){}
     }, 1000);
   });
+})();
+</script>
+
+
+<style id="landing-v6-mobile-compact">
+/* =========================================================
+   V6 MOBILE COMPACT
+   Objetivo: que carga/retiro entren con menos scroll en celular,
+   sin romper lógica ni quitar datos obligatorios.
+   ========================================================= */
+
+@media (max-width: 640px){
+
+  html, body{
+    min-height:100%;
+    overflow-x:hidden!important;
+    scroll-behavior:auto!important;
+  }
+
+  body{
+    padding:10px!important;
+  }
+
+  .wrap,
+  .container,
+  main,
+  .main,
+  .page,
+  .app,
+  .card,
+  .panel{
+    max-width:100%!important;
+  }
+
+  /* Contenedor principal */
+  .wrap,
+  .container,
+  main{
+    padding:0!important;
+  }
+
+  /* Logo */
+  header,
+  .brand,
+  .logo-wrap{
+    margin:4px 0 10px!important;
+    padding:0!important;
+  }
+
+  img[alt="BET300"],
+  .logo img{
+    max-height:34px!important;
+  }
+
+  /* Tarjeta principal */
+  .card,
+  .panel,
+  .box,
+  .section{
+    border-radius:22px!important;
+  }
+
+  .card:first-of-type,
+  .panel:first-of-type,
+  .main-card{
+    padding:18px 16px!important;
+  }
+
+  h1{
+    font-size:34px!important;
+    line-height:1.04!important;
+    margin:0 0 10px!important;
+    letter-spacing:-.6px!important;
+  }
+
+  h2{
+    font-size:21px!important;
+    margin:0 0 10px!important;
+  }
+
+  h3{
+    font-size:19px!important;
+    margin:0 0 8px!important;
+  }
+
+  p,
+  .muted,
+  .help,
+  .desc{
+    font-size:15px!important;
+    line-height:1.35!important;
+    margin-top:4px!important;
+    margin-bottom:10px!important;
+  }
+
+  label{
+    font-size:15px!important;
+    line-height:1.15!important;
+    margin:8px 0 6px!important;
+  }
+
+  input,
+  select,
+  textarea{
+    min-height:52px!important;
+    height:52px!important;
+    padding:0 18px!important;
+    font-size:18px!important;
+    border-radius:16px!important;
+  }
+
+  textarea{
+    min-height:70px!important;
+    height:70px!important;
+    padding-top:12px!important;
+  }
+
+  button,
+  .btn{
+    min-height:54px!important;
+    padding:0 18px!important;
+    font-size:18px!important;
+    border-radius:18px!important;
+  }
+
+  /* Datos para transferir */
+  .wallet-box,
+  .datos-transferir,
+  .transfer-card,
+  .account-card{
+    padding:16px 14px!important;
+    margin:14px 0!important;
+    border-radius:20px!important;
+  }
+
+  .wallet-box h2,
+  .datos-transferir h2,
+  .transfer-card h2,
+  .account-card h2{
+    font-size:21px!important;
+    margin-bottom:12px!important;
+  }
+
+  .wallet-box .value,
+  .transfer-card .value,
+  .account-card .value,
+  .alias-value,
+  .cbu-value{
+    font-size:22px!important;
+    line-height:1.12!important;
+    word-break:break-word!important;
+  }
+
+  .copy-row,
+  .row-copy,
+  .copy-line{
+    display:grid!important;
+    grid-template-columns:1fr auto!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+
+  .copy-row button,
+  .row-copy button,
+  .copy-line button,
+  button.copy{
+    min-height:46px!important;
+    padding:0 16px!important;
+    font-size:15px!important;
+    border-radius:16px!important;
+  }
+
+  /* Usuario validado */
+  .user-card,
+  .validated-user,
+  .usuario-card{
+    padding:13px 14px!important;
+    margin:12px 0!important;
+    border-radius:18px!important;
+  }
+
+  .user-card b,
+  .validated-user b,
+  .usuario-card b{
+    font-size:17px!important;
+  }
+
+  /* Tipo cargar / retirar */
+  .type-grid,
+  .tipo-grid,
+  .toggle-row,
+  .segmented{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:10px!important;
+    margin:10px 0 14px!important;
+  }
+
+  .type-grid button,
+  .tipo-grid button,
+  .toggle-row button,
+  .segmented button{
+    min-height:50px!important;
+    font-size:18px!important;
+  }
+
+  /* Form de retiro: compactar y agrupar */
+  .transfer-person-card,
+  .datos-quien-transfiere,
+  .withdraw-extra,
+  .retiro-extra,
+  .withdraw-card{
+    padding:14px!important;
+    margin:12px 0!important;
+    border-radius:18px!important;
+  }
+
+  .transfer-person-card p,
+  .datos-quien-transfiere p,
+  .withdraw-extra p,
+  .retiro-extra p,
+  .withdraw-card p{
+    font-size:14px!important;
+    line-height:1.25!important;
+    margin-bottom:8px!important;
+  }
+
+  /* En mobile: select del medio más grande y en bloque limpio */
+  select{
+    width:100%!important;
+  }
+
+  /* Bloques de cuenta destino retiro */
+  .destino-retiro,
+  .withdraw-destiny,
+  .cuenta-destino{
+    padding:14px!important;
+    margin:12px 0!important;
+    border-radius:18px!important;
+  }
+
+  /* Botones finales */
+  .actions,
+  .action-stack,
+  .final-actions,
+  .footer-actions{
+    display:grid!important;
+    gap:10px!important;
+    margin-top:14px!important;
+  }
+
+  .actions button,
+  .action-stack button,
+  .final-actions button,
+  .footer-actions button{
+    min-height:54px!important;
+  }
+
+  /* Botón chat fijo: en mobile no debe robar pantalla.
+     Lo dejamos normal al final del flujo y más compacto. */
+  .chat-sticky,
+  .fixed-chat,
+  #chatFloatingBtn,
+  #btnChatFloating,
+  .btn-chat-fixed,
+  .whatsapp-sticky{
+    position:static!important;
+    left:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    width:100%!important;
+    margin:10px 0!important;
+    z-index:auto!important;
+    box-shadow:none!important;
+  }
+
+  /* Si el botón chatear está duplicado por clase genérica, ocultamos el flotante duplicado,
+     pero no ocultamos el botón normal del formulario. */
+  body .chat-floating,
+  body .floating-chat{
+    position:static!important;
+    width:100%!important;
+    margin:10px 0!important;
+  }
+
+  /* Reducir espacios finales */
+  .safe-bottom,
+  .bottom-space,
+  .footer-note{
+    margin-bottom:12px!important;
+    padding-bottom:12px!important;
+  }
+
+  footer{
+    padding-bottom:10px!important;
+  }
+
+  /* Evita que una tarjeta interna genere otro scroll */
+  .scroll-box,
+  .inner-scroll,
+  .form-scroll{
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
+
+/* Extra compacto para celulares chicos */
+@media (max-width: 390px){
+  body{padding:8px!important;}
+  h1{font-size:31px!important;}
+  input,select,button,.btn{min-height:50px!important;height:50px!important;font-size:17px!important;}
+  .card:first-of-type,.panel:first-of-type,.main-card{padding:16px 14px!important;}
+  .wallet-box,.datos-transferir,.transfer-card,.account-card{padding:14px 12px!important;}
+}
+</style>
+
+<script id="landing-v6-mobile-compact-js">
+(function(){
+  if(window.__LANDING_V6_MOBILE_COMPACT__) return;
+  window.__LANDING_V6_MOBILE_COMPACT__ = true;
+
+  function compactarMobile(){
+    if(!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) return;
+
+    document.documentElement.classList.add('landing-mobile-compact');
+    document.body.classList.add('landing-mobile-compact');
+
+    // Si hay más de un botón "Chatear con nosotros", dejamos solo el último visible dentro del flujo.
+    const chatBtns = Array.from(document.querySelectorAll('button,a')).filter(el=>{
+      return /chatear con nosotros/i.test(el.textContent || '');
+    });
+
+    if(chatBtns.length > 1){
+      chatBtns.forEach((el,idx)=>{
+        if(idx < chatBtns.length - 1){
+          el.style.display = 'none';
+        }
+      });
+    }
+
+    // Mueve el botón de chat al final del formulario si quedó fijo antes de tiempo.
+    const visibleChat = chatBtns[chatBtns.length - 1];
+    const mainCard = document.querySelector('.card,.panel,main,.main-card');
+    if(visibleChat && mainCard && visibleChat.parentElement !== mainCard){
+      try{ mainCard.appendChild(visibleChat); }catch(e){}
+    }
+
+    // Si el texto inferior está demasiado separado, lo acerca.
+    document.querySelectorAll('.footer-note,.small-note,.nota-final').forEach(el=>{
+      el.style.marginTop = '10px';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', compactarMobile);
+  window.addEventListener('load', ()=>setTimeout(compactarMobile,300));
+  window.addEventListener('resize', ()=>setTimeout(compactarMobile,150));
 })();
 </script>
 
