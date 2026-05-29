@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · UX OK Operable Fix</title>
+<title>NODO · OPERATIVO V21 · UX OK Wallet Memory Fix</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -10811,6 +10811,337 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
     hardMoneyRefresh('intervalo');
   }, 9000);
 
+})();
+</script>
+
+
+<script id="nodo-v21-wallet-memory-fix">
+(function(){
+  if(window.__NODO_V21_WALLET_MEMORY_FIX__) return;
+  window.__NODO_V21_WALLET_MEMORY_FIX__ = true;
+
+  const $ = id => document.getElementById(id);
+  const s = v => String(v ?? '').trim();
+
+  const LS_LAST_WALLET = 'nodo_v21_last_wallet_id';
+  const LS_LAST_WALLET_NAME = 'nodo_v21_last_wallet_name';
+
+  function allWallets(){
+    try{return window.billeteras || billeteras || [];}catch(e){return [];}
+  }
+
+  function wid(w){
+    return w?.id || w?.ID || w?.id_billetera || w?.BILLETERA_ID || w?.wallet_id || '';
+  }
+
+  function wname(w){
+    return w?.nombre_visible || w?.NOMBRE_VISIBLE || w?.BILLETERA_NOMBRE || w?.billetera_nombre || w?.nombre || w?.titular || w?.TITULAR || 'Billetera';
+  }
+
+  function byId(id){
+    if(!id) return null;
+    return allWallets().find(w => String(wid(w)) === String(id)) || null;
+  }
+
+  function visibleWalletSelects(){
+    const ids = [
+      'nodoCleanWallet',
+      'nodoCleanBilletera',
+      'manualWorkerBilleteraInicio',
+      'manualWorkerBilletera',
+      'quickWallet',
+      'qWallet',
+      'billeteraImpactada',
+      'billeteraSeleccionada'
+    ];
+    const found = ids.map($).filter(Boolean);
+
+    document.querySelectorAll('select').forEach(sel=>{
+      const txt = (sel.id + ' ' + sel.name + ' ' + (sel.closest('.nodo-clean-quick,.quick,.ops-panel,.card')?.textContent || '')).toLowerCase();
+      if(txt.includes('billetera') || txt.includes('wallet')){
+        if(!found.includes(sel)) found.push(sel);
+      }
+    });
+
+    return found;
+  }
+
+  function selectedWalletId(){
+    for(const sel of visibleWalletSelects()){
+      const v = s(sel.value);
+      if(v && v !== '0' && v !== 'null' && v !== 'undefined' && v !== 'NO_APLICA') return v;
+    }
+
+    const stored = s(localStorage.getItem(LS_LAST_WALLET) || localStorage.getItem('nodoUltimaBilleteraImpactada') || localStorage.getItem('nodoCleanWallet') || '');
+    if(stored) return stored;
+
+    const active = allWallets().find(w => w.seleccionada_manual === true || w.SELECCIONADA_MANUAL === true || w.activa === true || w.ACTIVA === true);
+    if(active) return String(wid(active));
+
+    const first = allWallets()[0];
+    return first ? String(wid(first)) : '';
+  }
+
+  function selectedWallet(){
+    return byId(selectedWalletId());
+  }
+
+  function rememberWallet(id){
+    const w = byId(id);
+    if(!w) return;
+
+    localStorage.setItem(LS_LAST_WALLET, String(wid(w)));
+    localStorage.setItem(LS_LAST_WALLET_NAME, wname(w));
+    localStorage.setItem('nodoUltimaBilleteraImpactada', String(wid(w)));
+    localStorage.setItem('nodoCleanWallet', String(wid(w)));
+
+    visibleWalletSelects().forEach(sel=>{
+      try{
+        if([...sel.options].some(o => String(o.value) === String(wid(w)))){
+          sel.value = String(wid(w));
+        }
+      }catch(e){}
+    });
+  }
+
+  function syncVisibleWallet(){
+    const id = selectedWalletId();
+    if(id) rememberWallet(id);
+  }
+
+  window.nodoV21GetSelectedWalletId = selectedWalletId;
+  window.nodoV21GetSelectedWallet = selectedWallet;
+  window.nodoV21RememberWallet = rememberWallet;
+
+  // Refuerza botones "Usar" existentes sin depender del nombre de función anterior.
+  const oldUseWallets = [
+    ['usarBilleteraRapida', window.usarBilleteraRapida],
+    ['usarBilleteraV20', window.usarBilleteraV20],
+    ['useWallet', window.useWallet],
+    ['seleccionarBilleteraRapida', window.seleccionarBilleteraRapida]
+  ];
+
+  oldUseWallets.forEach(([name,fn])=>{
+    if(typeof fn === 'function' && !fn.__walletMemory){
+      window[name] = function(id){
+        const r = fn.apply(this, arguments);
+        rememberWallet(id);
+        try{ if(typeof renderCentroOperativo === 'function') renderCentroOperativo(); }catch(e){}
+        try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+        return r;
+      };
+      window[name].__walletMemory = true;
+    }
+  });
+
+  // Captura cambios manuales del select.
+  document.addEventListener('change', function(ev){
+    const el = ev.target;
+    if(!el || el.tagName !== 'SELECT') return;
+    const text = (el.id + ' ' + el.name + ' ' + (el.closest('.nodo-clean-quick,.quick,.ops-panel,.card')?.textContent || '')).toLowerCase();
+    if(text.includes('billetera') || text.includes('wallet')){
+      syncVisibleWallet();
+    }
+  }, true);
+
+  // Reemplaza la función crítica del parche anterior: ahora no falla por no encontrar ID.
+  async function crearJobManualDirectoWalletFixed(user,flow,walletArg){
+    const wallet = walletArg || selectedWallet();
+    if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(flow.tipo) && !wallet){
+      throw new Error('Seleccioná billetera para carga/retiro.');
+    }
+
+    if(wallet) rememberWallet(wid(wallet));
+
+    const pc = (()=>{try{return window.pcOperativa || pcOperativa || localStorage.getItem('nodo_pc_operativa_lite') || 'P1'}catch(e){return localStorage.getItem('nodo_pc_operativa_lite') || 'P1'}})();
+    const operator = (()=>{try{const o=window.operador||operador||{};return o.usuario||o.nombre||o.email||localStorage.getItem('nodo_operador_nombre')||'operador'}catch(e){return localStorage.getItem('nodo_operador_nombre')||'operador'}})();
+
+    const obsBase = s($('nodoCleanObs')?.value || $('manualWorkerObsInicio')?.value || $('manualWorkerObs')?.value || '');
+    const montoSigned = Number(flow.signed || 0);
+    const montoAbs = Math.abs(montoSigned);
+    const obs = [
+      obsBase,
+      `monto_original=${montoSigned}`,
+      `monto_worker=${montoAbs}`,
+      `signo_flujo=${flow.tipo==='PROCESAR_RETIRO'?-1:(flow.tipo==='CARGAR_FICHAS'?1:0)}`,
+      wallet ? `billetera_id=${wid(wallet)}` : '',
+      wallet ? `billetera_nombre=${wname(wallet)}` : '',
+      `operador=${operator}`
+    ].filter(Boolean).join(' · ');
+
+    const payload = {
+      p_pc_codigo: pc,
+      p_usuario: user,
+      p_tipo_accion: flow.tipo,
+      p_monto: flow.tipo === 'VALIDAR_USUARIO' ? 0 : montoAbs,
+      p_origen: 'PANEL_OPERATIVO',
+      p_billetera_id: wallet ? Number(wid(wallet)) : null,
+      p_observacion: obs
+    };
+
+    const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_manual_v2', payload);
+    if(error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+
+    try{
+      if(typeof rememberMeta === 'function') rememberMeta(r?.job_id || r?.id || r?.worker_job_id, user, flow.tipo, montoSigned, wallet);
+    }catch(e){}
+
+    return r;
+  }
+
+  async function checkRetiro24hSafe(user){
+    try{
+      if(typeof window.nodoControlRetiro24hDisponible === 'function'){
+        const r = await window.nodoControlRetiro24hDisponible(user, -1);
+        if(r && (r.alerta || r.bloquear || r.tiene_retiro_24h || r.repetido || Number(r.operaciones_24h||0)>0)){
+          return confirm((r.mensaje || 'Este usuario registra retiro/operación reciente en las últimas 24 hs.') + '\n\n¿Continuar igual?');
+        }
+      }
+      if(typeof checkRetiro24h === 'function') return await checkRetiro24h(user);
+    }catch(e){}
+    return true;
+  }
+
+  window.nodoCleanRun = async function(mode){
+    const msg = $('nodoCleanMsg');
+    const user = s($('nodoCleanUsuario')?.value || $('manualWorkerUsuarioInicio')?.value || '');
+    if(!user){
+      if(msg) msg.innerHTML = '<div class="warn">Ingresá un usuario.</div>';
+      return;
+    }
+
+    const raw = Number(s($('nodoCleanMonto')?.value || $('manualWorkerMontoInicio')?.value || 0).replace(',','.')) || 0;
+    let tipo = 'VALIDAR_USUARIO';
+
+    const m = String(mode || '').toUpperCase();
+    if(m.includes('CREAR')) tipo = 'CREAR_USUARIO';
+    else if(m.includes('CLAVE')) tipo = 'CAMBIAR_CLAVE';
+    else if(m.includes('VALIDAR')) tipo = 'VALIDAR_USUARIO';
+    else if(raw < 0) tipo = 'PROCESAR_RETIRO';
+    else if(raw > 0) tipo = 'CARGAR_FICHAS';
+
+    const wallet = selectedWallet();
+
+    if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo) && !wallet){
+      if(msg) msg.innerHTML = '<div class="warn">Seleccioná billetera para carga/retiro.</div>';
+      return;
+    }
+
+    if(tipo === 'PROCESAR_RETIRO'){
+      const ok = await checkRetiro24hSafe(user);
+      if(!ok){
+        if(msg) msg.innerHTML = '<div class="warn">Retiro cancelado por control 24 hs.</div>';
+        return;
+      }
+    }
+
+    try{
+      if(msg) msg.innerHTML = '<div class="ok">Creando job...</div>';
+
+      let r;
+      if(tipo === 'CREAR_USUARIO' || tipo === 'CAMBIAR_CLAVE'){
+        if(typeof crearJobClaveDirecto === 'function'){
+          r = await crearJobClaveDirecto(user,tipo);
+        }else{
+          const token = (()=>{try{return requireSessionToken()}catch(e){return localStorage.getItem('nodo_panel_session_token_lite')||''}})();
+          const pc = (()=>{try{return window.pcOperativa || pcOperativa || localStorage.getItem('nodo_pc_operativa_lite') || 'P1'}catch(e){return 'P1'}})();
+          const clave = s($('nodoCleanClave')?.value || '12345a') || '12345a';
+          const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_usuario_clave_v1',{
+            p_session_token:token,
+            p_pc_codigo:pc,
+            p_usuario:user,
+            p_tipo_accion:tipo,
+            p_clave:clave,
+            p_observacion:'operador='+(localStorage.getItem('nodo_operador_nombre')||'operador')
+          });
+          if(error) throw error;
+          r = Array.isArray(data) ? data[0] : data;
+          if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+        }
+      }else{
+        r = await crearJobManualDirectoWalletFixed(user,{tipo,signed:raw},wallet);
+      }
+
+      const id = r?.job_id || r?.id || r?.worker_job_id || '-';
+      if(msg) msg.innerHTML = '<div class="ok">Orden enviada al worker. Job: <b>#'+id+'</b></div>';
+
+      if($('nodoCleanUsuario')) $('nodoCleanUsuario').value = '';
+      if($('nodoCleanUsuarioOp')) $('nodoCleanUsuarioOp').value = '';
+      if($('nodoCleanMonto')) $('nodoCleanMonto').value = '';
+      if($('manualWorkerUsuarioInicio')) $('manualWorkerUsuarioInicio').value = '';
+      if($('manualWorkerMontoInicio')) $('manualWorkerMontoInicio').value = '';
+
+      if(typeof scheduleMoneyRefresh === 'function') scheduleMoneyRefresh('wallet memory job');
+      else if(typeof window.nodoForceWalletRefresh === 'function') window.nodoForceWalletRefresh('wallet memory job');
+
+      try{ if(typeof cargarWorkerJobs === 'function') await cargarWorkerJobs(false); }catch(e){}
+      try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+    }catch(e){
+      if(msg) msg.innerHTML = '<div class="err">'+esc(e.message || e)+'</div>';
+    }
+  };
+
+  window.crearWorkerJobManualInicio = async function(){
+    const msgId = 'manualWorkerResultadoInicio';
+    const user = s($('manualWorkerUsuarioInicio')?.value || $('nodoCleanUsuario')?.value || '');
+    const raw = Number(s($('manualWorkerMontoInicio')?.value || $('nodoCleanMonto')?.value || 0).replace(',','.')) || 0;
+    const wallet = selectedWallet();
+
+    if(!user){
+      if(typeof setBox === 'function') setBox(msgId,'<div class="err-box">Ingresá usuario.</div>');
+      return;
+    }
+
+    let tipo = 'VALIDAR_USUARIO';
+    if(raw < 0) tipo = 'PROCESAR_RETIRO';
+    else if(raw > 0) tipo = 'CARGAR_FICHAS';
+
+    if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo) && !wallet){
+      if(typeof setBox === 'function') setBox(msgId,'<div class="err-box">Seleccioná la billetera que impacta esta operación.</div>');
+      return;
+    }
+
+    if(tipo === 'PROCESAR_RETIRO'){
+      const ok = await checkRetiro24hSafe(user);
+      if(!ok){
+        if(typeof setBox === 'function') setBox(msgId,'<div class="err-box">Retiro cancelado por control 24 hs.</div>');
+        return;
+      }
+    }
+
+    try{
+      if(typeof setBox === 'function') setBox(msgId,'<div class="ok-box">Creando job...</div>');
+      const r = await crearJobManualDirectoWalletFixed(user,{tipo,signed:raw},wallet);
+      const id = r?.job_id || r?.id || r?.worker_job_id || '-';
+      if(typeof setBox === 'function') setBox(msgId,'<div class="ok-box">Orden enviada al worker. Job: <b>#'+id+'</b></div>');
+
+      if($('manualWorkerUsuarioInicio')) $('manualWorkerUsuarioInicio').value = '';
+      if($('manualWorkerMontoInicio')) $('manualWorkerMontoInicio').value = '';
+
+      if(typeof scheduleMoneyRefresh === 'function') scheduleMoneyRefresh('wallet memory quick');
+      else if(typeof window.nodoForceWalletRefresh === 'function') window.nodoForceWalletRefresh('wallet memory quick');
+
+    }catch(e){
+      if(typeof setBox === 'function') setBox(msgId,'<div class="err-box">'+esc(e.message || e)+'</div>');
+    }
+  };
+
+  // Cada vez que se renderiza, reinyecta la última billetera al select visible.
+  const oldRender = window.nodoCleanRender;
+  if(typeof oldRender === 'function' && !oldRender.__walletMemoryFix){
+    window.nodoCleanRender = function(){
+      const r = oldRender.apply(this, arguments);
+      setTimeout(()=>syncVisibleWallet(),80);
+      return r;
+    };
+    window.nodoCleanRender.__walletMemoryFix = true;
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(syncVisibleWallet,700));
+  window.addEventListener('load',()=>setTimeout(syncVisibleWallet,1200));
+  setTimeout(syncVisibleWallet,1600);
 })();
 </script>
 
