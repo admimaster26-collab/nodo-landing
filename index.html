@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · V10 Clean Confirmación</title>
+<title>BET300 · Cargas/Retiros · V11 UX Simple</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -2052,6 +2052,443 @@ function iniciarRealtimeChatLanding(){return}
   });
 })();
 </script>
+
+<style id="landing-v11-ux-simple-logo-fix">
+/* =========================================================
+   V11 UX SIMPLE + LOGO FIX
+   Base: V10 confirmación limpia.
+   Objetivo: alivianar la vista mobile sin tocar la lógica.
+   ========================================================= */
+
+/* Logo: evita que se estire en mobile o por CSS heredado */
+.logo-img,
+img.logo-img,
+img[alt="BET300"]{
+  width:auto!important;
+  height:auto!important;
+  max-width:230px!important;
+  max-height:62px!important;
+  object-fit:contain!important;
+  aspect-ratio:auto!important;
+}
+
+@media (max-width:640px){
+  .wrap{
+    padding:12px 10px 82px!important;
+  }
+
+  .logo-img,
+  img.logo-img,
+  img[alt="BET300"]{
+    display:block!important;
+    width:auto!important;
+    height:auto!important;
+    max-width:168px!important;
+    max-height:46px!important;
+    margin:0 auto 12px!important;
+    object-fit:contain!important;
+  }
+
+  #cargaCard{
+    padding:16px 14px 56px!important;
+    border-radius:22px!important;
+  }
+
+  #solicitudTitulo{
+    font-size:28px!important;
+    line-height:1.04!important;
+    margin-bottom:6px!important;
+  }
+
+  #solicitudSubtitulo{
+    font-size:14.5px!important;
+    line-height:1.25!important;
+    margin-bottom:10px!important;
+  }
+
+  /* Usuario validado: mini, arriba y no roba espacio */
+  #datosUsuarioBox{
+    margin:0 0 10px!important;
+  }
+
+  #datosUsuarioBox .v11-user-mini,
+  #datosUsuarioBox .v7-user-mini,
+  #datosUsuarioBox button{
+    width:100%!important;
+    min-height:38px!important;
+    height:38px!important;
+    padding:0 12px!important;
+    border-radius:14px!important;
+    font-size:14px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    background:rgba(255,255,255,.07)!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    color:#f4f7fb!important;
+    box-shadow:none!important;
+  }
+
+  #datosUsuarioBox .v11-user-mini span,
+  #datosUsuarioBox .v7-user-mini span{
+    font-size:12px!important;
+    color:#aeb7c6!important;
+  }
+
+  #cargaCard > button.btn-dark[onclick="volverADatos()"]{
+    display:none!important;
+  }
+
+  /* Tarjeta transferencia más liviana */
+  #cargaCard .transfer-card{
+    padding:13px 12px!important;
+    margin:10px 0 9px!important;
+    border-radius:18px!important;
+  }
+
+  #cargaCard .transfer-card .gold-title{
+    font-size:20px!important;
+    margin-bottom:9px!important;
+  }
+
+  #cargaCard .transfer-card .label{
+    font-size:13px!important;
+    margin:5px 0 2px!important;
+  }
+
+  #cargaCard .transfer-card .data-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 78px!important;
+    gap:8px!important;
+    align-items:center!important;
+    margin:2px 0 7px!important;
+  }
+
+  #aliasBox{
+    font-size:18px!important;
+    line-height:1.08!important;
+    letter-spacing:.6px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  #cbuBox{
+    font-size:15px!important;
+    line-height:1.1!important;
+    letter-spacing:.9px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    word-break:normal!important;
+  }
+
+  #cargaCard .transfer-card .copy-btn{
+    min-height:40px!important;
+    height:40px!important;
+    padding:0 10px!important;
+    font-size:14px!important;
+    border-radius:14px!important;
+  }
+
+  #cargaCard .transfer-card .line{
+    font-size:14px!important;
+    line-height:1.25!important;
+    margin:4px 0!important;
+  }
+
+  #montoMinimoTxt{
+    font-size:14px!important;
+    margin-top:7px!important;
+  }
+
+  /* En vez de un bloque grande de 3 pasos, una banda corta */
+  #transferFlowBox{
+    padding:9px 11px!important;
+    margin:8px 0 10px!important;
+    border-radius:15px!important;
+  }
+
+  #transferFlowBox .landing-flow-title{
+    display:none!important;
+  }
+
+  #transferFlowBox .landing-flow-item{
+    display:none!important;
+  }
+
+  #transferFlowBox .landing-flow-note{
+    margin:0!important;
+    font-size:13.5px!important;
+    line-height:1.22!important;
+  }
+
+  #transferFlowBox .landing-flow-note::before{
+    content:"Copiá los datos, transferí y avisá el pago. ";
+    font-weight:900;
+  }
+
+  /* Tipo de solicitud más chico */
+  #cargaCard label{
+    font-size:14px!important;
+    margin:8px 0 5px!important;
+  }
+
+  .tipo-solicitud-box{
+    gap:8px!important;
+    margin:8px 0 10px!important;
+  }
+
+  .tipo-option{
+    min-height:44px!important;
+    height:44px!important;
+    border-radius:15px!important;
+    font-size:17px!important;
+    padding:0 10px!important;
+  }
+
+  #monto{
+    height:48px!important;
+    min-height:48px!important;
+    font-size:18px!important;
+    border-radius:15px!important;
+  }
+
+  /* Datos quien transfiere compactos */
+  #datosTransferenciaBox{
+    padding:11px 12px!important;
+    margin:10px 0!important;
+    border-radius:17px!important;
+  }
+
+  #datosTransferenciaBox .transfer-data-title{
+    font-size:17px!important;
+    margin-bottom:3px!important;
+  }
+
+  #datosTransferenciaBox .transfer-data-help{
+    font-size:12.8px!important;
+    line-height:1.2!important;
+    margin-bottom:7px!important;
+  }
+
+  #datosTransferenciaBox input,
+  #datosTransferenciaBox select,
+  #retiroDatosBox input{
+    height:46px!important;
+    min-height:46px!important;
+    font-size:16px!important;
+    border-radius:14px!important;
+  }
+
+  #datosTransferenciaBox .transfer-grid{
+    grid-template-columns:1fr!important;
+    gap:5px!important;
+  }
+
+  /* Retiro y carga no muestran tarjetas cruzadas */
+  body.tipo-retiro #datosTransferenciaBox{
+    display:none!important;
+  }
+
+  body.tipo-carga #retiroDatosBox{
+    display:none!important;
+  }
+
+  #retiroDatosBox{
+    padding:12px!important;
+    margin:10px 0!important;
+    border-radius:17px!important;
+  }
+
+  #retiroDatosBox .hint{
+    font-size:13px!important;
+    line-height:1.22!important;
+    padding:8px!important;
+    margin-bottom:8px!important;
+  }
+
+  #btnEnviar{
+    min-height:50px!important;
+    height:50px!important;
+    border-radius:17px!important;
+    font-size:17px!important;
+    margin-top:10px!important;
+  }
+
+  /* Botones bajos: sacamos ruido visual */
+  .actions{
+    gap:8px!important;
+    margin-top:10px!important;
+  }
+
+  #btnWhatsappFijo{
+    display:none!important;
+  }
+
+  .actions a,
+  .actions button{
+    height:48px!important;
+    min-height:48px!important;
+    border-radius:16px!important;
+    font-size:16px!important;
+  }
+
+  /* Chat flotante chico y visible */
+  #chatLiteOpenBtn{
+    display:flex!important;
+    position:fixed!important;
+    right:12px!important;
+    bottom:12px!important;
+    width:auto!important;
+    min-width:76px!important;
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 14px!important;
+    border-radius:999px!important;
+    z-index:9998!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:14px!important;
+    font-weight:900!important;
+    color:#07131f!important;
+    background:linear-gradient(135deg,#d4af37,#f7d774)!important;
+    box-shadow:0 10px 26px rgba(0,0,0,.35)!important;
+  }
+
+  #chatLiteOpenBtn::before{
+    content:"💬 ";
+  }
+
+  .mini{
+    font-size:12px!important;
+    line-height:1.25!important;
+    margin-top:8px!important;
+  }
+}
+
+@media (max-width:390px){
+  .logo-img,
+  img.logo-img,
+  img[alt="BET300"]{
+    max-width:150px!important;
+    max-height:40px!important;
+  }
+
+  #solicitudTitulo{
+    font-size:26px!important;
+  }
+
+  #aliasBox{
+    font-size:16.6px!important;
+  }
+
+  #cbuBox{
+    font-size:13.9px!important;
+    letter-spacing:.55px!important;
+  }
+
+  #cargaCard .transfer-card .data-row{
+    grid-template-columns:minmax(0,1fr) 72px!important;
+  }
+}
+</style>
+
+<script id="landing-v11-ux-simple-js">
+(function(){
+  if(window.__LANDING_V11_UX_SIMPLE__) return;
+  window.__LANDING_V11_UX_SIMPLE__ = true;
+
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
+
+  function setTipoBody(){
+    const tipo = String(window.tipoSolicitudActual || 'CARGA').toUpperCase();
+    document.body.classList.toggle('tipo-retiro', tipo === 'RETIRO');
+    document.body.classList.toggle('tipo-carga', tipo !== 'RETIRO');
+    const t = $('datosTransferenciaBox');
+    const r = $('retiroDatosBox');
+    if(t) t.classList.toggle('hidden', tipo === 'RETIRO');
+    if(r) r.classList.toggle('hidden', tipo !== 'RETIRO');
+  }
+
+  function fixLogo(){
+    const logo = document.querySelector('img.logo-img,img[alt="BET300"]');
+    if(!logo) return;
+    logo.style.objectFit = 'contain';
+    logo.style.width = 'auto';
+    logo.style.height = 'auto';
+    logo.removeAttribute('width');
+    logo.removeAttribute('height');
+  }
+
+  function usuarioMini(){
+    const box = $('datosUsuarioBox');
+    let ud = window.userData || null;
+    try{ if(!ud && typeof userData !== 'undefined') ud = userData; }catch(e){}
+    if(!box || !ud) return;
+
+    box.innerHTML = `<button class="v11-user-mini" type="button" onclick="abrirDatosUsuarioModal()"><b>${esc(ud.usuario || '')}</b><span>Editar datos</span></button>`;
+
+    const card = $('cargaCard');
+    const transfer = card ? card.querySelector('.transfer-card') : null;
+    if(card && transfer && box.nextElementSibling !== transfer){
+      try{ card.insertBefore(box, transfer); }catch(e){}
+    }
+  }
+
+  function syncTitular(){
+    try{
+      const b = window.billeteraActiva || (typeof billeteraActiva !== 'undefined' ? billeteraActiva : null);
+      if(!b) return;
+      const titular = b.titular || b.nombre_titular || b.titular_cuenta || b.nombre || b.nombre_visible || b.billetera_nombre || '';
+      const banco = b.banco || b.tipo || 'MP';
+      if($('titularBox')) $('titularBox').textContent = titular || 'Consultar';
+      if($('bancoBox')) $('bancoBox').textContent = banco || 'MP';
+    }catch(e){}
+  }
+
+  const oldTipo = window.seleccionarTipoSolicitud;
+  window.seleccionarTipoSolicitud = function(tipo){
+    let r;
+    try{ r = oldTipo && oldTipo.apply(this, arguments); }catch(e){}
+    window.tipoSolicitudActual = String(tipo || 'CARGA').toUpperCase();
+    setTipoBody();
+    setTimeout(setTipoBody,80);
+    return r;
+  };
+
+  const oldMostrarCarga = window.mostrarCarga;
+  if(typeof oldMostrarCarga === 'function'){
+    window.mostrarCarga = function(){
+      const r = oldMostrarCarga.apply(this, arguments);
+      setTimeout(()=>{fixLogo();usuarioMini();setTipoBody();syncTitular();},120);
+      return r;
+    };
+  }
+
+  const oldRenderUsuario = window.renderDatosUsuarioCompacto;
+  if(typeof oldRenderUsuario === 'function'){
+    window.renderDatosUsuarioCompacto = function(){
+      const r = oldRenderUsuario.apply(this, arguments);
+      setTimeout(usuarioMini,30);
+      return r;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    fixLogo();
+    setTipoBody();
+    setTimeout(()=>{fixLogo();usuarioMini();syncTitular();setTipoBody();},300);
+  });
+
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{fixLogo();usuarioMini();syncTitular();setTipoBody();},500);
+    setTimeout(()=>{fixLogo();usuarioMini();syncTitular();setTipoBody();},1600);
+  });
+})();
+</script>
+
 </body>
 </html>
 
