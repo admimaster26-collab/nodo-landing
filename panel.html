@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · UX OK Wallet Memory Fix</title>
+<title>NODO · OPERATIVO V21 · UX OK Wallet Sync Fix</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -11142,6 +11142,334 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
   document.addEventListener('DOMContentLoaded',()=>setTimeout(syncVisibleWallet,700));
   window.addEventListener('load',()=>setTimeout(syncVisibleWallet,1200));
   setTimeout(syncVisibleWallet,1600);
+})();
+</script>
+
+
+<script id="nodo-v21-wallet-sync-final-fix">
+(function(){
+  if(window.__NODO_V21_WALLET_SYNC_FINAL_FIX__) return;
+  window.__NODO_V21_WALLET_SYNC_FINAL_FIX__ = true;
+
+  const $ = id => document.getElementById(id);
+  const str = v => String(v ?? '').trim();
+  const norm = v => {
+    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+    catch(e){return String(v ?? '').trim().toUpperCase();}
+  };
+
+  const LS_ID = 'nodo_v21_last_wallet_id';
+  const LS_NAME = 'nodo_v21_last_wallet_name';
+
+  function getSaldos(){
+    try{return window.saldosOperativos || saldosOperativos || null;}catch(e){return window.saldosOperativos || null;}
+  }
+
+  function getGlobal(name){
+    try{return eval(name);}catch(e){return undefined;}
+  }
+
+  function allWalletsFinal(){
+    const out = [];
+    const so = getSaldos();
+
+    try{ if(Array.isArray(so?.billeteras)) out.push(...so.billeteras); }catch(e){}
+    try{ if(Array.isArray(so?.wallets)) out.push(...so.wallets); }catch(e){}
+    try{ if(Array.isArray(window.billeteras)) out.push(...window.billeteras); }catch(e){}
+    try{ if(Array.isArray(window.billeterasTodas)) out.push(...window.billeterasTodas); }catch(e){}
+
+    const g1 = getGlobal('billeteras');
+    const g2 = getGlobal('billeterasTodas');
+    try{ if(Array.isArray(g1)) out.push(...g1); }catch(e){}
+    try{ if(Array.isArray(g2)) out.push(...g2); }catch(e){}
+
+    // A veces las billeteras están solo renderizadas en DOM. Las tomamos como último recurso.
+    document.querySelectorAll('.nodo-clean-wallet,.wallet-card,.wallet').forEach((card,idx)=>{
+      const onclick = card.getAttribute('onclick') || '';
+      const m = onclick.match(/nodoCleanSelectWallet\(['"]?([^'")]+)['"]?\)/i) || onclick.match(/(?:usar|select|wallet).*?['"](\d+)['"]/i);
+      const id = m ? m[1] : '';
+      const txt = card.textContent || '';
+      const name = (txt.split('\n').map(x=>x.trim()).filter(Boolean)[0] || '').replace(/ACTIVA/i,'').trim();
+      if(id || name){
+        out.push({
+          id:id || ('dom_'+idx),
+          nombre_visible:name || 'Billetera',
+          NOMBRE_VISIBLE:name || 'Billetera',
+          _dom:true,
+          _active:card.classList.contains('active') || /ACTIVA/i.test(txt)
+        });
+      }
+    });
+
+    const seen = new Set();
+    return out.filter(w=>{
+      const id = walletIdFinal(w);
+      const name = walletNameFinal(w);
+      const key = String(id || name || '').trim();
+      if(!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function walletIdFinal(w){
+    return w?.id ?? w?.ID ?? w?.id_billetera ?? w?.BILLETERA_ID ?? w?.billetera_id ?? w?.wallet_id ?? w?.ID_BILLETERA ?? '';
+  }
+
+  function walletNameFinal(w){
+    return w?.nombre_visible ?? w?.NOMBRE_VISIBLE ?? w?.BILLETERA_NOMBRE ?? w?.billetera_nombre ?? w?.nombre ?? w?.NOMBRE ?? w?.titular ?? w?.TITULAR ?? 'Billetera';
+  }
+
+  function byIdFinal(id){
+    if(!id) return null;
+    return allWalletsFinal().find(w => String(walletIdFinal(w)) === String(id)) || null;
+  }
+
+  function selectElements(){
+    const arr = [];
+    ['nodoCleanWallet','manualWorkerBilleteraInicio','manualWorkerBilletera','nodoCleanBilletera','qWallet','quickWallet'].forEach(id=>{
+      const el = $(id);
+      if(el && !arr.includes(el)) arr.push(el);
+    });
+
+    document.querySelectorAll('select').forEach(sel=>{
+      const ctx = (sel.id+' '+sel.name+' '+(sel.closest('section,div')?.textContent||'')).toLowerCase();
+      if(ctx.includes('billetera') || ctx.includes('wallet')){
+        if(!arr.includes(sel)) arr.push(sel);
+      }
+    });
+
+    return arr;
+  }
+
+  function selectedFromSelect(){
+    for(const sel of selectElements()){
+      const val = str(sel.value);
+      if(val && val !== '0' && val !== 'null' && val !== 'undefined' && val !== 'NO_APLICA'){
+        return val;
+      }
+      // Si el select tiene una opción seleccionada con texto de una billetera, pero value vacío, intentamos resolver por nombre.
+      const opt = sel.options && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+      const text = str(opt?.textContent);
+      if(text){
+        const found = allWalletsFinal().find(w => norm(text).includes(norm(walletNameFinal(w))) || norm(walletNameFinal(w)).includes(norm(text.split('·')[0])));
+        if(found) return String(walletIdFinal(found));
+      }
+    }
+    return '';
+  }
+
+  function activeFromDom(){
+    const active = document.querySelector('.nodo-clean-wallet.active,.wallet-card.active,.wallet.active,[data-wallet-active="1"]');
+    if(active){
+      const onclick = active.getAttribute('onclick') || '';
+      const m = onclick.match(/nodoCleanSelectWallet\(['"]?([^'")]+)['"]?\)/i);
+      if(m && m[1]) return m[1];
+
+      const txt = active.textContent || '';
+      const found = allWalletsFinal().find(w => norm(txt).includes(norm(walletNameFinal(w))));
+      if(found) return String(walletIdFinal(found));
+    }
+
+    const list = allWalletsFinal();
+    const marked = list.find(w => w._active || w.seleccionada_manual === true || w.SELECCIONADA_MANUAL === true || w.activa === true || w.ACTIVA === true);
+    if(marked) return String(walletIdFinal(marked));
+
+    return '';
+  }
+
+  function selectedWalletIdFinal(){
+    const fromSelect = selectedFromSelect();
+    if(fromSelect) return fromSelect;
+
+    const fromStorage = str(localStorage.getItem(LS_ID) || localStorage.getItem('nodoCleanWallet') || localStorage.getItem('nodoUltimaBilleteraImpactada') || '');
+    if(fromStorage) return fromStorage;
+
+    const fromDom = activeFromDom();
+    if(fromDom) return fromDom;
+
+    const first = allWalletsFinal().find(w => !String(walletIdFinal(w)).startsWith('dom_'));
+    return first ? String(walletIdFinal(first)) : '';
+  }
+
+  function selectedWalletFinal(){
+    const id = selectedWalletIdFinal();
+    return byIdFinal(id) || allWalletsFinal().find(w => String(walletIdFinal(w)) === String(id)) || null;
+  }
+
+  function rememberWalletFinal(id){
+    if(!id) return;
+    const w = byIdFinal(id);
+    const name = w ? walletNameFinal(w) : ('ID '+id);
+
+    localStorage.setItem(LS_ID, String(id));
+    localStorage.setItem(LS_NAME, String(name));
+    localStorage.setItem('nodoCleanWallet', String(id));
+    localStorage.setItem('nodoUltimaBilleteraImpactada', String(id));
+
+    selectElements().forEach(sel=>{
+      try{
+        if([...sel.options].some(o => String(o.value) === String(id))){
+          sel.value = String(id);
+        }
+      }catch(e){}
+    });
+  }
+
+  // Esta era la función que realmente usa el botón "Usar" de la vista UX OK.
+  const oldSelect = window.nodoCleanSelectWallet;
+  window.nodoCleanSelectWallet = function(id){
+    rememberWalletFinal(id);
+    let r;
+    if(typeof oldSelect === 'function'){
+      try{ r = oldSelect.apply(this, arguments); }catch(e){ console.warn('nodoCleanSelectWallet original', e); }
+    }
+    rememberWalletFinal(id);
+    return r;
+  };
+
+  document.addEventListener('change', ev=>{
+    const el = ev.target;
+    if(!el || el.tagName !== 'SELECT') return;
+    const ctx = (el.id+' '+el.name+' '+(el.closest('section,div')?.textContent||'')).toLowerCase();
+    if(ctx.includes('billetera') || ctx.includes('wallet')){
+      const id = selectedFromSelect();
+      if(id) rememberWalletFinal(id);
+    }
+  }, true);
+
+  window.nodoV21GetSelectedWalletId = selectedWalletIdFinal;
+  window.nodoV21GetSelectedWallet = selectedWalletFinal;
+  window.nodoV21RememberWallet = rememberWalletFinal;
+
+  async function checkRetiro24hFinal(user){
+    try{
+      if(typeof window.nodoControlRetiro24hDisponible === 'function'){
+        const r = await window.nodoControlRetiro24hDisponible(user, -1);
+        if(r && (r.alerta || r.bloquear || r.tiene_retiro_24h || r.repetido || Number(r.operaciones_24h||0)>0)){
+          return confirm((r.mensaje || 'Este usuario registra retiro/operación reciente en las últimas 24 hs.') + '\n\n¿Continuar igual?');
+        }
+      }
+    }catch(e){}
+    return true;
+  }
+
+  async function createManualJobWalletFinal(user,tipo,raw){
+    const wallet = selectedWalletFinal();
+    const mustWallet = ['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo);
+    if(mustWallet && !wallet){
+      throw new Error('Seleccioná billetera para carga/retiro.');
+    }
+
+    const id = wallet ? walletIdFinal(wallet) : '';
+    if(wallet && id) rememberWalletFinal(id);
+
+    const montoAbs = Math.abs(Number(raw || 0));
+    const operator = (()=>{try{const o=window.operador||operador||{};return o.usuario||o.nombre||o.email||localStorage.getItem('nodo_operador_nombre')||'operador'}catch(e){return localStorage.getItem('nodo_operador_nombre')||'operador'}})();
+    const pc = (()=>{try{return window.pcOperativa||pcOperativa||localStorage.getItem('nodo_pc_operativa_lite')||'P1'}catch(e){return localStorage.getItem('nodo_pc_operativa_lite')||'P1'}})();
+
+    const obs = [
+      str($('nodoCleanObs')?.value || $('manualWorkerObsInicio')?.value || ''),
+      `monto_original=${Number(raw||0)}`,
+      `monto_worker=${montoAbs}`,
+      `signo_flujo=${tipo==='PROCESAR_RETIRO'?-1:(tipo==='CARGAR_FICHAS'?1:0)}`,
+      wallet ? `billetera_id=${id}` : '',
+      wallet ? `billetera_nombre=${walletNameFinal(wallet)}` : '',
+      `operador=${operator}`
+    ].filter(Boolean).join(' · ');
+
+    const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_manual_v2',{
+      p_pc_codigo:pc,
+      p_usuario:user,
+      p_tipo_accion:tipo,
+      p_monto:tipo === 'VALIDAR_USUARIO' ? 0 : montoAbs,
+      p_origen:'PANEL_OPERATIVO',
+      p_billetera_id: wallet && id && !String(id).startsWith('dom_') ? Number(id) : null,
+      p_observacion:obs
+    });
+    if(error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+    return r;
+  }
+
+  async function createClaveJobFinal(user,tipo){
+    const token = (()=>{try{return requireSessionToken()}catch(e){return localStorage.getItem('nodo_panel_session_token_lite')||''}})();
+    const pc = (()=>{try{return window.pcOperativa||pcOperativa||localStorage.getItem('nodo_pc_operativa_lite')||'P1'}catch(e){return 'P1'}})();
+    const clave = str($('nodoCleanClave')?.value || '12345a') || '12345a';
+
+    const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_usuario_clave_v1',{
+      p_session_token:token,
+      p_pc_codigo:pc,
+      p_usuario:user,
+      p_tipo_accion:tipo,
+      p_clave:clave,
+      p_observacion:'operador='+(localStorage.getItem('nodo_operador_nombre')||'operador')
+    });
+    if(error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+    return r;
+  }
+
+  // Override definitivo: usa la billetera real visible/recordada.
+  window.nodoCleanRun = async function(mode){
+    const msg = $('nodoCleanMsg');
+    const user = str($('nodoCleanUsuarioOp')?.value || $('nodoCleanUsuario')?.value || $('manualWorkerUsuarioInicio')?.value || '');
+    if(!user){
+      if(msg) msg.innerHTML = '<div class="warn">Ingresá un usuario.</div>';
+      return;
+    }
+
+    const raw = Number(str($('nodoCleanMonto')?.value || $('manualWorkerMontoInicio')?.value || 0).replace(',','.')) || 0;
+    const m = norm(mode);
+    let tipo = 'VALIDAR_USUARIO';
+
+    if(m.includes('CREAR')) tipo = 'CREAR_USUARIO';
+    else if(m.includes('CLAVE')) tipo = 'CAMBIAR_CLAVE';
+    else if(m.includes('VALIDAR')) tipo = 'VALIDAR_USUARIO';
+    else if(raw < 0) tipo = 'PROCESAR_RETIRO';
+    else if(raw > 0) tipo = 'CARGAR_FICHAS';
+
+    if(tipo === 'PROCESAR_RETIRO'){
+      const ok = await checkRetiro24hFinal(user);
+      if(!ok){
+        if(msg) msg.innerHTML = '<div class="warn">Retiro cancelado por control 24 hs.</div>';
+        return;
+      }
+    }
+
+    try{
+      if(msg) msg.innerHTML = '<div class="ok">Creando job...</div>';
+
+      let r;
+      if(tipo === 'CREAR_USUARIO' || tipo === 'CAMBIAR_CLAVE'){
+        r = await createClaveJobFinal(user,tipo);
+      }else{
+        r = await createManualJobWalletFinal(user,tipo,raw);
+      }
+
+      const id = r?.job_id || r?.id || r?.worker_job_id || '-';
+      if(msg) msg.innerHTML = '<div class="ok">Orden enviada al worker. Job: <b>#'+id+'</b></div>';
+
+      if($('nodoCleanUsuarioOp')) $('nodoCleanUsuarioOp').value = '';
+      if($('nodoCleanUsuario')) $('nodoCleanUsuario').value = '';
+      if($('nodoCleanMonto')) $('nodoCleanMonto').value = '';
+      if($('manualWorkerUsuarioInicio')) $('manualWorkerUsuarioInicio').value = '';
+      if($('manualWorkerMontoInicio')) $('manualWorkerMontoInicio').value = '';
+
+      try{ if(typeof window.nodoForceWalletRefresh === 'function') window.nodoForceWalletRefresh('wallet sync final'); }catch(e){}
+      try{ if(typeof cargarWorkerJobs === 'function') await cargarWorkerJobs(false); }catch(e){}
+      try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+    }catch(e){
+      if(msg) msg.innerHTML = '<div class="err">'+String(e.message || e)+'</div>';
+    }
+  };
+
+  // Si el select todavía no tiene valor, lo completamos apenas carga.
+  setTimeout(()=>rememberWalletFinal(selectedWalletIdFinal()), 600);
+  setTimeout(()=>rememberWalletFinal(selectedWalletIdFinal()), 1500);
+  setTimeout(()=>rememberWalletFinal(selectedWalletIdFinal()), 3000);
 })();
 </script>
 
