@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NODO · OPERATIVO V21 · UX OK Saldo Fix</title>
+<title>NODO · OPERATIVO V21 · UX OK Operable Fix</title>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
@@ -10403,6 +10403,414 @@ body.nodo-v21-clean-core .layout{grid-template-columns:72px 1fr!important}body.n
     try{ if(typeof renderSelectsAjustes === "function") renderSelectsAjustes(); }catch(e){}
     try{ if(typeof window.nodoCleanRender === "function") window.nodoCleanRender(); }catch(e){}
   };
+})();
+</script>
+
+
+<script id="nodo-v21-ux-ok-operable-fix">
+(function(){
+  if(window.__NODO_V21_UX_OK_OPERABLE_FIX__) return;
+  window.__NODO_V21_UX_OK_OPERABLE_FIX__ = true;
+
+  const $ = id => document.getElementById(id);
+  const s = v => String(v ?? '').trim();
+  const n = v => Number(String(v ?? '0').replace(',','.')) || 0;
+  const norm = v => {
+    try{return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();}
+    catch(e){return String(v ?? '').trim().toUpperCase();}
+  };
+  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
+  const money = v => {
+    try{return typeof pesos === 'function' ? pesos(Number(v||0)) : ('$ '+Number(v||0).toLocaleString('es-AR'));}
+    catch(e){return '$ '+(v||0);}
+  };
+  const pc = () => {
+    try{return window.pcOperativa || pcOperativa || localStorage.getItem('nodo_pc_operativa_lite') || localStorage.getItem('pc_codigo') || 'P1';}
+    catch(e){return localStorage.getItem('nodo_pc_operativa_lite') || 'P1';}
+  };
+  const token = () => {
+    try{if(typeof requireSessionToken === 'function') return requireSessionToken();}catch(e){}
+    try{return window.panelSessionToken || panelSessionToken || localStorage.getItem('nodo_panel_session_token_lite') || localStorage.getItem('nodo_lite_token') || '';}
+    catch(e){return localStorage.getItem('nodo_panel_session_token_lite') || localStorage.getItem('nodo_lite_token') || '';}
+  };
+  const op = () => {
+    try{
+      const o = window.operador || operador || {};
+      return o.usuario || o.nombre || o.NOMBRE || o.email || localStorage.getItem('nodo_operador_nombre') || 'operador';
+    }catch(e){return localStorage.getItem('nodo_operador_nombre') || 'operador';}
+  };
+  const wallets = () => {
+    try{return window.billeteras || billeteras || [];}catch(e){return [];}
+  };
+  const jobs = () => {
+    try{return window.workerJobs || workerJobs || [];}catch(e){return [];}
+  };
+  const jobId = j => j?.id || j?.job_id || j?.worker_job_id || j?.WORKER_JOB_ID || '';
+  const jobTipo = j => j?.tipo_accion || j?.tipo || j?.TIPO || '';
+  const jobMonto = j => Number(j?.monto || j?.MONTO || 0);
+  const jobEstado = j => j?.estado || j?.ESTADO || '';
+  const final = st => ['OK','COMPLETADO','FINALIZADO','ACREDITADA','PAGADA'].includes(norm(st));
+  const mov = j => {
+    const t = norm(jobTipo(j));
+    return t.includes('CARGA') || t.includes('RETIRO') || t.includes('FICHAS') || Math.abs(jobMonto(j)) > 0;
+  };
+  const walletId = w => w?.ID || w?.id || w?.id_billetera || w?.BILLETERA_ID || '';
+  const walletName = w => w?.NOMBRE_VISIBLE || w?.nombre_visible || w?.BILLETERA_NOMBRE || w?.nombre || w?.TITULAR || w?.titular || 'Billetera';
+  const walletById = id => wallets().find(w => String(walletId(w)) === String(id));
+  const currentWalletId = () => s($('nodoCleanWallet')?.value || $('manualWorkerBilleteraInicio')?.value || localStorage.getItem('nodoCleanWallet') || localStorage.getItem('nodoUltimaBilleteraImpactada') || '');
+  const currentWallet = () => walletById(currentWalletId());
+
+  function localMeta(){
+    try{return JSON.parse(localStorage.getItem('nodo_v21_core_meta') || '{}') || {};}catch(e){return {};}
+  }
+  function saveLocalMeta(m){
+    try{localStorage.setItem('nodo_v21_core_meta', JSON.stringify(m || {}));}catch(e){}
+  }
+  function rememberMeta(id,user,tipo,montoSigned,wallet){
+    if(!id) return;
+    const meta = localMeta();
+    meta[String(id)] = Object.assign({}, meta[String(id)] || {}, {
+      walletId: wallet ? String(walletId(wallet)) : '',
+      walletName: wallet ? walletName(wallet) : '',
+      operator: op(),
+      usuario: user,
+      tipo,
+      monto: Math.abs(Number(montoSigned||0)),
+      signedAmount: Number(montoSigned||0),
+      signoFlujo: norm(tipo).includes('RETIRO') ? -1 : (norm(tipo).includes('CARGA') ? 1 : 0),
+      updatedAt: Date.now()
+    });
+    saveLocalMeta(meta);
+  }
+
+  async function checkRetiro24h(user){
+    try{
+      if(!window.supabaseClient || !user) return true;
+      const {data,error} = await supabaseClient.rpc('panel_controlar_retiro_24h_v21',{
+        p_usuario:user,
+        p_pc_codigo:pc(),
+        p_session_token:token()
+      });
+      if(error){
+        console.warn('control retiro 24h:', error.message || error);
+        return true;
+      }
+      const r = Array.isArray(data) ? data[0] : data;
+      const count = Number(r?.operaciones_24h || r?.retiros_24h || r?.cantidad || 0);
+      if(r && (r.alerta || r.bloquear || r.tiene_retiro_24h || r.repetido || count > 0)){
+        const msg = r.mensaje || `Atención: este usuario ya tiene movimiento/retiro en las últimas 24 hs. (${count || 'detectado'})`;
+        return confirm(msg + '\n\n¿Continuar igual?');
+      }
+    }catch(e){
+      console.warn('control retiro 24h:', e);
+    }
+    return true;
+  }
+
+  async function hardMoneyRefresh(reason=''){
+    if(window.__nodoHardMoneyBusy) return;
+    window.__nodoHardMoneyBusy = true;
+    try{
+      try{ if(typeof window.nodoConciliarMovimientosWorker === 'function') await window.nodoConciliarMovimientosWorker(); }catch(e){}
+      try{ if(typeof cargarSaldosOperativos === 'function') await cargarSaldosOperativos(true); }catch(e){}
+      try{ if(typeof cargarBilleteras === 'function') await cargarBilleteras(true); }catch(e){}
+      try{ if(typeof cargarWorkerJobs === 'function') await cargarWorkerJobs(false); }catch(e){}
+      try{ if(typeof renderCentroOperativo === 'function') renderCentroOperativo(); }catch(e){}
+      try{ if(typeof renderBilleteras === 'function') renderBilleteras(); }catch(e){}
+      try{ if(typeof renderSelectsAjustes === 'function') renderSelectsAjustes(); }catch(e){}
+      try{ if(typeof renderMovimientosBilleteraV20 === 'function') renderMovimientosBilleteraV20(); }catch(e){}
+      try{ if(typeof renderMovimientosBilleteraFinal === 'function') renderMovimientosBilleteraFinal(); }catch(e){}
+      try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+    }catch(e){
+      console.warn('hardMoneyRefresh', reason, e);
+    }finally{
+      window.__nodoHardMoneyBusy = false;
+    }
+  }
+  window.nodoForceWalletRefresh = hardMoneyRefresh;
+  window.nodoUxOkRefreshSaldos = hardMoneyRefresh;
+
+  function scheduleMoneyRefresh(reason=''){
+    [500,1200,2500,4500,7500,11000,16000,23000].forEach(ms => setTimeout(()=>hardMoneyRefresh(reason), ms));
+  }
+
+  function renderMovsFallback(targetId){
+    const box = $(targetId);
+    if(!box) return;
+    const base = (window.saldosOperativos?.movimientos_billetera || window.saldosOperativos?.movimientos || window.saldosOperativos?.ultimos_movimientos || []);
+    let rows = Array.isArray(base) ? base.slice(0,80).map(m => ({
+      fecha:m.created_at || m.fecha || m.FECHA || m.updated_at || '',
+      billetera:m.billetera_nombre || m.nombre_visible || m.BILLETERA_NOMBRE || m.billetera || '',
+      tipo:m.tipo_movimiento || m.tipo || m.TIPO || '',
+      monto:Number(m.monto || m.MONTO || 0),
+      signo:Number(m.signo || m.SIGNO || (Number(m.monto||0) < 0 ? -1 : 1)),
+      motivo:m.motivo || m.observacion || m.MOTIVO || ''
+    })) : [];
+
+    if(!rows.length){
+      rows = jobs().filter(j => mov(j)).slice(0,80).map(j => {
+        const id = jobId(j);
+        const meta = localMeta()[String(id)] || {};
+        const tipo = jobTipo(j);
+        const signo = norm(tipo).includes('RETIRO') ? 1 : (norm(tipo).includes('CARGA') ? -1 : 0);
+        return {
+          fecha:j.updated_at || j.created_at || '',
+          billetera:meta.walletName || j.billetera_nombre || j.nombre_billetera || '',
+          tipo,
+          monto:Math.abs(jobMonto(j)),
+          signo,
+          motivo:`Job #${id} · ${j.usuario || ''}`
+        };
+      });
+    }
+
+    if(!rows.length){
+      box.innerHTML = '<div class="alert-box">Sin movimientos visibles todavía. Si acabás de operar, tocá Actualizar o esperá el refresco automático.</div>';
+      return;
+    }
+
+    box.innerHTML = `<div class="table-wrap" style="max-height:310px"><table><thead><tr><th>Fecha</th><th>Billetera</th><th>Tipo</th><th>Monto</th><th>Motivo</th></tr></thead><tbody>${rows.map(r=>{
+      const sign = Number(r.signo || 0);
+      const klass = sign < 0 ? 'mov-neg' : 'mov-pos';
+      const prefix = sign < 0 ? '-' : '+';
+      return `<tr><td>${esc(typeof formatFecha==='function'?formatFecha(r.fecha):String(r.fecha||'').slice(0,16))}</td><td>${esc(r.billetera || '-')}</td><td>${esc(String(r.tipo || '-').replaceAll('_',' '))}</td><td class="${klass}">${prefix}${money(Math.abs(Number(r.monto||0)))}</td><td>${esc(r.motivo || '-')}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }
+
+  const oldMovV20 = window.renderMovimientosBilleteraV20;
+  window.renderMovimientosBilleteraV20 = function(){
+    try{ renderMovsFallback('v20MovimientosBilletera'); }
+    catch(e){ try{ oldMovV20 && oldMovV20(); }catch(_){} }
+  };
+  const oldMovFinal = window.renderMovimientosBilleteraFinal;
+  window.renderMovimientosBilleteraFinal = function(){
+    try{
+      let el = $('movimientosBilleteraBoxFinal');
+      const ajustes = $('viewAjustes');
+      if(!el && ajustes){
+        el = document.createElement('div');
+        el.id = 'movimientosBilleteraBoxFinal';
+        el.className = 'ops-panel';
+        ajustes.appendChild(el);
+        el.innerHTML = '<div class="ops-panel-title">📒 Historial de movimientos</div><div id="movimientosBilleteraFinalRows"></div>';
+      }
+      const rows = $('movimientosBilleteraFinalRows') || el;
+      if(rows) renderMovsFallback(rows.id);
+    }catch(e){ try{ oldMovFinal && oldMovFinal(); }catch(_){} }
+  };
+
+  window.abrirEditarBilleteraJobV20 = function(jobId){
+    const job = jobs().find(j => String(jobId(j)) === String(jobId || '') || String(j.id || '') === String(jobId || ''));
+    if(!job){ alert('No encontré el job.'); return; }
+
+    const id = jobId(job);
+    const meta = localMeta()[String(id)] || {};
+    const actual = meta.walletId || job.billetera_id || job.id_billetera || job.wallet_id || '';
+    const options = wallets().map(w => `<option value="${esc(walletId(w))}" ${String(walletId(w))===String(actual)?'selected':''}>${esc(walletName(w))} · ${esc(w.TIPO || w.banco || w.tipo || '')}</option>`).join('');
+
+    const html = `<div class="v20-edit-wallet-box">
+      <div><b>Job #${esc(id)}</b></div>
+      <div class="small">Usuario: ${esc(job.usuario||'-')} · Monto: ${money(Math.abs(jobMonto(job)))} · Tipo: ${esc(jobTipo(job)||'-')}</div>
+      <br>
+      <label>Nueva billetera</label>
+      <select id="v20EditJobWallet">${options}</select>
+      <label>Motivo de corrección</label>
+      <input id="v20EditJobMotivo" placeholder="obligatorio: ej. operador eligió mal la billetera">
+      <div class="small">Corrige la imputación de la operación y actualiza la vista. Si el backend tiene la conciliación activa, también corrige saldos.</div>
+    </div>`;
+
+    abrirModal('Editar billetera asociada', html, async()=>{
+      const nueva = Number($('v20EditJobWallet')?.value || 0);
+      const motivo = s($('v20EditJobMotivo')?.value);
+      if(!nueva || !motivo){ alert('Nueva billetera y motivo son obligatorios.'); return; }
+
+      let okBackend = false;
+      try{
+        const {data,error} = await supabaseClient.rpc('panel_operativo_corregir_billetera_job_v20',{
+          p_session_token:token(),
+          p_pc_codigo:pc(),
+          p_worker_job_id:Number(id),
+          p_nueva_billetera_id:nueva,
+          p_motivo:motivo
+        });
+        if(error) throw error;
+        const r = Array.isArray(data) ? data[0] : data;
+        if(r && r.ok === false) throw new Error(r.error || 'No se pudo corregir.');
+        okBackend = true;
+      }catch(e){
+        alert('La corrección no se confirmó en backend: ' + (e.message || e));
+        return;
+      }
+
+      const w = walletById(nueva);
+      const metaAll = localMeta();
+      metaAll[String(id)] = Object.assign({}, metaAll[String(id)] || {}, {
+        walletId:String(nueva),
+        walletName:w ? walletName(w) : ('ID '+nueva),
+        operator:op(),
+        updatedAt:Date.now()
+      });
+      saveLocalMeta(metaAll);
+
+      try{
+        job.billetera_id = nueva;
+        job.id_billetera = nueva;
+        job.billetera_nombre = w ? walletName(w) : ('ID '+nueva);
+        job.nombre_billetera = w ? walletName(w) : ('ID '+nueva);
+      }catch(e){}
+
+      cerrarModal();
+      toast('Billetera corregida y auditada', 'green');
+      scheduleMoneyRefresh('editar billetera job');
+      await hardMoneyRefresh('editar billetera job');
+    }, 'Guardar corrección');
+  };
+
+  async function crearJobManualDirecto(user,flow,wallet){
+    const walletIdVal = wallet ? Number(walletId(wallet)) : null;
+    const obsBase = s($('nodoCleanObs')?.value || $('manualWorkerObsInicio')?.value || '');
+    const montoSigned = Number(flow.signed || 0);
+    const montoAbs = Math.abs(montoSigned);
+    const obs = [
+      obsBase,
+      `monto_original=${montoSigned}`,
+      `monto_worker=${montoAbs}`,
+      `signo_flujo=${flow.tipo==='PROCESAR_RETIRO'?-1:(flow.tipo==='CARGAR_FICHAS'?1:0)}`,
+      wallet ? `billetera_id=${walletId(wallet)}` : '',
+      wallet ? `billetera_nombre=${walletName(wallet)}` : '',
+      `operador=${op()}`
+    ].filter(Boolean).join(' · ');
+
+    const payload = {
+      p_pc_codigo:pc(),
+      p_usuario:user,
+      p_tipo_accion:flow.tipo,
+      p_monto:flow.tipo==='VALIDAR_USUARIO' ? 0 : montoAbs,
+      p_origen:'PANEL_OPERATIVO',
+      p_billetera_id:walletIdVal,
+      p_observacion:obs
+    };
+
+    const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_manual_v2', payload);
+    if(error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+    rememberMeta(r?.job_id || r?.id || r?.worker_job_id, user, flow.tipo, montoSigned, wallet);
+    return r;
+  }
+
+  async function crearJobClaveDirecto(user,tipo){
+    const clave = s($('nodoCleanClave')?.value || '12345a') || '12345a';
+    const obs = [s($('nodoCleanObs')?.value || ''), `operador=${op()}`].filter(Boolean).join(' · ');
+    const {data,error} = await supabaseClient.rpc('operativo_crear_worker_job_usuario_clave_v1',{
+      p_session_token:token(),
+      p_pc_codigo:pc(),
+      p_usuario:user,
+      p_tipo_accion:tipo,
+      p_clave:clave,
+      p_observacion:obs
+    });
+    if(error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if(r && r.ok === false) throw new Error(r.error || r.mensaje || 'No se pudo crear el job.');
+    rememberMeta(r?.job_id || r?.id || r?.worker_job_id, user, tipo, 0, null);
+    return r;
+  }
+
+  window.nodoCleanRun = async function(mode){
+    const msg = $('nodoCleanMsg');
+    const user = s($('nodoCleanUsuario')?.value);
+    if(!user){ if(msg) msg.innerHTML = '<div class="warn">Ingresá un usuario.</div>'; return; }
+
+    const raw = Number(s($('nodoCleanMonto')?.value || 0).replace(',','.')) || 0;
+    let tipo = 'VALIDAR_USUARIO';
+    if(mode === 'CREAR') tipo = 'CREAR_USUARIO';
+    else if(mode === 'CLAVE') tipo = 'CAMBIAR_CLAVE';
+    else if(mode === 'VALIDAR') tipo = 'VALIDAR_USUARIO';
+    else if(raw < 0) tipo = 'PROCESAR_RETIRO';
+    else if(raw > 0) tipo = 'CARGAR_FICHAS';
+
+    const wallet = currentWallet();
+    if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo) && !wallet){
+      if(msg) msg.innerHTML = '<div class="warn">Seleccioná billetera para carga/retiro.</div>';
+      return;
+    }
+
+    if(tipo === 'PROCESAR_RETIRO'){
+      const ok24 = await checkRetiro24h(user);
+      if(!ok24){
+        if(msg) msg.innerHTML = '<div class="warn">Retiro cancelado por control 24 hs.</div>';
+        return;
+      }
+    }
+
+    try{
+      if(msg) msg.innerHTML = '<div class="ok">Creando job...</div>';
+      let r;
+      if(tipo === 'CREAR_USUARIO' || tipo === 'CAMBIAR_CLAVE'){
+        r = await crearJobClaveDirecto(user,tipo);
+      }else{
+        r = await crearJobManualDirecto(user,{tipo,signed:raw},wallet);
+      }
+      const id = r?.job_id || r?.id || r?.worker_job_id || '-';
+      if(msg) msg.innerHTML = '<div class="ok">Orden enviada al worker. Job: <b>#'+esc(id)+'</b></div>';
+
+      if($('nodoCleanUsuario')) $('nodoCleanUsuario').value = '';
+      if($('nodoCleanUsuarioOp')) $('nodoCleanUsuarioOp').value = '';
+      if($('nodoCleanMonto')) $('nodoCleanMonto').value = '';
+      if($('nodoCleanObs')) $('nodoCleanObs').value = '';
+
+      scheduleMoneyRefresh('job manual');
+      try{ if(typeof cargarWorkerJobs === 'function') await cargarWorkerJobs(false); }catch(e){}
+      try{ if(typeof window.nodoCleanRender === 'function') window.nodoCleanRender(); }catch(e){}
+    }catch(e){
+      if(msg) msg.innerHTML = '<div class="err">'+esc(e.message || e)+'</div>';
+    }
+  };
+
+  window.crearWorkerJobManualInicio = async function(){
+    const user = s($('manualWorkerUsuarioInicio')?.value);
+    const raw = Number(s($('manualWorkerMontoInicio')?.value || 0).replace(',','.')) || 0;
+    const wallet = walletById(s($('manualWorkerBilleteraInicio')?.value));
+    const out = 'manualWorkerResultadoInicio';
+
+    if(!user){ setBox(out,'<div class="err-box">Ingresá usuario.</div>'); return; }
+
+    let tipo = 'VALIDAR_USUARIO';
+    if(raw < 0) tipo = 'PROCESAR_RETIRO';
+    else if(raw > 0) tipo = 'CARGAR_FICHAS';
+
+    if(['CARGAR_FICHAS','PROCESAR_RETIRO'].includes(tipo) && !wallet){
+      setBox(out,'<div class="err-box">Seleccioná la billetera que impacta esta operación.</div>');
+      return;
+    }
+
+    if(tipo === 'PROCESAR_RETIRO'){
+      const ok24 = await checkRetiro24h(user);
+      if(!ok24){ setBox(out,'<div class="err-box">Retiro cancelado por control 24 hs.</div>'); return; }
+    }
+
+    try{
+      setBox(out,'<div class="ok-box">Creando job...</div>');
+      const r = await crearJobManualDirecto(user,{tipo,signed:raw},wallet);
+      const id = r?.job_id || r?.id || r?.worker_job_id || '-';
+      setBox(out,'<div class="ok-box">Orden enviada al worker. Job: <b>#'+esc(id)+'</b></div>');
+      if($('manualWorkerUsuarioInicio')) $('manualWorkerUsuarioInicio').value = '';
+      if($('manualWorkerMontoInicio')) $('manualWorkerMontoInicio').value = '';
+      scheduleMoneyRefresh('quick inicio');
+    }catch(e){
+      setBox(out,'<div class="err-box">'+esc(e.message || e)+'</div>');
+    }
+  };
+
+  // Refresco liviano de dinero/billeteras. No toca inputs si están escribiendo.
+  setInterval(()=>{
+    if(document.hidden) return;
+    const a = document.activeElement;
+    if(a && ['INPUT','TEXTAREA','SELECT'].includes(a.tagName)) return;
+    hardMoneyRefresh('intervalo');
+  }, 9000);
+
 })();
 </script>
 
