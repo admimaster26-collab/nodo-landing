@@ -1,1243 +1,255 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests">
-<meta name="referrer" content="no-referrer">
-<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · Estado V2 · Estado fix</title>
-<!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
-<style>
-*{box-sizing:border-box;font-family:Arial,sans-serif}
-body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#12352f 0%,#07131f 45%,#080a10 100%);color:#f4f7fb}
-.hidden{display:none!important}
-.wrap{width:100%;max-width:690px;margin:auto;padding:22px 16px 120px}
-.logo-img{width:270px;max-width:84%;height:auto;display:block;margin:0 auto 18px;filter:drop-shadow(0 0 18px rgba(212,175,55,.25))}
-.card{background:rgba(18,24,35,.9);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:20px;margin-bottom:18px;box-shadow:0 18px 55px rgba(0,0,0,.28)}
-h1{font-size:38px;line-height:1.05;margin:8px 0 12px}
-h2{font-size:25px;margin:0 0 12px}
-.sub,.muted{color:#cbd5e1;font-size:18px;line-height:1.45;margin-bottom:22px}
-label{color:#cbd5e1;font-weight:800;margin-bottom:6px;display:block}
-input,button,textarea{width:100%;border:none;border-radius:16px;padding:17px;font-size:18px;margin-top:8px;margin-bottom:18px}
-input,textarea{background:#090c13;color:#fff;border:1px solid rgba(255,255,255,.14);outline:none}
-input::placeholder,textarea::placeholder{color:#6f7684}
-button{font-weight:900;cursor:pointer;color:#08110f;background:linear-gradient(135deg,#d4af37,#f7d774);box-shadow:0 10px 30px rgba(212,175,55,.18)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.btn-dark{background:rgba(255,255,255,.12);color:#fff;box-shadow:none}
-.btn-danger{background:linear-gradient(135deg,#ff7a66,#ff9b55);color:white}
-.result{display:none;padding:16px;border-radius:16px;margin-top:12px;line-height:1.45}
-.ok{display:block;background:rgba(22,163,74,.18);border:1px solid rgba(22,163,74,.45)}
-.err{display:block;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45)}
-.info{display:block;background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.35)}
-.mini{font-size:13px;color:#94a3b8;text-align:center;margin-top:16px}
-.transfer-card{border-color:rgba(212,175,55,.35);background:linear-gradient(145deg,rgba(45,35,12,.92),rgba(13,30,46,.88))}
-.gold-title{color:#d4af37;font-size:24px;font-weight:900;margin-bottom:22px}
-.data-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.big-data{font-size:24px;font-weight:900;letter-spacing:1px;word-break:break-all;margin-bottom:12px}
-.copy-btn{background:rgba(255,255,255,.12);color:#fff;box-shadow:none;margin:0;padding:13px;font-size:15px;width:auto;min-width:100px}
-.line{font-size:18px;margin:8px 0;color:#dbe5ef}.warn{margin-top:16px;color:#f9d36b;font-size:17px;font-weight:800}
-.tipo-solicitud-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 18px}
-.tipo-option{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;border-radius:16px;padding:14px;font-weight:900;cursor:pointer;text-align:center}
-.tipo-option.active{background:linear-gradient(135deg,#d4af37,#f7d774);color:#07131f}
-.validation-card{display:block;background:rgba(15,23,42,.92);border:1px solid rgba(212,175,55,.35);border-radius:18px;padding:16px;margin-top:12px;text-align:left;box-shadow:0 12px 32px rgba(0,0,0,.20)}
-.validation-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}.validation-icon{width:38px;height:38px;min-width:38px;border-radius:50%;display:grid;place-items:center;background:rgba(212,175,55,.16);color:#f7d774;font-weight:900}.validation-title{font-weight:900;font-size:16px;color:#fff}.validation-sub{color:#cbd5e1;font-size:13px;margin-top:3px;line-height:1.35}.validation-bar{width:100%;height:9px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.08)}.validation-fill{height:100%;width:30%;border-radius:999px;background:linear-gradient(90deg,#d4af37,#f7d774);transition:width .35s ease}.validation-footer{color:#94a3b8;font-size:12px;margin-top:10px;line-height:1.35}.loader{width:18px;height:18px;border:3px solid rgba(255,255,255,.25);border-top-color:#d4af37;border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(212,175,55,.55)}70%{box-shadow:0 0 0 12px rgba(212,175,55,0)}100%{box-shadow:0 0 0 0 rgba(212,175,55,0)}}
-.actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}.wa{text-decoration:none;display:block;text-align:center;border-radius:16px;padding:16px;font-size:17px;font-weight:900;color:white;background:linear-gradient(135deg,#ff7a66,#ff9b55);box-shadow:0 10px 35px rgba(255,122,102,.25)}.wa.secondary{background:rgba(255,255,255,.12);box-shadow:none}
-.retiro-data-box{margin-top:12px;padding:13px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);border-radius:14px}.retiro-data-box .hint{color:#f9d36b;font-size:12px;line-height:1.35;margin-bottom:10px}
-.step-box{margin-top:18px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:16px}.step{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;opacity:.55}.step.done,.step.active{opacity:1}.step-dot{width:30px;height:30px;min-width:30px;border-radius:999px;background:#2d3748;display:grid;place-items:center;font-weight:900}.step.done .step-dot{background:#12b76a}.step.active .step-dot{background:#d4af37;color:#07131f;animation:pulse 1.2s infinite}.step-title{font-weight:900;font-size:16px}.step-text{color:#cbd5e1;font-size:14px;margin-top:3px}
-.chat-lite-btn{position:fixed;right:18px;bottom:18px;width:auto;min-width:190px;z-index:9998;border-radius:999px;padding:15px 18px;margin:0;color:#07131f;background:linear-gradient(135deg,#d4af37,#f7d774);box-shadow:0 14px 40px rgba(212,175,55,.28)}
-.chat-lite.hidden{display:none!important}.chat-lite{position:fixed;right:18px;bottom:86px;width:min(390px,calc(100vw - 28px));height:min(590px,calc(100vh - 118px));z-index:9999;border-radius:24px;overflow:hidden;background:#101722;border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 70px rgba(0,0,0,.45);display:flex;flex-direction:column}.chat-lite-head{padding:15px 16px;background:linear-gradient(135deg,#153b31,#111827);border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between;gap:12px}.chat-agent{display:flex;align-items:center;gap:10px}.chat-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#d4af37;color:#07131f;font-weight:900}.chat-title{font-weight:900;font-size:16px}.chat-status{color:#9ee6bd;font-size:12px;margin-top:2px}.chat-close{background:rgba(255,255,255,.1);color:#fff;box-shadow:none;width:38px;height:38px;padding:0;margin:0;border-radius:12px;font-size:20px}.chat-lite-body{flex:1;overflow-y:auto;padding:14px;background:#0b111a}.chat-day{width:max-content;max-width:88%;margin:0 auto 12px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);color:#cbd5e1;font-size:12px}.chat-msg{max-width:84%;margin-bottom:10px;display:flex;flex-direction:column}.chat-msg.user{margin-left:auto;align-items:flex-end}.chat-msg.operator{margin-right:auto;align-items:flex-start}.chat-bubble{padding:10px 12px;border-radius:16px;line-height:1.35;font-size:15px;word-break:break-word}.chat-msg.user .chat-bubble{background:linear-gradient(135deg,#d4af37,#f7d774);color:#07131f;border-bottom-right-radius:4px}.chat-msg.operator .chat-bubble{background:#1d2939;color:#f4f7fb;border-bottom-left-radius:4px}.chat-bubble img{width:100%;max-width:240px;border-radius:12px;display:block;margin-top:6px}.chat-meta{color:#94a3b8;font-size:11px;margin-top:4px;padding:0 4px}.chat-lite-compose{padding:12px;background:#101722;border-top:1px solid rgba(255,255,255,.1)}.chat-input-row{display:grid;grid-template-columns:42px 1fr 46px;gap:8px;align-items:end}.chat-file-btn,.chat-send-btn{width:42px;height:42px;min-width:42px;padding:0;margin:0;border-radius:14px;color:#fff;box-shadow:none}.chat-file-btn{background:rgba(255,255,255,.12)}.chat-send-btn{background:linear-gradient(135deg,#d4af37,#f7d774);color:#07131f}#chatLiteInput{min-height:42px;max-height:110px;margin:0;padding:11px 12px;resize:none;border-radius:14px;font-size:15px;background:#090c13;color:#fff;border:1px solid rgba(255,255,255,.14)}.chat-hint{color:#94a3b8;font-size:11px;margin-top:8px;text-align:center}.chat-preview{display:none;align-items:center;justify-content:space-between;gap:10px;padding:8px;border-radius:14px;background:rgba(255,255,255,.08);margin-bottom:10px}.chat-preview.show{display:flex}.chat-preview img{width:58px;height:58px;object-fit:cover;border-radius:12px}.chat-preview button{width:auto;min-width:34px;height:34px;padding:0;margin:0;background:rgba(239,68,68,.18);color:#fff;box-shadow:none}
-.success-modal.hidden{display:none!important}.success-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.success-box{width:100%;max-width:420px;background:linear-gradient(145deg,#0c2d24,#111827);border:1px solid rgba(38,255,169,.3);border-radius:28px;padding:34px 24px;text-align:center;position:relative}.close-modal{width:auto;position:absolute;right:16px;top:12px;background:transparent;color:white;box-shadow:none;font-size:28px;padding:0;margin:0}.success-icon{font-size:62px;margin-bottom:12px}
-.user-compact-box{margin:10px 0 16px}.user-info-btn{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);color:#fff;box-shadow:none;margin:0;padding:13px 15px;border-radius:14px;font-size:15px;text-align:left}.user-info-btn span{display:block;color:#94a3b8;font-size:12px;margin-top:3px}.user-modal-card{background:rgba(255,255,255,.055);border:1px solid rgba(212,175,55,.24);border-radius:18px;padding:14px;margin:10px 0 16px;text-align:left}.user-detail-row{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px}.user-detail-row:last-child{border-bottom:0}.user-detail-row b{color:#f7d774}.user-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.user-modal-actions button{margin:0;font-size:15px;padding:14px}.modal-soft-title{font-size:22px;font-weight:900;margin:0 0 6px}@media(max-width:520px){.user-modal-actions{grid-template-columns:1fr}.user-detail-row{grid-template-columns:1fr;gap:3px}}
-@media(max-width:520px){.wrap{padding:18px 14px 120px}.logo-img{width:245px;margin-bottom:14px}h1{font-size:34px}.sub,.muted{font-size:17px}.card{padding:18px;border-radius:22px}.big-data{font-size:22px}.chat-lite-btn{right:14px;bottom:14px;min-width:0;width:calc(100vw - 28px)}.chat-lite{right:0;bottom:0;width:100vw;height:100vh;max-height:none;border-radius:0;border:none}}
 
-.transfer-data-box{background:rgba(255,255,255,.055);border:1px solid rgba(212,175,55,.24);border-radius:18px;padding:14px;margin:14px 0}.transfer-data-title{font-weight:900;color:#f7d774;margin-bottom:6px}.transfer-data-help{font-size:13px;color:#cbd5e1;line-height:1.35;margin-bottom:10px}.transfer-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.transfer-grid .full{grid-column:1/-1}@media(max-width:520px){.transfer-grid{grid-template-columns:1fr}}
-.landing-flow-box{background:rgba(18,24,35,.72);border:1px solid rgba(212,175,55,.24);border-radius:18px;padding:14px;margin:14px 0 18px}.landing-flow-title{font-weight:900;color:#f7d774;margin-bottom:10px}.landing-flow-item{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:start;margin:8px 0;color:#dbe5ef;line-height:1.35}.landing-flow-item b{width:28px;height:28px;border-radius:999px;background:#d4af37;color:#07131f;display:grid;place-items:center;font-size:14px}.landing-flow-note{color:#f9d36b;font-size:13px;line-height:1.35;margin-top:10px;font-weight:800}
-
-</style>
-</head>
-<body>
-<div class="wrap">
-  <img src="logo-bet300.png" class="logo-img" alt="BET300">
-
-  <div class="card" id="loginCard">
-    <h1>Ingresa tu usuario</h1>
-    <p class="muted">Primero verificamos tu usuario en la plataforma. No pedimos datos hasta confirmar que exista.</p>
-    <label>Usuario *</label>
-    <input id="loginUsuario" placeholder="ej: mari7854" autocomplete="username">
-    <button id="btnVerificarUsuario" onclick="verificarUsuarioInicial()">Verificar usuario</button>
-    <div id="loginMsg" class="result"></div>
-  </div>
-
-  <div class="card hidden" id="datosCard">
-    <h1>Completa tus datos</h1>
-    <p class="muted">Usuario validado. Ahora completá los datos necesarios para cargas, retiros y validación de pagos.</p>
-    <div id="usuarioValidadoBox" class="result ok"></div>
-    <label>Nombre completo *</label>
-    <input id="regNombre" placeholder="ej: Maria Gonzalez">
-    <label>WhatsApp *</label>
-    <input id="regTelefono" inputmode="tel" placeholder="ej: 1133344455">
-    <label>DNI *</label>
-    <input id="regDni" inputmode="numeric" placeholder="ej: 30111222">
-    <button id="btnGuardarDatos" onclick="guardarDatosCuenta()">Continuar</button>
-    <button class="btn-dark" onclick="volverAUsuario()">Cambiar usuario</button>
-    <div id="datosMsg" class="result"></div>
-  </div>
-
-  <div class="card hidden" id="cargaCard">
-    <h1 id="solicitudTitulo">Primero transferi</h1>
-    <p class="muted" id="solicitudSubtitulo">Copia el alias o CBU, transferi desde tu app y volve a esta pantalla para avisarnos.</p>
-
-    <div class="card transfer-card">
-      <div class="gold-title">Datos para transferir</div>
-      <span class="label">Alias</span>
-      <div class="data-row"><div id="aliasBox" class="big-data">Cargando...</div><button class="copy-btn" onclick="copiarAlias()">Copiar</button></div>
-      <span class="label">CBU / CVU</span>
-      <div class="data-row"><div id="cbuBox" class="big-data">Cargando...</div><button class="copy-btn" onclick="copiarCbu()">Copiar</button></div>
-      <div class="line"><b>Titular:</b> <span id="titularBox">Cargando...</span></div>
-      <div class="line"><b>Banco:</b> <span id="bancoBox">Mercado Pago</span></div>
-      <div class="warn" id="montoMinimoTxt">Atención: Carga mínima: $2.000</div>
-    </div>
-
-    <div id="transferFlowBox" class="landing-flow-box">
-      <div class="landing-flow-title">Como continuar</div>
-      <div class="landing-flow-item"><b>1</b><span>Copia el alias o CBU que figura arriba.</span></div>
-      <div class="landing-flow-item"><b>2</b><span>Hace la transferencia desde tu app o banco.</span></div>
-      <div class="landing-flow-item"><b>3</b><span>Volve aca, completa el monto y toca el boton para avisarnos.</span></div>
-      <div class="landing-flow-note">Si ya transferiste, no vuelvas a enviar otra solicitud por el mismo pago.</div>
-    </div>
-
-    <div id="datosUsuarioBox" class="user-compact-box"></div>
-    <div id="referenciaPagoBox" class="result ok hidden"></div>
-
-    <button class="btn-dark" onclick="volverADatos()">Editar mis datos</button>
-
-    <label>Tipo de solicitud *</label>
-    <div class="tipo-solicitud-box">
-      <button id="tipoCargaBtn" class="tipo-option active" type="button" onclick="seleccionarTipoSolicitud('CARGA')">Cargar</button>
-      <button id="tipoRetiroBtn" class="tipo-option" type="button" onclick="seleccionarTipoSolicitud('RETIRO')">Retirar</button>
-    </div>
-
-    <label id="montoLabel">Monto a cargar *</label>
-    <input id="monto" type="number" placeholder="ej: 5000">
-
-    <div id="datosTransferenciaBox" class="transfer-data-box">
-      <div class="transfer-data-title">Datos de quien transfiere</div>
-      <div class="transfer-data-help">Completa estos datos para que podamos detectar tu pago más rápido. Puede ser tu cuenta o la cuenta de otra persona que te transfiera.</div>
-      <div class="transfer-grid">
-        <div class="full">
-          <label>Nombre del titular que transfiere *</label>
-          <input id="titularTransferencia" placeholder="Ej: Maria Lopez">
-        </div>
-        <div>
-          <label>DNI / CUIT del titular *</label>
-          <input id="dniTransferencia" inputmode="numeric" placeholder="Ej: 30111222">
-        </div>
-        <div>
-          <label>Medio desde donde transfiere *</label>
-          <select id="medioTransferencia">
-            <option value="">Seleccionar</option>
-            <option value="MERCADO_PAGO">Mercado Pago</option>
-            <option value="BANCO">Banco</option>
-            <option value="UALA">Ualá</option>
-            <option value="PERSONAL_PAY">Personal Pay</option>
-            <option value="NX">NX</option>
-            <option value="OTRO">Otro</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div id="retiroDatosBox" class="retiro-data-box hidden">
-      <div class="hint">Para retiros, se usará la cuenta registrada/verificada. Si es la primera vez, completala y un operador la revisa antes de aprobar.</div>
-      <div id="retiroCuentaRegistradaBox" class="result ok hidden"></div>
-      <label id="retiroAliasLabel">CBU / CVU / Alias de destino *</label>
-      <input id="retiroAliasCbu" placeholder="ej: alias.mp o CVU/CBU completo">
-      <label id="retiroTitularLabel">Titular de la cuenta *</label>
-      <input id="retiroTitular" placeholder="Nombre y apellido del titular">
-    </div>
-
-    <button id="btnEnviar" onclick="crearSolicitud()">Ya transferi, enviar aviso</button>
-    <div id="resultado" class="result"></div>
-
-    <div id="estadoEspera" class="step-box hidden">
-      <div id="step1" class="step done"><div class="step-dot">OK</div><div><div class="step-title" id="step1Title">Transferencia informada</div><div class="step-text" id="step1Text">Recibimos tu aviso.</div></div></div>
-      <div id="step2" class="step active"><div class="step-dot">2</div><div><div class="step-title" id="step2Title"><span class="loader"></span>Buscando tu pago</div><div class="step-text" id="step2Text">Si ya transferiste, puede tardar unos minutos.</div></div></div>
-      <div id="step3" class="step"><div class="step-dot">3</div><div><div class="step-title" id="step3Title">Fichas acreditadas</div><div class="step-text" id="step3Text">Cuando se apruebe, te avisamos automaticamente.</div></div></div>
-      <div class="mini">No cierres esta ventana. Si demora más de lo habitual, podes contactarnos por chat.</div>
-    </div>
-
-    <div class="actions">
-      <a id="btnPlataformaFijo" class="wa" target="_blank">Ingresar a la plataforma</a>
-      <a id="btnWhatsappFijo" class="wa secondary" target="_blank">WhatsApp</a>
-      <button id="btnContactar" class="wa secondary" type="button" onclick="abrirChatLite()">Chatear con nosotros</button>
-      <button class="btn-danger" type="button" onclick="limpiarTodo()">Cambiar de cuenta</button>
-    </div>
-  </div>
-
-  <div class="mini">Guardá el comprobante de transferencia hasta que se confirme la carga.</div>
-</div>
-
-<button id="chatLiteOpenBtn" class="chat-lite-btn" type="button" onclick="abrirChatLite()">Chatear con nosotros</button>
-<div id="chatLite" class="chat-lite hidden">
-  <div class="chat-lite-head"><div class="chat-agent"><div class="chat-avatar">B</div><div><div class="chat-title">Soporte BET300</div><div id="chatLiteStatus" class="chat-status">Disponible para ayudarte</div></div></div><button class="chat-close" type="button" onclick="cerrarChatLite()">×</button></div>
-  <div id="chatLiteBody" class="chat-lite-body"><div class="chat-day">Chat de soporte</div><div class="chat-msg operator"><div class="chat-bubble">Hola  Escribinos tu consulta o adjuntá el comprobante si necesitás ayuda.</div><div class="chat-meta">Soporte</div></div></div>
-  <div class="chat-lite-compose"><div id="chatLitePreview" class="chat-preview"><div style="display:flex;align-items:center;gap:10px"><img id="chatLitePreviewImg" src="" alt="Comprobante"><div><b>Imagen adjunta</b><div class="chat-meta">Lista para enviar</div></div></div><button type="button" onclick="quitarImagenChatLite()">×</button></div><div class="chat-input-row"><button class="chat-file-btn" type="button" onclick="document.getElementById('chatLiteFile').click()">Adjuntar</button><textarea id="chatLiteInput" rows="1" placeholder="Escribí tu mensaje..."></textarea><button class="chat-send-btn" type="button" onclick="enviarChatLite()">Enviar</button></div><input id="chatLiteFile" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="tomarImagenChatLiteFile()"><div class="chat-hint">Podés adjuntar comprobante o pegar captura con Ctrl + V.</div></div>
-</div>
-
-<div id="successModal" class="success-modal hidden">
-  <div class="success-box">
-    <button class="close-modal" onclick="cerrarModalExito()">×</button>
-    <div class="success-icon">OK</div>
-    <h2>¡Fichas cargadas!</h2>
-    <p>Tu carga fue acreditada correctamente.</p>
-    <button onclick="irPlataforma()">INGRESAR A LA PLATAFORMA</button>
-  </div>
-</div>
-
-<div id="datosUsuarioModal" class="success-modal hidden">
-  <div class="success-box">
-    <button class="close-modal" onclick="cerrarDatosUsuarioModal()">×</button>
-    <div class="modal-soft-title">Mis datos</div>
-    <p class="mini">Datos usados para validar tus pagos y retiros.</p>
-    <div id="datosUsuarioModalBody"></div>
-    <div class="user-modal-actions">
-      <button class="btn-dark" type="button" onclick="cerrarDatosUsuarioModal()">Cerrar</button>
-      <button type="button" onclick="editarDatosDesdeModal()">Editar</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = "https://pjvvyvfcwjoocjqvdror.supabase.co";
-const SUPABASE_KEY = "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const DEBUG = false;
-
-// Landing pública: no imprimir datos técnicos en consola.
-
-const WHATSAPP_POR_PC = {P1:"5492235181171",P2:"5491157718506",P3:"5491127140155",P4:"5492233391195",P5:"5491166587968"};
-const LINKS_PLATAFORMA = {P1:"https://www.bet-300.pw/",P2:"https://www.bet-300.pw/",P3:"https://www.bet-300.pw/",P4:"https://www.bet-300.pw/",P5:"https://www.bet-300.pw/"};
-const params = new URLSearchParams(window.location.search);
-const PC_ALIASES = {CHINO:"P1",ALV:"P2",SAN:"P3",EYF:"P4",X:"P5"};
-function normalizarPC(valor){const raw=String(valor||"P1").trim().toUpperCase();const pc=PC_ALIASES[raw]||raw;return ["P1","P2","P3","P4","P5"].includes(pc)?pc:"P1"}
-const PC = normalizarPC(params.get("pc") || "P1");
-function pcCandidatos(pc){const raw=String(pc||"P1").trim().toUpperCase();const out=[raw];if(/^P\d+$/.test(raw))out.push("PC"+raw.replace("P",""));if(/^PC\d+$/.test(raw))out.push("P"+raw.replace("PC",""));return [...new Set(out)]}
-
-const LS_LOGIN = "bet300_login_validado_" + PC;
-const LS_USER = "bet300_user_" + PC;
-const LS_SOLICITUD = "solicitud_actual_" + PC;
-const LS_CHAT = "bet300_chat_" + PC;
-const LS_CHAT_TOKEN = "bet300_chat_token_" + PC;
-const BLOQUEO_SOLICITUD_MS = 5 * 60 * 1000;
-
-function solicitudCooldownKey(){
-  const u = String(userData?.usuario || userLogin?.usuario || "anon").trim().toLowerCase();
-  const d = String(userData?.dni || "").replace(/\D/g, "");
-  return "bet300_ultima_solicitud_" + PC + "_" + u + "_" + d;
-}
-
-function formatearCooldown(ms){
-  const total = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
-  const min = Math.floor(total / 60);
-  const sec = total % 60;
-  return String(min).padStart(2,"0") + ":" + String(sec).padStart(2,"0");
-}
-
-function getSolicitudCooldownRestante(){
-  const last = Number(sessionStorage.getItem(solicitudCooldownKey()) || 0);
-  const restante = last ? (BLOQUEO_SOLICITUD_MS - (Date.now() - last)) : 0;
-  return Math.max(0, restante);
-}
-
-let cooldownBtnTimer = null;
-function iniciarCooldownBoton(msInicial){
-  if(cooldownBtnTimer){
-    clearInterval(cooldownBtnTimer);
-    cooldownBtnTimer = null;
-  }
-
-  const btn = $("btnEnviar");
-  if(!btn) return;
-
-  const tick = () => {
-    const restante = getSolicitudCooldownRestante() || Number(msInicial || 0);
-    if(restante > 0){
-      btn.disabled = true;
-      btn.innerText = "Esperá " + formatearCooldown(restante);
-      return true;
-    }
-
-    btn.disabled = false;
-    btn.innerText = String(tipoSolicitudActual || "CARGA").toUpperCase() === "RETIRO" ? "Enviar solicitud de retiro" : "Ya transferi, enviar aviso";
-    if(cooldownBtnTimer){
-      clearInterval(cooldownBtnTimer);
-      cooldownBtnTimer = null;
-    }
-    return false;
-  };
-
-  if(tick()){
-    cooldownBtnTimer = setInterval(tick, 1000);
-  }
-}
-
-function registrarCooldownSolicitud(){
-  sessionStorage.setItem(solicitudCooldownKey(), String(Date.now()));
-  iniciarCooldownBoton(BLOQUEO_SOLICITUD_MS);
-}
-
-function bloquearSiSolicitudReciente(){
-  const restante = getSolicitudCooldownRestante();
-  if(restante <= 0) return false;
-
-  mostrarResultado(
-    `Ya enviaste una solicitud hace poco. Para evitar duplicados, podes enviar otra en <b>${formatearCooldown(restante)}</b>.`,
-    false
-  );
-  iniciarCooldownBoton(restante);
-  return true;
-}
-
-let billeteraActiva=null, solicitudActual=null, solicitudChatId="", intervaloEstado=null;
-let userLogin=null, userData=null, tipoSolicitudActual="CARGA", validacionUsuarioActual=null, cuentaRetiroVerificada=null, referenciaPagoActual="";
-let chatSessionId=sessionStorage.getItem(LS_CHAT)||"", chatSessionToken=sessionStorage.getItem(LS_CHAT_TOKEN)||"", chatLiteImagenBase64="", chatLiteTimer=null;
-
-window.onload = async () => {
-  prepararLinks();
-  limpiarChatSeguroSiFaltaToken();
-  cargarEstadoGuardado();
-  recuperarSolicitudPendiente();
-  // La billetera NO se pide al abrir la página: se carga recién al confirmar datos del usuario.
-};
-
-function $(id){return document.getElementById(id)}
-function escapeHtml(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function escapeAttr(t){return escapeHtml(t)}
-function show(id){$(id)?.classList.remove("hidden")} function hide(id){$(id)?.classList.add("hidden")}
-function msg(id, texto, tipo){const b=$(id); if(!b)return; b.innerHTML=texto; b.className="result "+(tipo||"info")}
-function getWhatsappNumero(){return WHATSAPP_POR_PC[PC]||WHATSAPP_POR_PC.P1}
-function prepararLinks(){const numero=getWhatsappNumero();$("btnWhatsappFijo").href=`https://wa.me/${numero}?text=${encodeURIComponent("Hola, necesito ayuda.")}`;$("btnPlataformaFijo").href=LINKS_PLATAFORMA[PC]||LINKS_PLATAFORMA.P1}
-function setVista(v){["loginCard","datosCard","cargaCard"].forEach(hide); show(v)}
-function normalizarTelefono(v){return String(v||"").replace(/\D/g,"")}
-function normalizarDni(v){return String(v||"").replace(/\D/g,"")}
-
-function cargarEstadoGuardado(){
-  try{userLogin=JSON.parse(sessionStorage.getItem(LS_LOGIN)||"null")}catch(e){}
-  try{userData=JSON.parse(sessionStorage.getItem(LS_USER)||"null")}catch(e){}
-  if(userData?.usuario && userData?.nombre && userData?.telefono && userData?.dni && userData?.usuario_validado && userData?.validacion_id){mostrarCarga();return}
-  if(userLogin?.usuario && userLogin?.validacion_id){mostrarDatos();return}
-  setVista("loginCard");
-}
-
-async function verificarUsuarioInicial(){
-  const usuario=$("loginUsuario").value.trim();
-  if(!usuario){msg("loginMsg","Ingresa tu usuario.", "err");return}
-  $("btnVerificarUsuario").disabled=true;$("btnVerificarUsuario").innerText="Verificando...";
-  msg("loginMsg",renderValidacionUsuarioBox(15,"Aguarde, estamos verificando su usuario. No cierre esta ventana."),"info");
-
-  const {data,error}=await supabaseClient.rpc("landing_validar_usuario_login",{
-    p_usuario:usuario,
-    p_pc_codigo:PC
-  });
-
-  if(error){DEBUG && console.error(error);$("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";msg("loginMsg","No pudimos iniciar la validación. Intentá nuevamente o consultanos por chat.","err");return}
-
-  const row=Array.isArray(data)?data[0]:data;
-  if(!row){$("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";msg("loginMsg","No pudimos validar el usuario. Consultanos por chat.","err");return}
-
-  if(["EXISTE","EXISTIR"].includes(String(row.estado||"").toUpperCase())){
-    finalizarLoginValidado(usuario,row.validacion_id||null);
-    return;
-  }
-
-  await esperarValidacionInicial(usuario,row.validacion_id);
-}
-
-async function esperarValidacionInicial(usuario,validacionId){
-  const max=40; let i=0;
-  while(i<max){
-    i++; await new Promise(r=>setTimeout(r,2500));
-    const {data,error}=await supabaseClient.rpc("landing_estado_validacion_usuario",{p_validacion_id:Number(validacionId)});
-    if(error){DEBUG && console.warn(error);continue}
-    const row=Array.isArray(data)?data[0]:data;
-    const estado=String(row?.estado||"").toUpperCase();
-    if(estado==="EXISTE" || estado==="EXISTIR"){finalizarLoginValidado(usuario,validacionId);return}
-    if(estado==="NO_EXISTE"){
-      $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-      msg("loginMsg",renderValidacionNoExisteBox(),"err");return
-    }
-    if(estado==="ERROR"){
-      $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-      msg("loginMsg",renderValidacionErrorBox(),"err");return
-    }
-    const pct=Math.min(92,15+Math.round((i/max)*77));
-    msg("loginMsg",renderValidacionUsuarioBox(pct,i<8?"Buscando tu usuario en Agentes...":"La validación sigue en curso. No cierres esta ventana."),"info");
-  }
-  $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-  msg("loginMsg","La validación está demorando más de lo habitual. Intentá nuevamente o consultanos por chat.","err");
-}
-
-function finalizarLoginValidado(usuario,validacionId){
-  userLogin={usuario,validacion_id:validacionId,validado_at:new Date().toISOString()};
-  sessionStorage.setItem(LS_LOGIN,JSON.stringify(userLogin));
-  $("btnVerificarUsuario").disabled=false;$("btnVerificarUsuario").innerText="Verificar usuario";
-  msg("loginMsg","Usuario validado correctamente OK","ok");
-  mostrarDatos();
-}
-
-function mostrarDatos(){
-  setVista("datosCard");
-  $("usuarioValidadoBox").innerHTML=`<b>Usuario validado:</b> ${escapeHtml(userLogin?.usuario||"")} OK`;
-  if(userData){$("regNombre").value=userData.nombre||"";$("regTelefono").value=userData.telefono||"";$("regDni").value=userData.dni||""}
-}
-
-async function guardarDatosCuenta(){
-  const nombre=$("regNombre").value.trim();
-  const telefono=normalizarTelefono($("regTelefono").value);
-  const dni=normalizarDni($("regDni").value);
-
-  if(!userLogin?.usuario){
-    msg("datosMsg","Primero verifica tu usuario.","err");
-    setVista("loginCard");
-    return;
-  }
-
-  if(!nombre||telefono.length<8||dni.length<7){
-    msg("datosMsg","Completa nombre, WhatsApp válido y DNI válido.","err");
-    return;
-  }
-
-  $("btnGuardarDatos").disabled = true;
-  $("btnGuardarDatos").innerText = "Validando datos...";
-  msg("datosMsg", renderValidacionUsuarioBox(20, "Confirmando tus datos con el usuario validado. No cierres esta ventana."), "info");
-
-  const validacionFinal = await validarUsuarioConDatosFinales(userLogin.usuario, nombre, telefono, dni);
-
-  $("btnGuardarDatos").disabled = false;
-  $("btnGuardarDatos").innerText = "Continuar";
-
-  if(!validacionFinal.ok){
-    msg("datosMsg", validacionFinal.error || "No pudimos confirmar tus datos. Consultanos por chat.", "err");
-    return;
-  }
-
-  userLogin.validacion_id = validacionFinal.validacion_id;
-  sessionStorage.setItem(LS_LOGIN, JSON.stringify(userLogin));
-
-  userData={
-    usuario:userLogin.usuario,
-    nombre,
-    telefono,
-    dni,
-    usuario_validado:true,
-    validacion_id:validacionFinal.validacion_id,
-    validado_at:new Date().toISOString()
-  };
-
-  sessionStorage.setItem(LS_USER,JSON.stringify(userData));
-  msg("datosMsg","Datos confirmados correctamente OK","ok");
-  mostrarCarga();
-}
-
-async function validarUsuarioConDatosFinales(usuario,nombre,telefono,dni){
-  if(!userLogin?.validacion_id){
-    return {
-      ok:false,
-      error:"No encontramos una validación activa. Volve a verificar tu usuario."
-    };
-  }
-
-  const {data,error}=await supabaseClient.rpc("landing_confirmar_datos_usuario",{
-    p_validacion_id:Number(userLogin.validacion_id),
-    p_usuario:usuario,
-    p_nombre_completo:nombre,
-    p_telefono:telefono,
-    p_dni:dni,
-    p_pc_codigo:PC
-  });
-
-  if(error){
-    DEBUG && console.error("Error confirmando datos:", error);
-    return {
-      ok:false,
-      error:"No pudimos confirmar tus datos. Consultanos por chat."
-    };
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-  const estado = String(row?.estado || "").toUpperCase();
-
-  if(!row || !["EXISTE","EXISTIR"].includes(estado)){
-    return {
-      ok:false,
-      error:"El usuario todavía no figura validado en Agentes. Volve a verificar o consultanos por chat."
-    };
-  }
-
-  return {
-    ok:true,
-    validacion_id:row.validacion_id
-  };
-}
-
-function renderDatosUsuarioCompacto(){
-  const box=$("datosUsuarioBox");
-  if(!box || !userData)return;
-  box.className="user-compact-box";
-  box.innerHTML=`<button class="user-info-btn" type="button" onclick="abrirDatosUsuarioModal()"><b>${escapeHtml(userData.usuario||"")}</b><span>Usuario validado · Ver o editar mis datos</span></button>`;
-}
-function renderDatosUsuarioModal(){
-  const body=$("datosUsuarioModalBody");
-  if(!body || !userData)return;
-  body.innerHTML=`<div class="user-modal-card"><div class="user-detail-row"><b>Usuario</b><span>${escapeHtml(userData.usuario||"")}</span></div><div class="user-detail-row"><b>Nombre</b><span>${escapeHtml(userData.nombre||"")}</span></div><div class="user-detail-row"><b>WhatsApp</b><span>${escapeHtml(userData.telefono||"")}</span></div><div class="user-detail-row"><b>DNI</b><span>${escapeHtml(userData.dni||"")}</span></div><div class="user-detail-row"><b>Validación</b><span>Usuario encontrado en Agentes OK</span></div></div>`;
-}
-function abrirDatosUsuarioModal(){renderDatosUsuarioModal();$("datosUsuarioModal")?.classList.remove("hidden")}
-function cerrarDatosUsuarioModal(){$("datosUsuarioModal")?.classList.add("hidden")}
-function editarDatosDesdeModal(){cerrarDatosUsuarioModal();volverADatos()}
-
-function mostrarCarga(){setTimeout(actualizarCamposPorTipoSolicitud,0);
-  setVista("cargaCard");
-  renderDatosUsuarioCompacto();
-  if(!billeteraActiva){ cargarBilletera(); }
-  const restante = getSolicitudCooldownRestante();
-  if(restante > 0){ iniciarCooldownBoton(restante); }
-}
-
-function volverAUsuario(){sessionStorage.removeItem(LS_LOGIN);sessionStorage.removeItem(LS_USER);userLogin=null;userData=null;setVista("loginCard")}
-function volverADatos(){mostrarDatos()}
-function limpiarTodo(){sessionStorage.removeItem(LS_LOGIN);sessionStorage.removeItem(LS_USER);sessionStorage.removeItem(LS_CHAT);sessionStorage.removeItem(LS_CHAT_TOKEN);sessionStorage.removeItem(LS_SOLICITUD);location.reload()}
-
-function renderValidacionUsuarioBox(pct=20,sub="Buscando tu usuario en Agentes..."){return `<div class="validation-card"><div class="validation-head"><div class="validation-icon"><span class="loader"></span></div><div><div class="validation-title">Validando tu usuario</div><div class="validation-sub">${escapeHtml(sub)}</div></div></div><div class="validation-bar"><div class="validation-fill" style="width:${Math.max(8,Math.min(100,Number(pct||20)))}%"></div></div><div class="validation-footer">Aguarde que se está verificando su usuario. No cierre esta ventana.</div></div>`}
-function renderValidacionNoExisteBox(){return `<div class="validation-card" style="border-color:rgba(239,68,68,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(239,68,68,.15);color:#fca5a5">!</div><div><div class="validation-title">No encontramos ese usuario</div><div class="validation-sub">Revisá que esté escrito igual que en la plataforma.</div></div></div><button type="button" onclick="document.getElementById('loginUsuario').focus()">Intentar nuevamente</button><button class="btn-dark" type="button" onclick="abrirChatLite()">Consultar por chat</button></div>`}
-function renderValidacionErrorBox(){return `<div class="validation-card" style="border-color:rgba(245,158,11,.45)"><div class="validation-head"><div class="validation-icon" style="background:rgba(245,158,11,.15);color:#fcd34d">?</div><div><div class="validation-title">No pudimos validar automaticamente</div><div class="validation-sub">Intentá nuevamente o consultanos por chat.</div></div></div><button type="button" onclick="abrirChatLite()">Consultar por chat</button></div>`}
-
-async function cargarBilletera(){
-  let encontrada=null, ultimoError=null;
-  for(const pcTry of pcCandidatos(PC)){
-    const {data,error}=await supabaseClient.rpc("landing_obtener_billetera_segura",{
-      p_validacion_usuario_id:Number(userData?.validacion_id || 0),
-      p_usuario:userData?.usuario || "",
-      p_nombre_completo:userData?.nombre || "",
-      p_telefono:userData?.telefono || "",
-      p_dni:userData?.dni || "",
-      p_pc_codigo:pcTry
-    });
-    if(error){ultimoError=error;DEBUG && console.warn(error.message);continue}
-    if(data&&data.length){encontrada=data[0];break}
-  }
-  if(!encontrada){if(ultimoError)DEBUG && console.error(ultimoError);mostrarBilleteraNoDisponible();return}
-  billeteraActiva=encontrada;
-  $("aliasBox").innerText=billeteraActiva.alias||"Consultar";
-  $("cbuBox").innerText=billeteraActiva.cbu||"Consultar";
-  $("titularBox").innerText=billeteraActiva.titular||billeteraActiva.nombre_visible||"Consultar";
-  $("bancoBox").innerText=billeteraActiva.banco||"Billetera";
-}
-function mostrarBilleteraNoDisponible(){billeteraActiva=null;$("aliasBox").innerText="No disponible";$("cbuBox").innerText="No disponible";$("titularBox").innerText="Consultar por chat";$("bancoBox").innerText="Consultar"}
-function copiarTextoDato(id,n){const t=$(id)?.innerText||"";if(!t||["Consultar","No disponible"].includes(t)){mostrarResultado(`${n} no disponible. Contactanos por chat.`,false);return}navigator.clipboard.writeText(t);mostrarResultado(`${n} copiado correctamente.`,true)}
-function copiarAlias(){copiarTextoDato("aliasBox","Alias")} function copiarCbu(){copiarTextoDato("cbuBox","CBU / CVU")}
-
-function seleccionarTipoSolicitud(tipo){
-  tipoSolicitudActual=String(tipo||"CARGA").toUpperCase(); const esRetiro=tipoSolicitudActual==="RETIRO";
-  $("tipoCargaBtn").classList.toggle("active",!esRetiro);$("tipoRetiroBtn").classList.toggle("active",esRetiro);
-  $("montoLabel").innerText=esRetiro?"Monto a retirar *":"Monto transferido *";$("monto").placeholder=esRetiro?"mínimo: 5000":"ej: 5000";$("btnEnviar").innerText=esRetiro?"Enviar solicitud de retiro":"Ya transferi, enviar aviso";
-  $("retiroDatosBox").classList.toggle("hidden",!esRetiro);$("montoMinimoTxt").innerText=esRetiro?"Atención: Retiro mínimo: $5.000":"Atención: Carga mínima: $2.000";
-  $("solicitudTitulo").innerText=esRetiro?"Solicitar retiro":"Primero transferi";
-  $("solicitudSubtitulo").innerText=esRetiro?"Completa el monto y la cuenta de destino para pedir el retiro.":"Copia el alias o CBU, transferi desde tu app y volve a esta pantalla para avisarnos.";
-  $("transferFlowBox")?.classList.toggle("hidden", esRetiro);
-  if(esRetiro)cargarCuentaRetiroVerificada();else{cuentaRetiroVerificada=null;actualizarVistaCuentaRetiro();actualizarCamposPorTipoSolicitud()}
-}
-
-async function cargarCuentaRetiroVerificada(){
-  cuentaRetiroVerificada=null;
-  if(!userData?.usuario||!userData?.dni){actualizarVistaCuentaRetiro();return}
-  const {data,error}=await supabaseClient.rpc("landing_obtener_cuenta_retiro",{p_usuario:userData.usuario,p_dni:userData.dni,p_pc_codigo:PC});
-  if(error){DEBUG && console.warn(error.message);actualizarVistaCuentaRetiro();return}
-  const row=Array.isArray(data)?data[0]:data; if(row&&row.cuenta_id)cuentaRetiroVerificada=row; actualizarVistaCuentaRetiro();
-}
-function actualizarVistaCuentaRetiro(){
-  const box=$("retiroCuentaRegistradaBox"), a=$("retiroAliasCbu"), t=$("retiroTitular");
-  if(!box||!a||!t)return;
-  if(cuentaRetiroVerificada?.cuenta_id){
-    box.classList.remove("hidden");box.innerHTML=`<b>Cuenta de retiro verificada</b><br><b>Titular:</b> ${escapeHtml(cuentaRetiroVerificada.titular||"")}<br><b>Alias/CBU:</b> ${escapeHtml(cuentaRetiroVerificada.alias_cbu||"")}<br><span class="mini">Por seguridad, los retiros se envian a la cuenta registrada. Para cambiarla, consultá por chat.</span>`;
-    a.value=cuentaRetiroVerificada.alias_cbu||"";t.value=cuentaRetiroVerificada.titular||"";a.disabled=true;t.disabled=true;
-  }else{box.classList.add("hidden");box.innerHTML="";a.disabled=false;t.disabled=false}
-}
-function fechaBA(f){try{return new Date(f).toLocaleString("es-AR",{timeZone:"America/Argentina/Buenos_Aires",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).replace(","," a las")}catch(e){return String(f||"")}}
-async function puedeSolicitarRetiro(){
-  const {data,error}=await supabaseClient.rpc("landing_puede_solicitar_retiro",{p_usuario:userData.usuario,p_dni:userData.dni,p_pc_codigo:PC});
-  if(error){DEBUG && console.error(error);return{ok:false,error:"No pudimos validar si podes retirar ahora. Consultanos por chat."}}
-  const row=Array.isArray(data)?data[0]:data; if(!row)return{ok:false,error:"No pudimos validar el retiro. Consultanos por chat."}
-  if(row.ok===false){let msg=row.mensaje||"Ya tenés un retiro registrado en las últimas 24 hs."; const desde=row.puede_desde||row.disponible_desde||row.proximo_retiro_at||row.next_available_at; if(desde)msg+=`<br>Podés volver a solicitarlo a partir del ${fechaBA(desde)} hs.`; return{ok:false,error:msg}}
-  return{ok:true}
-}
-
-
-function datosTransferenciaActuales(){
-  const titular = ($("titularTransferencia")?.value || "").trim().replace(/\s+/g," ");
-  const dni = normalizarDni($("dniTransferencia")?.value || "");
-  const medio = ($("medioTransferencia")?.value || "").trim().toUpperCase();
-  return { titular, dni, medio };
-}
-function limpiarDatosTransferencia(){
-  if($("titularTransferencia")) $("titularTransferencia").value="";
-  if($("dniTransferencia")) $("dniTransferencia").value="";
-  if($("medioTransferencia")) $("medioTransferencia").value="";
-}
-function debeReintentarSolicitudLegacy(error){
-  const msg=String(error?.message||error?.details||error?.hint||"").toLowerCase();
-  return msg.includes("function")&&(msg.includes("landing_crear_solicitud_segura")||msg.includes("landing_crear_solicitud_v3")) || msg.includes("p_titular_transferencia") || msg.includes("p_dni_transferencia") || msg.includes("p_medio_transferencia");
-}function actualizarCamposPorTipoSolicitud(){
-  const esRetiro = String(tipoSolicitudActual||"CARGA").toUpperCase()==="RETIRO";
-  $("datosTransferenciaBox")?.classList.toggle("hidden", esRetiro);
-}
-
-async function crearSolicitud(){
-  const monto=Number($("monto").value||0), tipo=String(tipoSolicitudActual||"CARGA").toUpperCase(), esRetiro=tipo==="RETIRO";
-  if(!userData?.usuario||!userData?.validacion_id){mostrarResultado("Primero verifica tu usuario en Agentes.",false);setVista("loginCard");return}
-  if(!monto){mostrarResultado(esRetiro?"Completa el monto a retirar.":"Completa el monto a cargar.",false);return}
-  if(!esRetiro&&monto<2000){mostrarResultado("El monto mínimo de carga es $2.000.",false);return}
-  if(esRetiro&&monto<5000){mostrarResultado("El monto mínimo de retiro es $5.000.",false);return}
-  if(esRetiro){
-    const destino=($("retiroAliasCbu")?.value||"").trim(), titular=($("retiroTitular")?.value||"").trim();
-    if(!destino||!titular){mostrarResultado("Completa la cuenta de destino y titular para el retiro.",false);return}
-    const v=await puedeSolicitarRetiro(); if(!v.ok){mostrarResultado(v.error,false);return}
-  }
-  if(!esRetiro){
-    const dt=datosTransferenciaActuales();
-    if(!dt.titular||dt.titular.length<4){mostrarResultado("Completa el nombre del titular que transfiere.",false);return}
-    if(!dt.dni||dt.dni.length<7){mostrarResultado("Completa el DNI/CUIT del titular que transfiere.",false);return}
-    if(!dt.medio){mostrarResultado("Seleccioná desde qué medio/billetera se realiza la transferencia.",false);return}
-  }
-  if(!esRetiro&&!billeteraActiva){mostrarResultado("No hay billetera disponible. Contactanos por chat.",false);return}
-  if(bloquearSiSolicitudReciente()) return;
-  $("btnEnviar").disabled=true;$("btnEnviar").innerText=esRetiro?"Enviando retiro...":"Enviando aviso...";
-  const r=await crearSolicitudSupabase(monto,tipo);
-  $("btnEnviar").disabled=false;$("btnEnviar").innerText=esRetiro?"Enviar solicitud de retiro":"Ya transferi, enviar aviso";
-  if(!r.ok){mostrarResultado(r.error||"No se pudo crear la solicitud.",false);return}
-  registrarCooldownSolicitud();
-  guardarSolicitudLocal(r.solicitud.id,r.solicitud.chat_id,r.solicitud.chat_token,tipo);
-  if(r.solicitud.chat_id&&r.solicitud.chat_token){chatSessionId=String(r.solicitud.chat_id);chatSessionToken=String(r.solicitud.chat_token);sessionStorage.setItem(LS_CHAT,chatSessionId);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken);iniciarRealtimeChatLanding()}
-  referenciaPagoActual=r.solicitud.referencia_pago||"";mostrarReferenciaPago(r.solicitud);
-  mostrarResultado(esRetiro?`OK Solicitud de retiro recibida.<br><br>Estamos revisando tu pedido.`:`OK Aviso recibido.<br><br>Estamos buscando tu pago. Si ya transferiste, no envies otra solicitud por el mismo movimiento.`,true);
-  mostrarEstadoEspera(r.solicitud.estado||"PENDIENTE");iniciarEscuchaEstado();setTimeout(()=>iniciarEscuchaEstado(),250);$("monto").value="";if(!esRetiro)limpiarDatosTransferencia();
-}
-async function renovarValidacionParaSolicitud(){
-  if(!userData?.usuario||!userData?.nombre||!userData?.telefono||!userData?.dni)return false;
-  const login=await supabaseClient.rpc("landing_validar_usuario_login",{p_usuario:userData.usuario,p_pc_codigo:PC});
-  if(login.error)return false;
-  const row=Array.isArray(login.data)?login.data[0]:login.data;
-  const validacionId=row?.validacion_id;
-  if(!validacionId)return false;
-  userLogin={usuario:userData.usuario,validacion_id:validacionId,validado_at:new Date().toISOString()};
-  sessionStorage.setItem(LS_LOGIN,JSON.stringify(userLogin));
-  const final=await validarUsuarioConDatosFinales(userData.usuario,userData.nombre,userData.telefono,userData.dni);
-  if(!final.ok||!final.validacion_id)return false;
-  userData.validacion_id=final.validacion_id;
-  userData.validado_at=new Date().toISOString();
-  sessionStorage.setItem(LS_USER,JSON.stringify(userData));
-  return true;
-}
-
-async function llamarCrearSolicitudSegura(params){
-  let res=await supabaseClient.rpc("landing_crear_solicitud_v3",params);
-  if(res.error&&debeReintentarSolicitudLegacy(res.error)){
-    const legacyParams={...params};
-    delete legacyParams.p_titular_transferencia;
-    delete legacyParams.p_dni_transferencia;
-    delete legacyParams.p_medio_transferencia;
-    res=await supabaseClient.rpc("landing_crear_solicitud_v3",legacyParams);
-  }
-  return res;
-}
-
-function errorLegibleSolicitud(error){
-  const em=String(error?.message||error?.details||error?.hint||"").trim();
-  if(em.includes("ESPERA_5_MIN"))return em.replace("ESPERA_5_MIN:","");
-  if(em.includes("Validaci")&&em.includes("no encontrada"))return "Necesitamos volver a verificar tu usuario. Tocá Cambiar de cuenta e ingresá otra vez.";
-  return em||"No se pudo crear la solicitud. Intentá nuevamente o consultanos por chat.";
-}
-
-async function crearSolicitudSupabase(monto,tipo="CARGA"){
-  const esRetiro=String(tipo||"CARGA").toUpperCase()==="RETIRO";
-  const dt=!esRetiro?datosTransferenciaActuales():{titular:null,dni:null,medio:null};
-  const walletId=billeteraActiva?.id??billeteraActiva?.billetera_id??billeteraActiva?.id_billetera??billeteraActiva?.ID_BILLETERA??null;
-  const walletName=billeteraActiva?.nombre_visible||billeteraActiva?.billetera_nombre||billeteraActiva?.nombre||"";
-  const params={
-    p_usuario:userData.usuario,p_nombre_completo:userData.nombre,p_telefono:userData.telefono,p_dni:userData.dni,p_validacion_usuario_id:Number(userData.validacion_id),p_pc_codigo:PC,p_tipo:esRetiro?"RETIRO":"CARGA",p_monto:Number(monto),p_comprobante_url:null,
-    p_billetera_id:(!esRetiro&&walletId)?Number(walletId):null,p_billetera_nombre:(!esRetiro&&billeteraActiva)?String(walletName):null,p_link_plataforma:LINKS_PLATAFORMA[PC]||LINKS_PLATAFORMA.P1||null,
-    p_retiro_alias_cbu:esRetiro?(cuentaRetiroVerificada?.alias_cbu||$("retiroAliasCbu")?.value||"").trim():null,p_retiro_titular:esRetiro?(cuentaRetiroVerificada?.titular||$("retiroTitular")?.value||"").trim():null,p_cuenta_retiro_id:esRetiro&&cuentaRetiroVerificada?.cuenta_id?Number(cuentaRetiroVerificada.cuenta_id):null,
-    p_titular_transferencia:dt.titular,
-    p_dni_transferencia:dt.dni,
-    p_medio_transferencia:dt.medio
-  };
-
-  let {data,error}=await llamarCrearSolicitudSegura(params);
-  if(error){
-    const em=String(error.message||"");
-    if(em.includes("Validaci")&&em.includes("no encontrada")){
-      const renovada=await renovarValidacionParaSolicitud();
-      if(renovada){
-        params.p_validacion_usuario_id=Number(userData.validacion_id);
-        const retry=await llamarCrearSolicitudSegura(params);
-        data=retry.data;
-        error=retry.error;
-      }
-    }
-  }
-  if(error){
-    DEBUG&&console.error(error);
-    return{ok:false,error:errorLegibleSolicitud(error)};
-  }
-  const row=Array.isArray(data)?data[0]:data;
-  if(row?.ok===false)return{ok:false,error:row.mensaje||row.error||"No se pudo crear la solicitud."}
-  if(!row?.solicitud_id)return{ok:false,error:"La solicitud no devolvió ID."}
-
-  solicitudActual=row.solicitud_id; solicitudChatId=row.chat_id||"";
-  return{ok:true,solicitud:{id:row.solicitud_id,chat_id:row.chat_id,chat_token:row.chat_token||"",estado:row.estado||"PENDIENTE",created_at:row.created_at,tipo:esRetiro?"RETIRO":"CARGA",referencia_pago:row.referencia_pago||"",referencia_pago_visible:row.referencia_pago_visible||row.referencia_pago||"",retiro_requiere_revision:row.retiro_requiere_revision||false}}
-}
-
-function guardarSolicitudLocal(id,chatId,chatToken,tipo){solicitudActual=id?String(id):null;solicitudChatId=chatId?String(chatId):"";if(chatToken){chatSessionToken=String(chatToken);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken)}sessionStorage.setItem(LS_SOLICITUD,JSON.stringify({id:solicitudActual,chat_id:solicitudChatId,chat_token:chatToken?String(chatToken):"",tipo:tipo||tipoSolicitudActual||"CARGA"}))}
-function recuperarSolicitudPendiente(){
-  const g = sessionStorage.getItem(LS_SOLICITUD);
-
-  if(!g) return;
-
-  try{
-    const o = JSON.parse(g);
-
-    solicitudActual = o.id ? String(o.id) : null;
-    solicitudChatId = o.chat_id ? String(o.chat_id) : "";
-
-    if(o.chat_token){
-      chatSessionToken = String(o.chat_token);
-      sessionStorage.setItem(LS_CHAT_TOKEN, chatSessionToken);
-    }
-
-    if(o.tipo){
-      tipoSolicitudActual = String(o.tipo).toUpperCase();
-    }
-
-  }catch(e){
-    solicitudActual = String(g || "");
-    solicitudChatId = sessionStorage.getItem(LS_CHAT) || "";
-    chatSessionToken = sessionStorage.getItem(LS_CHAT_TOKEN) || "";
-  }
-
-  if(solicitudActual){
-    mostrarEstadoEspera("PENDIENTE");
-    iniciarEscuchaEstado();
-    setTimeout(()=>iniciarEscuchaEstado(),250);
-  }
-}
-function mostrarReferenciaPago(s){const box=$("referenciaPagoBox");if(!box)return;const tipo=String(s?.tipo||tipoSolicitudActual||"CARGA").toUpperCase(), ref=s?.referencia_pago||s?.referencia_pago_visible||"";if(tipo!=="CARGA"||!ref){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=`<b>Referencia de carga:</b> ${escapeHtml(ref)}<br><span class="mini">Si tu billetera permite agregar nota o motivo, escribí esta referencia. Esto ayuda a validar tu pago más rápido.</span><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText('${escapeAttr(ref)}')">Copiar referencia</button>`}
-function mostrarResultado(texto,ok){const box=$("resultado");box.innerHTML=texto;box.className="result "+(ok?"ok":"err")}
-function mostrarEstadoEspera(e="PENDIENTE"){$("estadoEspera").classList.remove("hidden");renderProgresoSolicitud(e)}
-function esEstadoSolicitudOk(estado){const e=String(estado||"").toUpperCase().trim();return ["ACREDITADA","PAGADA","APROBADA","APROBADO","REALIZADA","REALIZADO","COMPLETADA","COMPLETADO","OK","FINALIZADA","FINALIZADO","CERRADA","CERRADO"].includes(e)}
-function esEstadoSolicitudCancelado(estado){const e=String(estado||"").toUpperCase();return e.includes("RECHAZ")||e.includes("ERROR")||e.includes("CANCEL")||e.includes("ANUL")}
-function renderProgresoSolicitud(estado){
-  const e=String(estado||"PENDIENTE").toUpperCase(), esRetiro=String(tipoSolicitudActual||"CARGA").toUpperCase()==="RETIRO", ok=esEstadoSolicitudOk(e), bad=esEstadoSolicitudCancelado(e);
-  $("step1Title").innerText=esRetiro?"Solicitud recibida":"Transferencia informada";
-  $("step1Text").innerText=esRetiro?"Recibimos tu solicitud de retiro.":"Recibimos tu aviso de transferencia.";
-  if(bad){
-    const cancelada=e.includes("CANCEL")||e.includes("ANUL");
-    $("step2Title").innerText=cancelada?"Solicitud cancelada":"Solicitud rechazada";
-    $("step2Text").innerText=cancelada?"La solicitud fue cancelada desde soporte.":"No pudimos aprobar esta solicitud.";
-    $("step3Title").innerText=esRetiro?"Retiro no procesado":"Carga no acreditada";
-    $("step3Text").innerText="Si ya transferiste, contactanos por chat para revisarlo.";
-  }else{
-    $("step2Title").innerHTML=esRetiro?'<span class="loader"></span>Revisando retiro':'<span class="loader"></span>Buscando tu pago';
-    $("step2Text").innerText=esRetiro?"Estamos revisando tu retiro.":"Si ya transferiste, puede tardar unos minutos. No envies otra solicitud por el mismo pago.";
-    $("step3Title").innerText=esRetiro?"Retiro aprobado/pagado":"Carga acreditada";
-    $("step3Text").innerText=esRetiro?"Cuando se apruebe, te avisamos automaticamente.":"Cuando encontremos el pago, acreditamos tus fichas.";
-  }
-  $("step1").className="step done";$("step2").className=ok?"step done":(bad?"step":"step active");$("step3").className=ok?"step done":"step"
-}
-function iniciarEscuchaEstado(){
-  if(intervaloEstado) clearInterval(intervaloEstado);
-
-  intervaloEstado = setInterval(async () => {
-    if(!solicitudActual){
-      return;
-    }
-
-    const chatParam = String(solicitudChatId || chatSessionId || "").trim();
-
-    const {data,error} = await supabaseClient.rpc("landing_estado_solicitud_segura",{
-      p_solicitud_id: Number(solicitudActual),
-      p_chat_id: chatParam ? Number(chatParam) : null,
-      p_chat_token: chatSessionToken || sessionStorage.getItem(LS_CHAT_TOKEN) || ""
-    });
-
-    if(error){
-      DEBUG && console.error("Error consultando estado de solicitud:", error);
-      return;
-    }
-
-    const s = Array.isArray(data) ? data[0] : data;
-
-    if(!s){
-      DEBUG && console.warn("landing_estado_solicitud no devolvió datos", {
-        solicitudActual,
-        chatParam,
-        data
-      });
-      return;
-    }
-
-    const estado = String(s.estado || "").toUpperCase();
-    const tipo = String(s.tipo || tipoSolicitudActual || "CARGA").toUpperCase();
-
-    tipoSolicitudActual = tipo;
-
-    DEBUG && console.log("Estado solicitud:", {
-      solicitud: solicitudActual,
-      chat: chatParam,
-      tipo,
-      estado
-    });
-
-    renderProgresoSolicitud(estado);
-
-    if(esEstadoSolicitudOk(estado)){
-      clearInterval(intervaloEstado);
-      intervaloEstado = null;
-
-      if(tipo === "RETIRO"){
-        mostrarResultado("OK Tu retiro fue aprobado/pagado. Ya fue informado por el panel.", true);
-
-        setTimeout(() => {
-          resetLandingEstado();
-          location.reload();
-        }, 2600);
-
-      } else {
-        $("successModal").classList.remove("hidden");
-
-        if(navigator.vibrate){
-          navigator.vibrate([160,80,160]);
-        }
-
-        setTimeout(() => {
-          resetLandingEstado();
-          location.reload();
-        }, 4500);
-      }
-
-      return;
-    }
-
-    if(esEstadoSolicitudCancelado(estado)){
-      clearInterval(intervaloEstado);
-      intervaloEstado = null;
-
-      mostrarResultado(estado.includes("CANCEL")||estado.includes("ANUL")?"La solicitud fue cancelada. Si ya transferiste, contactanos por chat.":"La solicitud no pudo ser aprobada. Contactanos por chat.", false);
-
-      setTimeout(() => {
-        resetLandingEstado();
-        location.reload();
-      }, 3200);
-
-      return;
-    }
-
-  }, 2500);
-}
-function resetLandingEstado(){solicitudActual=null;if(intervaloEstado){clearInterval(intervaloEstado);intervaloEstado=null}sessionStorage.removeItem(LS_SOLICITUD);$("estadoEspera").classList.add("hidden");$("successModal").classList.add("hidden");$("resultado").innerHTML="";$("resultado").className="result";$("monto").value="";seleccionarTipoSolicitud("CARGA")}
-function irPlataforma(){resetLandingEstado();window.location.href=LINKS_PLATAFORMA[PC]||LINKS_PLATAFORMA.P1}
-function cerrarModalExito(){$("successModal").classList.add("hidden");resetLandingEstado();setTimeout(()=>location.reload(),300)}
-
-// CHAT SEGURO
-function limpiarChatSeguroSiFaltaToken(){if(chatSessionId&&!chatSessionToken){sessionStorage.removeItem(LS_CHAT);sessionStorage.removeItem(LS_CHAT_TOKEN);chatSessionId="";chatSessionToken=""}}
-async function asegurarChatLite(){
-  if(chatSessionId&&chatSessionToken){iniciarRealtimeChatLanding();return chatSessionId}
-  if(!userLogin?.usuario){throw new Error("Primero verifica tu usuario.")}
-  const {data,error}=await supabaseClient.rpc("landing_crear_chat_v2",{p_usuario:userLogin.usuario,p_telefono:userData?.telefono||"",p_pc_codigo:PC,p_solicitud_id:solicitudActual?Number(solicitudActual):null});
-  if(error){DEBUG && console.error(error);throw new Error("No se pudo iniciar el chat.")}
-  const row=Array.isArray(data)?data[0]:data; if(!row?.chat_id||!row?.chat_token)throw new Error("No se pudo iniciar el chat seguro.");
-  chatSessionId=String(row.chat_id);chatSessionToken=String(row.chat_token);sessionStorage.setItem(LS_CHAT,chatSessionId);sessionStorage.setItem(LS_CHAT_TOKEN,chatSessionToken);iniciarRealtimeChatLanding();return chatSessionId
-}
-async function abrirChatLite(){if(!userLogin?.usuario){msg("loginMsg","Primero ingresá tu usuario para iniciar el chat.","err");setVista("loginCard");return}$("chatLite").classList.remove("hidden");try{await asegurarChatLite();await cargarChatLite();iniciarTimerChatLite()}catch(e){$("chatLiteStatus").innerText="No se pudo conectar";alert("No se pudo conectar el chat. Intentá nuevamente o escribinos por WhatsApp.")}}
-function cerrarChatLite(){$("chatLite").classList.add("hidden")}function iniciarTimerChatLite(){if(chatLiteTimer)clearInterval(chatLiteTimer);chatLiteTimer=setInterval(cargarChatLite,2500)}
-async function cargarChatLite(){if(!chatSessionId||!chatSessionToken)return;const {data,error}=await supabaseClient.rpc("landing_leer_chat_v2",{p_chat_id:Number(chatSessionId),p_chat_token:chatSessionToken});if(error){DEBUG && console.error(error);return}renderChatLite((data||[]).map(m=>({TIPO_EMISOR:m.tipo_emisor,MENSAJE:m.mensaje,IMAGEN_URL:m.imagen_url,FECHA:m.created_at,LEIDO:m.leido?"SI":"NO"})))}
-async function enviarChatLite(){const input=$("chatLiteInput");const mensaje=(input.value||"").trim();if(!mensaje&&!chatLiteImagenBase64)return;try{await asegurarChatLite()}catch(e){alert("No se pudo enviar el mensaje.");return}const {error}=await supabaseClient.rpc("landing_enviar_mensaje_v2",{p_chat_id:Number(chatSessionId),p_chat_token:chatSessionToken,p_emisor:userLogin?.usuario||"Usuario",p_mensaje:mensaje||"",p_imagen_url:chatLiteImagenBase64||""});if(error){DEBUG && console.error(error);alert("No se pudo enviar el mensaje.");return}input.value="";chatLiteImagenBase64="";quitarImagenChatLite();await cargarChatLite()}
-function renderMensajeChatLite(texto){
-  const raw = String(texto || "");
-
-  if(!raw.startsWith("::TRANSFER_CARD::")){
-    return escapeHtml(raw);
-  }
-
-  try{
-    const data = JSON.parse(raw.replace("::TRANSFER_CARD::","").trim());
-
-    const nombre = escapeHtml(data.nombre_visible || data.nombre || "Billetera");
-    const titular = escapeHtml(data.titular || "");
-    const aliasRaw = String(data.alias || "");
-    const cbuRaw = String(data.cbu || "");
-    const alias = escapeHtml(aliasRaw);
-    const cbu = escapeHtml(cbuRaw);
-    const banco = escapeHtml(data.banco || "");
-
-    const aliasId = "alias_" + Math.random().toString(36).slice(2);
-    const cbuId = "cbu_" + Math.random().toString(36).slice(2);
-
-    return `
-      <div style="
-        border:1px solid rgba(212,175,55,.35);
-        background:rgba(212,175,55,.08);
-        border-radius:14px;
-        padding:12px;
-        min-width:240px;
-      ">
-        <div style="font-weight:900;color:#f7d774;margin-bottom:10px;">
-          ${nombre}
-        </div>
-
-        ${alias ? `
-          <div style="font-size:12px;color:#94a3b8;">ALIAS</div>
-          <div id="${aliasId}" style="font-weight:900;margin-bottom:7px;word-break:break-all;">
-            ${alias}
-          </div>
-          <button
-            type="button"
-            onclick="copiarDesdeTarjeta('${aliasId}', 'Alias copiado')"
-            style="
-              width:100%;
-              margin:0 0 10px 0;
-              padding:9px 10px;
-              border-radius:10px;
-              border:0;
-              background:rgba(255,255,255,.12);
-              color:white;
-              font-weight:900;
-              cursor:pointer;
-              box-shadow:none;
-              font-size:13px;
-            "
-          >
-            Copiar alias
-          </button>
-        ` : ""}
-
-        ${cbu ? `
-          <div style="font-size:12px;color:#94a3b8;">CBU / CVU</div>
-          <div id="${cbuId}" style="font-weight:900;margin-bottom:7px;word-break:break-all;">
-            ${cbu}
-          </div>
-          <button
-            type="button"
-            onclick="copiarDesdeTarjeta('${cbuId}', 'CBU/CVU copiado')"
-            style="
-              width:100%;
-              margin:0 0 10px 0;
-              padding:9px 10px;
-              border-radius:10px;
-              border:0;
-              background:rgba(255,255,255,.12);
-              color:white;
-              font-weight:900;
-              cursor:pointer;
-              box-shadow:none;
-              font-size:13px;
-            "
-          >
-            Copiar CBU / CVU
-          </button>
-        ` : ""}
-
-        ${titular ? `
-          <div style="font-size:12px;color:#94a3b8;">TITULAR</div>
-          <div style="font-weight:900;margin-bottom:7px;">${titular}</div>
-        ` : ""}
-
-        ${banco ? `
-          <div style="font-size:12px;color:#94a3b8;">Banco: ${banco}</div>
-        ` : ""}
-      </div>
-    `;
-  }catch(e){
-    return escapeHtml(raw);
-  }
-}
-function copiarDesdeTarjeta(elementId, mensajeOk){
-  const el = document.getElementById(elementId);
-  const texto = (el?.innerText || "").trim();
-
-  if(!texto){
-    alert("No hay dato para copiar.");
-    return;
-  }
-
-  navigator.clipboard.writeText(texto)
-    .then(() => {
-      const aviso = document.createElement("div");
-      aviso.innerText = mensajeOk || "Copiado";
-      aviso.style.position = "fixed";
-      aviso.style.left = "50%";
-      aviso.style.bottom = "95px";
-      aviso.style.transform = "translateX(-50%)";
-      aviso.style.background = "rgba(22,163,74,.95)";
-      aviso.style.color = "white";
-      aviso.style.padding = "10px 14px";
-      aviso.style.borderRadius = "999px";
-      aviso.style.fontWeight = "900";
-      aviso.style.zIndex = "99999";
-      aviso.style.boxShadow = "0 10px 30px rgba(0,0,0,.35)";
-      document.body.appendChild(aviso);
-
-      setTimeout(() => aviso.remove(), 1400);
-    })
-    .catch(() => {
-      alert("No se pudo copiar. Mantené presionado el dato y copialo manualmente.");
-    });
-}  
-function renderMensajeChatLite(texto){
-  const raw = String(texto || "").trim();
-
-  let payloadText = null;
-
-  if(raw.startsWith("::TRANSFER_CARD::")){
-    payloadText = raw.replace("::TRANSFER_CARD::", "").trim();
-  } else if(raw.startsWith("TRANSFER_CARD:")){
-    payloadText = raw.replace("TRANSFER_CARD:", "").trim();
-  }
-
-  if(!payloadText){
-    return escapeHtml(raw).replace(/\n/g, "<br>");
-  }
-
-  try{
-    const data = JSON.parse(payloadText);
-
-    const nombre = escapeHtml(data.nombre_visible || data.nombre || "Billetera");
-    const titular = escapeHtml(data.titular || "");
-    const aliasRaw = String(data.alias || "").trim();
-    const cbuRaw = String(data.cbu || data.cvu || data.cvu_cbu || "").trim();
-    const alias = escapeHtml(aliasRaw);
-    const cbu = escapeHtml(cbuRaw);
-    const banco = escapeHtml(data.banco || data.tipo || "");
-
-    const aliasId = "alias_" + Math.random().toString(36).slice(2);
-    const cbuId = "cbu_" + Math.random().toString(36).slice(2);
-
-    return `
-      <div style="
-        border:1px solid rgba(212,175,55,.45);
-        background:linear-gradient(180deg, rgba(212,175,55,.12), rgba(15,23,42,.92));
-        border-radius:16px;
-        padding:13px;
-        min-width:240px;
-        max-width:320px;
-        box-shadow:0 10px 24px rgba(0,0,0,.28);
-      ">
-        <div style="font-weight:900;color:#f7d774;margin-bottom:10px;font-size:15px;">
-          ${nombre}
-        </div>
-
-        ${alias ? `
-          <div style="font-size:11px;color:#94a3b8;font-weight:800;margin-bottom:4px;">ALIAS</div>
-          <div id="${aliasId}" style="
-            font-weight:900;
-            margin-bottom:8px;
-            word-break:break-all;
-            background:rgba(255,255,255,.07);
-            border:1px solid rgba(255,255,255,.08);
-            padding:8px;
-            border-radius:10px;
-          ">
-            ${alias}
-          </div>
-          <button
-            type="button"
-            onclick="copiarDesdeTarjeta('${aliasId}', 'Alias copiado')"
-            style="
-              width:100%;
-              margin:0 0 10px 0;
-              padding:9px 10px;
-              border-radius:10px;
-              border:0;
-              background:#f7d774;
-              color:#111827;
-              font-weight:900;
-              cursor:pointer;
-              box-shadow:none;
-              font-size:13px;
-            "
-          >
-            Copiar alias
-          </button>
-        ` : ""}
-
-        ${cbu ? `
-          <div style="font-size:11px;color:#94a3b8;font-weight:800;margin-bottom:4px;">CBU / CVU</div>
-          <div id="${cbuId}" style="
-            font-weight:900;
-            margin-bottom:8px;
-            word-break:break-all;
-            background:rgba(255,255,255,.07);
-            border:1px solid rgba(255,255,255,.08);
-            padding:8px;
-            border-radius:10px;
-          ">
-            ${cbu}
-          </div>
-          <button
-            type="button"
-            onclick="copiarDesdeTarjeta('${cbuId}', 'CBU/CVU copiado')"
-            style="
-              width:100%;
-              margin:0 0 10px 0;
-              padding:9px 10px;
-              border-radius:10px;
-              border:0;
-              background:#f7d774;
-              color:#111827;
-              font-weight:900;
-              cursor:pointer;
-              box-shadow:none;
-              font-size:13px;
-            "
-          >
-            Copiar CBU / CVU
-          </button>
-        ` : ""}
-
-        ${titular ? `
-          <div style="font-size:11px;color:#94a3b8;font-weight:800;margin-bottom:4px;">TITULAR</div>
-          <div style="font-weight:900;margin-bottom:9px;word-break:break-word;">
-            ${titular}
-          </div>
-        ` : ""}
-
-        ${banco ? `
-          <div style="font-size:12px;color:#cbd5e1;font-weight:800;margin-top:6px;">
-            Banco: ${banco}
-          </div>
-        ` : ""}
-
-        <div style="
-          margin-top:10px;
-          color:#f7d774;
-          font-size:12px;
-          line-height:1.35;
-          font-weight:700;
-        ">
-          Cuando realices la transferencia, envia el comprobante por aca.
-        </div>
-      </div>
-    `;
-  }catch(e){
-    return escapeHtml(raw).replace(/\n/g, "<br>");
-  }
-}
-
-function copiarDesdeTarjeta(elementId, mensajeOk){
-  const el = document.getElementById(elementId);
-  const texto = (el?.innerText || "").trim();
-
-  if(!texto){
-    alert("No hay dato para copiar.");
-    return;
-  }
-
-  const mostrarAviso = () => {
-    const aviso = document.createElement("div");
-    aviso.innerText = mensajeOk || "Copiado";
-    aviso.style.position = "fixed";
-    aviso.style.left = "50%";
-    aviso.style.bottom = "95px";
-    aviso.style.transform = "translateX(-50%)";
-    aviso.style.background = "rgba(22,163,74,.96)";
-    aviso.style.color = "white";
-    aviso.style.padding = "10px 14px";
-    aviso.style.borderRadius = "999px";
-    aviso.style.fontWeight = "900";
-    aviso.style.zIndex = "99999";
-    aviso.style.boxShadow = "0 10px 30px rgba(0,0,0,.35)";
-    document.body.appendChild(aviso);
-
-    setTimeout(() => aviso.remove(), 1400);
-  };
-
-  if(navigator.clipboard && window.isSecureContext){
-    navigator.clipboard.writeText(texto)
-      .then(mostrarAviso)
-      .catch(() => {
-        copiarFallback(texto);
-        mostrarAviso();
-      });
-  } else {
-    copiarFallback(texto);
-    mostrarAviso();
-  }
-}
-
-function copiarFallback(texto){
-  const area = document.createElement("textarea");
-  area.value = texto;
-  area.style.position = "fixed";
-  area.style.left = "-9999px";
-  area.style.top = "-9999px";
-  document.body.appendChild(area);
-  area.focus();
-  area.select();
-
-  try{
-    document.execCommand("copy");
-  }catch(e){
-    alert("No se pudo copiar. Mantené presionado el dato y copialo manualmente.");
-  }
-
-  area.remove();
-}  
-function renderChatLite(mensajes){const box=$("chatLiteBody");let html=`<div class="chat-day">Chat de soporte</div>`;if(!mensajes.length)html+=`<div class="chat-msg operator"><div class="chat-bubble">Hola  Escribinos tu consulta o adjuntá el comprobante si necesitás ayuda.</div><div class="chat-meta">Soporte</div></div>`;mensajes.forEach(m=>{const es=String(m.TIPO_EMISOR||"").toUpperCase()==="USUARIO", cls=es?"user":"operator", h=formatearHoraChat(m.FECHA), leido=String(m.LEIDO||"").toUpperCase()==="SI";html+=`<div class="chat-msg ${cls}"><div class="chat-bubble">${renderMensajeChatLite(m.MENSAJE||"")}${m.IMAGEN_URL?`<img src="${normalizarImagenUrl(m.IMAGEN_URL)}" alt="Imagen adjunta">`:""}</div><div class="chat-meta">${es?(leido?"OKOK recibido":"OK enviado"):"Soporte"} · ${h}</div></div>`});box.innerHTML=html;box.scrollTop=box.scrollHeight}
-function normalizarImagenUrl(u){u=String(u||"");return u.startsWith("data:image")?u:u}
-function formatearHoraChat(f){try{return new Date(f).toLocaleTimeString("es-AR",{timeZone:"America/Argentina/Buenos_Aires",hour:"2-digit",minute:"2-digit",hour12:false})}catch(e){return""}}
-function comprimirImagenChat(file,cb){const img=new Image(),reader=new FileReader();reader.onload=()=>{img.onload=()=>{const max=560;let w=img.width,h=img.height;if(w>h&&w>max){h=Math.round(h*max/w);w=max}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max}const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);cb(canvas.toDataURL("image/jpeg",.52))};img.src=reader.result};reader.readAsDataURL(file)}
-function tomarImagenChatLiteFile(){const f=$("chatLiteFile").files?.[0];if(f)leerImagenChatLite(f)}
-function leerImagenChatLite(file){if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Formato de imagen no permitido.");return}comprimirImagenChat(file,b64=>{chatLiteImagenBase64=b64;$("chatLitePreviewImg").src=b64;$("chatLitePreview").classList.add("show")})}
-function quitarImagenChatLite(){chatLiteImagenBase64="";$("chatLiteFile").value="";$("chatLitePreview").classList.remove("show")}
-document.addEventListener("paste",e=>{const items=e.clipboardData?.items||[];for(const item of items){if(item.type&&item.type.startsWith("image/")){const f=item.getAsFile();if(f){leerImagenChatLite(f);e.preventDefault();return}}}});
-setTimeout(()=>{$("chatLiteInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();enviarChatLite()}})},0)
-function iniciarRealtimeChatLanding(){return}
-</script>
-
-<style>
-.transfer-lite-card{border:1px solid rgba(212,175,55,.45);background:linear-gradient(180deg,rgba(212,175,55,.12),rgba(15,23,42,.96));border-radius:16px;padding:13px;min-width:240px;max-width:320px;box-shadow:0 10px 24px rgba(0,0,0,.28)}.transfer-lite-title{font-weight:900;color:#f7d774;margin-bottom:10px;font-size:15px}.transfer-lite-label{font-size:11px;color:#94a3b8;font-weight:800;margin-bottom:4px}.transfer-lite-value{font-weight:900;margin-bottom:8px;word-break:break-all;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);padding:8px;border-radius:10px}.transfer-lite-copy{width:100%;margin:0 0 10px 0;padding:9px 10px;border-radius:10px;border:0;background:#f7d774;color:#111827;font-weight:900;cursor:pointer;box-shadow:none;font-size:13px}.transfer-lite-note{margin-top:10px;color:#f7d774;font-size:12px;line-height:1.35;font-weight:700}
-</style>
-<script>
-/* =========================================================
-   LANDING CHAT · FIX TARJETAS COPIABLES
-========================================================= */
-(function(){
-  function esc(s){return typeof escapeHtml==='function'?escapeHtml(s):String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
-  function parseCard(raw){
-    raw=String(raw||'').trim(); let payload=null;
-    if(raw.startsWith('::TRANSFER_CARD::')) payload=raw.replace('::TRANSFER_CARD::','').trim();
-    if(raw.startsWith('TRANSFER_CARD:')) payload=raw.replace('TRANSFER_CARD:','').trim();
-    if(payload){try{return JSON.parse(payload)}catch(e){}}
-    if(/Billetera\s*:/i.test(raw)&&(/Alias\s*:/i.test(raw)||/CBU\/CVU\s*:/i.test(raw))){const g=re=>{const m=raw.match(re);return m?m[1].trim():''}; return {nombre_visible:g(/Billetera\s*:\s*([^\n]+)/i),titular:g(/Titular\s*:\s*([^\n]+)/i),alias:g(/Alias\s*:\s*([^\n]+)/i),cbu:g(/CBU\/CVU\s*:\s*([^\n]+)/i),banco:g(/Banco\s*:\s*([^\n]+)/i)};}
-    return null;
-  }
-  window.copiarDesdeTarjeta=window.copiarDesdeTarjeta||function(id,msg){const el=document.getElementById(id);const t=(el?.innerText||'').trim(); if(!t){alert('No hay dato para copiar.');return;} navigator.clipboard.writeText(t).then(()=>{const a=document.createElement('div');a.innerText=msg||'Copiado';a.style.cssText='position:fixed;left:50%;bottom:95px;transform:translateX(-50%);background:rgba(22,163,74,.96);color:white;padding:10px 14px;border-radius:999px;font-weight:900;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,.35)';document.body.appendChild(a);setTimeout(()=>a.remove(),1400)}).catch(()=>alert('No se pudo copiar. Mantené presionado el dato y copialo manualmente.'));};
-  window.renderMensajeChatLite=function(texto){
-    const card=parseCard(texto);
-    if(!card) return esc(texto||'').replace(/\n/g,'<br>');
-    const nombre=card.nombre_visible||card.nombre||'Datos para transferir', titular=card.titular||'', alias=card.alias||'', cbu=card.cbu||card.cvu||card.cvu_cbu||'', banco=card.banco||card.tipo||'';
-    const aid='alias_'+Math.random().toString(36).slice(2), cid='cbu_'+Math.random().toString(36).slice(2);
-    return `<div class="transfer-lite-card"><div class="transfer-lite-title">${esc(nombre)}</div>${alias?`<div class="transfer-lite-label">ALIAS</div><div id="${aid}" class="transfer-lite-value">${esc(alias)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${aid}','Alias copiado')">Copiar alias</button>`:''}${cbu?`<div class="transfer-lite-label">CBU / CVU</div><div id="${cid}" class="transfer-lite-value">${esc(cbu)}</div><button class="transfer-lite-copy" onclick="copiarDesdeTarjeta('${cid}','CBU/CVU copiado')">Copiar CBU / CVU</button>`:''}${titular?`<div class="transfer-lite-label">TITULAR</div><div style="font-weight:900;margin-bottom:9px;word-break:break-word">${esc(titular)}</div>`:''}${banco?`<div style="font-size:12px;color:#cbd5e1;font-weight:800;margin-top:6px">Banco: ${esc(banco)}</div>`:''}<div class="transfer-lite-note">Cuando realices la transferencia, envia el comprobante por aca.</div></div>`;
-  };
-})();
-</script>
-
-</body>
-</html>
-
-
-
-
-
+-- =========================================================
+-- BET300 LANDING · BLINDAJE POR RUTA PUBLICA
+-- Objetivo: que la landing deje de usar ?pc=P4 y use ?r=CODIGO_PUBLICO.
+-- El panel debe estar en otro repo/deploy.
+-- =========================================================
+
+create table if not exists public.landing_rutas_publicas (
+  id bigserial primary key,
+  public_code text unique not null,
+  pc_codigo text not null,
+  nombre_publico text,
+  link_plataforma text default 'https://www.bet-300.pw/',
+  whatsapp_numero text,
+  activo boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists landing_rutas_publicas_code_idx on public.landing_rutas_publicas(public_code) where activo = true;
+
+-- Códigos iniciales. Podés cambiarlos por otros más largos antes de publicar.
+insert into public.landing_rutas_publicas(public_code, pc_codigo, nombre_publico, link_plataforma, whatsapp_numero, activo)
+values
+('rt-a8f31', 'P1', 'Canal 1', 'https://www.bet-300.pw/', '5492235181171', true),
+('rt-k6d92', 'P2', 'Canal 2', 'https://www.bet-300.pw/', '5491157718506', true),
+('rt-m4q77', 'P3', 'Canal 3', 'https://www.bet-300.pw/', '5491127140155', true),
+('rt-z9p42', 'P4', 'Canal 4', 'https://www.bet-300.pw/', '5492233391195', true),
+('rt-x2v61', 'P5', 'Canal 5', 'https://www.bet-300.pw/', '5491166587968', true)
+on conflict(public_code) do update set
+  pc_codigo=excluded.pc_codigo,
+  nombre_publico=excluded.nombre_publico,
+  link_plataforma=excluded.link_plataforma,
+  whatsapp_numero=excluded.whatsapp_numero,
+  activo=excluded.activo,
+  updated_at=now();
+
+alter table public.landing_rutas_publicas enable row level security;
+
+-- No damos SELECT directo. La landing usa RPC SECURITY DEFINER.
+drop policy if exists landing_rutas_publicas_no_direct_select on public.landing_rutas_publicas;
+
+create or replace function public._landing_resolver_pc_privado(p_public_code text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pc text;
+begin
+  select pc_codigo into v_pc
+  from public.landing_rutas_publicas
+  where public_code = trim(coalesce(p_public_code,''))
+    and activo = true
+  limit 1;
+
+  if v_pc is null then
+    raise exception 'RUTA_PUBLICA_INVALIDA';
+  end if;
+
+  return v_pc;
+end;
+$$;
+
+revoke all on function public._landing_resolver_pc_privado(text) from public, anon, authenticated;
+
+create or replace function public.landing_resolver_ruta_publica(p_public_code text)
+returns table(
+  ok boolean,
+  nombre_publico text,
+  link_plataforma text,
+  whatsapp_numero text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  select true, coalesce(r.nombre_publico,'Canal'), coalesce(r.link_plataforma,'https://www.bet-300.pw/'), coalesce(r.whatsapp_numero,'')
+  from public.landing_rutas_publicas r
+  where r.public_code = trim(coalesce(p_public_code,''))
+    and r.activo = true
+  limit 1;
+
+  if not found then
+    return query select false, null::text, null::text, null::text;
+  end if;
+end;
+$$;
+
+grant execute on function public.landing_resolver_ruta_publica(text) to anon, authenticated;
+
+-- =========================================================
+-- WRAPPERS BLINDADOS: reciben public_code y resuelven PC adentro.
+-- No exponen pc_codigo en la URL ni en el JS de la landing.
+-- =========================================================
+
+drop function if exists public.landing_validar_usuario_login_blindado(text,text);
+create function public.landing_validar_usuario_login_blindado(p_usuario text, p_public_code text)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select to_jsonb(x) into v_out from public.landing_validar_usuario_login(p_usuario := p_usuario, p_pc_codigo := v_pc) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_validar_usuario_login_blindado(text,text) to anon, authenticated;
+
+drop function if exists public.landing_confirmar_datos_usuario_blindado(bigint,text,text,text,text,text);
+create function public.landing_confirmar_datos_usuario_blindado(
+  p_validacion_id bigint,
+  p_usuario text,
+  p_nombre_completo text,
+  p_telefono text,
+  p_dni text,
+  p_public_code text
+)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select to_jsonb(x) into v_out from public.landing_confirmar_datos_usuario(
+    p_validacion_id := p_validacion_id,
+    p_usuario := p_usuario,
+    p_nombre_completo := p_nombre_completo,
+    p_telefono := p_telefono,
+    p_dni := p_dni,
+    p_pc_codigo := v_pc
+  ) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_confirmar_datos_usuario_blindado(bigint,text,text,text,text,text) to anon, authenticated;
+
+drop function if exists public.landing_obtener_billetera_segura_blindado(bigint,text,text,text,text,text);
+create function public.landing_obtener_billetera_segura_blindado(
+  p_validacion_usuario_id bigint,
+  p_usuario text,
+  p_nombre_completo text,
+  p_telefono text,
+  p_dni text,
+  p_public_code text
+)
+returns setof jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  return query select to_jsonb(x) from public.landing_obtener_billetera_segura(
+    p_validacion_usuario_id := p_validacion_usuario_id,
+    p_usuario := p_usuario,
+    p_nombre_completo := p_nombre_completo,
+    p_telefono := p_telefono,
+    p_dni := p_dni,
+    p_pc_codigo := v_pc
+  ) x;
+end; $$;
+grant execute on function public.landing_obtener_billetera_segura_blindado(bigint,text,text,text,text,text) to anon, authenticated;
+
+drop function if exists public.landing_obtener_cuenta_retiro_blindado(text,text,text);
+create function public.landing_obtener_cuenta_retiro_blindado(p_usuario text, p_dni text, p_public_code text)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select to_jsonb(x) into v_out from public.landing_obtener_cuenta_retiro(p_usuario := p_usuario, p_dni := p_dni, p_pc_codigo := v_pc) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_obtener_cuenta_retiro_blindado(text,text,text) to anon, authenticated;
+
+drop function if exists public.landing_puede_solicitar_retiro_blindado(text,text,text);
+create function public.landing_puede_solicitar_retiro_blindado(p_usuario text, p_dni text, p_public_code text)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select to_jsonb(x) into v_out from public.landing_puede_solicitar_retiro(p_usuario := p_usuario, p_dni := p_dni, p_pc_codigo := v_pc) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_puede_solicitar_retiro_blindado(text,text,text) to anon, authenticated;
+
+drop function if exists public.landing_crear_solicitud_v3_blindado(text,text,text,text,bigint,text,text,numeric,text,bigint,text,text,text,text,bigint,text,text,text);
+create function public.landing_crear_solicitud_v3_blindado(
+  p_usuario text,
+  p_nombre_completo text,
+  p_telefono text,
+  p_dni text,
+  p_validacion_usuario_id bigint,
+  p_public_code text,
+  p_tipo text,
+  p_monto numeric,
+  p_comprobante_url text default null,
+  p_billetera_id bigint default null,
+  p_billetera_nombre text default null,
+  p_link_plataforma text default null,
+  p_retiro_alias_cbu text default null,
+  p_retiro_titular text default null,
+  p_cuenta_retiro_id bigint default null,
+  p_titular_transferencia text default null,
+  p_dni_transferencia text default null,
+  p_medio_transferencia text default null
+)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb; v_link text;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select coalesce(link_plataforma,'https://www.bet-300.pw/') into v_link
+  from public.landing_rutas_publicas where public_code=trim(coalesce(p_public_code,'')) and activo=true limit 1;
+
+  select to_jsonb(x) into v_out from public.landing_crear_solicitud_v3(
+    p_usuario := p_usuario,
+    p_nombre_completo := p_nombre_completo,
+    p_telefono := p_telefono,
+    p_dni := p_dni,
+    p_validacion_usuario_id := p_validacion_usuario_id,
+    p_pc_codigo := v_pc,
+    p_tipo := p_tipo,
+    p_monto := p_monto,
+    p_comprobante_url := p_comprobante_url,
+    p_billetera_id := p_billetera_id,
+    p_billetera_nombre := p_billetera_nombre,
+    p_link_plataforma := coalesce(p_link_plataforma, v_link),
+    p_retiro_alias_cbu := p_retiro_alias_cbu,
+    p_retiro_titular := p_retiro_titular,
+    p_cuenta_retiro_id := p_cuenta_retiro_id,
+    p_titular_transferencia := p_titular_transferencia,
+    p_dni_transferencia := p_dni_transferencia,
+    p_medio_transferencia := p_medio_transferencia
+  ) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_crear_solicitud_v3_blindado(text,text,text,text,bigint,text,text,numeric,text,bigint,text,text,text,text,bigint,text,text,text) to anon, authenticated;
+
+drop function if exists public.landing_crear_chat_v2_blindado(text,text,text,bigint);
+create function public.landing_crear_chat_v2_blindado(p_usuario text, p_telefono text, p_public_code text, p_solicitud_id bigint default null)
+returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_pc text; v_out jsonb;
+begin
+  v_pc := public._landing_resolver_pc_privado(p_public_code);
+  select to_jsonb(x) into v_out from public.landing_crear_chat_v2(
+    p_usuario := p_usuario,
+    p_telefono := p_telefono,
+    p_pc_codigo := v_pc,
+    p_solicitud_id := p_solicitud_id
+  ) x limit 1;
+  return coalesce(v_out,'{}'::jsonb);
+end; $$;
+grant execute on function public.landing_crear_chat_v2_blindado(text,text,text,bigint) to anon, authenticated;
+
+-- URLs nuevas:
+-- P1: /?r=rt-a8f31
+-- P2: /?r=rt-k6d92
+-- P3: /?r=rt-m4q77
+-- P4: /?r=rt-z9p42
+-- P5: /?r=rt-x2v61
