@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Panel Operativo Lite · V7</title>
+<title>Panel Operativo Lite · V10</title>
 <style>
   :root{
     --bg:#07080b; --panel:#11131a; --line:#272b38; --line2:#383d4d;
@@ -90,19 +90,114 @@
   .msg{max-width:86%;border-radius:16px;padding:10px 11px;font-size:13px;line-height:1.35}.msg.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.msg.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}
   .walletCard{border:1px dashed rgba(255,240,106,.45);border-radius:16px;padding:10px;font-size:12px;background:rgba(255,240,106,.06)}
   .copyBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+
+
+  .loginOverlay{
+    position:fixed;inset:0;z-index:99;
+    background:
+      radial-gradient(circle at 30% 5%,rgba(255,240,106,.10),transparent 30%),
+      rgba(7,8,11,.96);
+    display:grid;place-items:center;padding:22px;
+  }
+  .loginBox{
+    width:min(460px,100%);
+    padding:22px;
+  }
+  .loginBox h2{margin:0 0 4px;font-size:24px}
+  .loginBox p{margin:0 0 18px;color:var(--muted);font-size:13px}
+  .loginGrid{display:grid;gap:12px}
+  .loginError{display:none}
+  body.logged .loginOverlay{display:none}
+  body:not(.logged) .app{filter:blur(4px);pointer-events:none;user-select:none}
+  .contextBar{
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  }
+  .ctx{
+    border:1px solid var(--line2);
+    background:rgba(255,255,255,.035);
+    border-radius:999px;
+    padding:9px 12px;
+    color:var(--soft);
+    font-size:12px;
+    font-weight:850;
+  }
+  .ctx strong{color:var(--yellow)}
+  .logoutBtn{
+    border:1px solid rgba(255,107,122,.38);
+    background:rgba(255,107,122,.12);
+    color:#ff96a1;
+    border-radius:999px;
+    padding:9px 12px;
+    font-weight:900;
+    cursor:pointer;
+  }
+
+  .actionTabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .actionTab{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:14px;padding:11px;font-weight:950;cursor:pointer}
+  .actionTab.active{background:var(--yellow);color:#111;border-color:transparent}
+  .actionPane{display:none}
+  .actionPane.active{display:block}
+  .quickReplies{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .replyBtn{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:12px;padding:9px 10px;font-weight:900;font-size:12px;cursor:pointer;text-align:left}
+  .replyBtn:hover{border-color:rgba(255,240,106,.45)}
+
   @media(max-width:1240px){.app{grid-template-columns:240px 1fr}.chat{position:relative;top:auto;grid-column:1/-1;min-height:auto}}
   @media(max-width:860px){.app{grid-template-columns:1fr;padding:12px}.left{display:none}.wallets,.grid2{grid-template-columns:1fr}.formGrid{grid-template-columns:1fr}.topbar{align-items:flex-start;gap:12px;flex-direction:column}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="loginOverlay" class="loginOverlay">
+  <div class="loginBox card">
+    <h2>Ingreso operativo</h2>
+    <p>Identificación requerida para asignar jobs y permisos.</p>
+    <div class="loginGrid">
+      <div>
+        <label>Operador</label>
+        <select id="loginOperador">
+          <option value="op_noelia|Noelia|admin">Noelia · Admin</option>
+          <option value="op_turno1|Operador Turno 1|operador">Operador Turno 1</option>
+          <option value="op_turno2|Operador Turno 2|operador">Operador Turno 2</option>
+        </select>
+      </div>
+      <div>
+        <label>Oficina</label>
+        <select id="loginOficina">
+          <option value="OFI_1">OFI_1</option>
+          <option value="OFI_2">OFI_2</option>
+        </select>
+      </div>
+      <div>
+        <label>PC</label>
+        <select id="loginPc">
+          <option value="PC4">PC4</option>
+          <option value="PC1">PC1</option>
+          <option value="PC2">PC2</option>
+          <option value="PC3">PC3</option>
+        </select>
+      </div>
+      <div>
+        <label>Turno</label>
+        <select id="loginTurno">
+          <option value="14-22">14-22</option>
+          <option value="06-14">06-14</option>
+          <option value="22-06">22-06</option>
+        </select>
+      </div>
+      <div id="loginError" class="notice red loginError"></div>
+      <button class="btn green" onclick="loginPanel()">Entrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
   <aside class="left card">
     <div class="brand">
       <div class="logo">B+</div>
       <div class="brandText">
         <h1>Panel Lite</h1>
-        <p>PC4 · V1.4.7</p>
+        <p>PC4 · V10</p>
       </div>
     </div>
     <button class="miniToggle" onclick="document.body.classList.toggle('left-mini')">☰</button>
@@ -124,10 +219,12 @@
         <h2>Panel Operativo PC4</h2>
         <p>Operación · Landing · Chat · Jobs</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span class="pill">Manual seguro</span>
-        <span class="pill">Sync activo</span>
-        <span class="pill">V1.4.7</span><span class="pill">Puente Supabase</span>
+      <div class="contextBar">
+        <span class="ctx">Operador: <strong id="ctxOperador">—</strong></span>
+        <span class="ctx">Oficina: <strong id="ctxOficina">—</strong></span>
+        <span class="ctx">PC: <strong id="ctxPc">—</strong></span>
+        <span class="ctx">Turno: <strong id="ctxTurno">—</strong></span>
+        <button class="logoutBtn" onclick="logoutPanel()">Salir</button>
       </div>
     </section>
 
@@ -151,23 +248,45 @@
 
     <section class="grid2">
       <div class="section card">
-        <div class="sectionHead"><h3>Operación rápida</h3><span class="hint">+ carga · - retiro</span></div>
-        <div class="formGrid">
-          <div class="wide"><label>Usuario</label><input id="usuario" value="usuario123"></div>
-          <div><label>Monto</label><input id="monto" value="-5000" oninput="updateAction()"></div>
-          <div><label>Billetera</label><select><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
-          <div id="actionNotice" class="wide notice red">RETIRO · Control 24 hs activo</div>
-          <div id="motivoBox" class="wide">
-            <label>Motivo / control</label>
-            <textarea rows="2" placeholder="Obligatorio si hay alerta 24 hs o retiro observado."></textarea>
+        <div class="sectionHead"><h3>Operación rápida</h3><span class="hint">manual</span></div>
+        <div class="actionTabs">
+          <button id="tabMoney" class="actionTab active" onclick="showActionPane('money')">Carga / Retiro</button>
+          <button id="tabAccount" class="actionTab" onclick="showActionPane('account')">Usuario / Clave</button>
+        </div>
+
+        <div id="paneMoney" class="actionPane active">
+          <div class="formGrid">
+            <div class="wide"><label>Usuario</label><input id="usuario" value="usuario123"></div>
+            <div><label>Monto</label><input id="monto" value="-5000" oninput="updateAction()"></div>
+            <div><label>Billetera</label><select><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
+            <div id="actionNotice" class="wide notice red">RETIRO · Control 24 hs activo</div>
+            <div id="motivoBox" class="wide">
+              <label>Motivo / control</label>
+              <textarea rows="2" placeholder="Obligatorio si hay alerta 24 hs o retiro observado."></textarea>
+            </div>
+            <div class="wide"><button id="btnEnviarOrden" class="btn green" style="width:100%" onclick="enviarOrden()">Enviar orden</button></div>
           </div>
-          <div class="wide"><button id="btnEnviarOrden" class="btn green" style="width:100%" onclick="enviarOrden()">Enviar orden</button></div>
+          <div id="opResult" class="wide notice" style="display:none;margin-top:12px"></div>
+          <div class="jobPreview">
+            <div class="previewBox"><strong>+ $5.000</strong><span>CARGA_MANUAL</span></div>
+            <div class="previewBox"><strong>- $5.000</strong><span>RETIRO_MANUAL · 24 hs</span></div>
+          </div>
         </div>
-        <div id="opResult" class="wide notice" style="display:none;margin-top:12px"></div>
-        <div class="jobPreview">
-          <div class="previewBox"><strong>+ $5.000</strong><span>CARGA_MANUAL</span></div>
-          <div class="previewBox"><strong>- $5.000</strong><span>RETIRO_MANUAL · 24 hs</span></div>
-        </div>
+
+        <div id="paneAccount" class="actionPane">
+          <div class="formGrid">
+            <div class="wide"><label>Usuario</label><input id="usuarioCuenta" value="usuario123"></div>
+            <div><label>Clave nueva</label><input id="claveNueva" placeholder="Solo para cambio de clave"></div>
+            <div><label>Acción</label><select id="accionCuenta"><option value="CREAR_USUARIO">Crear usuario</option><option value="CAMBIAR_CLAVE">Cambiar clave</option></select></div>
+            <div class="wide"><label>Nota</label><textarea id="notaCuenta" rows="2" placeholder="Opcional"></textarea></div>
+            <div class="wide"><button id="btnEnviarCuenta" class="btn" style="width:100%" onclick="enviarAccionCuenta()">Crear job usuario / clave</button></div>
+          </div>
+          <div id="cuentaResult" class="wide notice" style="display:none;margin-top:12px"></div>
+          <div class="jobPreview">
+            <div class="previewBox"><strong>Usuario</strong><span>CREAR_USUARIO</span></div>
+            <div class="previewBox"><strong>Clave</strong><span>CAMBIAR_CLAVE</span></div>
+          </div>
+        </div>        </div>
       </div>
 
       <div class="section card">
@@ -207,6 +326,14 @@
         <h4>laura10 · Retiro</h4>
         <div class="kv"><span>Monto</span><b>$12.000</b><span>Control</span><b>24 HS</b><span>Estado</span><b>REVISAR</b></div>
         <div class="itemActions" style="margin-top:10px"><button class="smallBtn">Continuar</button><button class="smallBtn">Pedir motivo</button></div>
+      </div>
+      <div class="quickReplies">
+        <button class="replyBtn" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
+        <button class="replyBtn" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
+        <button class="replyBtn" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Pedir comprobante</button>
+        <button class="replyBtn" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Confirmar carga</button>
+        <button class="replyBtn" onclick="quickReply('Tu retiro queda sujeto a control de 24 hs. Te confirmamos apenas esté revisado.')">Retiro 24 hs</button>
+        <button class="replyBtn" onclick="quickReply('Te cambiamos la clave. Probá ingresar nuevamente.')">Clave lista</button>
       </div>
       <div class="messages">
         <div class="msg in">Quiero retirar.</div>
@@ -254,18 +381,82 @@ updateAction();
 
 <script>
 /* ============================================================
-   V8 PUENTE SUPABASE
-   Completar estos 2 datos antes de usar en real.
-   En Electron final, esto se puede mover a preload/.env.
+   V9 PUENTE SUPABASE · ACCIONES + CHAT
+   En Electron final, esta config pasa a .env/preload.
 ============================================================ */
 const PANEL_CONFIG = {
-  SUPABASE_URL: "https://pjvvyvfcwjoocjqvdror.supabase.co",
+   SUPABASE_URL: "https://pjvvyvfcwjoocjqvdror.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF",
-  PC_CODIGO: "PC4",
-  OFICINA_ID: "OFI_1",
-  OPERADOR_ID: "op_panel",
-  OPERADOR_NOMBRE: "Panel PC4"
 };
+
+let PANEL_SESSION = null;
+
+function getSession(){
+  if(PANEL_SESSION) return PANEL_SESSION;
+  try{
+    PANEL_SESSION = JSON.parse(localStorage.getItem("panel_session_v10") || "null");
+  }catch(e){
+    PANEL_SESSION = null;
+  }
+  return PANEL_SESSION;
+}
+
+function requireSession(){
+  const s = getSession();
+  if(!s){
+    document.body.classList.remove("logged");
+    return null;
+  }
+  document.body.classList.add("logged");
+  renderContext();
+  return s;
+}
+
+function renderContext(){
+  const s = getSession();
+  if(!s) return;
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v || "—"; };
+  set("ctxOperador", s.operador_nombre);
+  set("ctxOficina", s.oficina_id);
+  set("ctxPc", s.pc_codigo);
+  set("ctxTurno", s.turno);
+}
+
+function loginPanel(){
+  const opRaw = document.getElementById("loginOperador").value;
+  const [operador_id, operador_nombre, rol] = opRaw.split("|");
+  const oficina_id = document.getElementById("loginOficina").value;
+  const pc_codigo = document.getElementById("loginPc").value;
+  const turno = document.getElementById("loginTurno").value;
+
+  if(!operador_id || !oficina_id || !pc_codigo){
+    const err = document.getElementById("loginError");
+    err.textContent = "Faltan datos de sesión.";
+    err.style.display = "block";
+    return;
+  }
+
+  PANEL_SESSION = {
+    operador_id,
+    operador_nombre,
+    rol,
+    oficina_id,
+    pc_codigo,
+    turno,
+    login_at: new Date().toISOString()
+  };
+
+  localStorage.setItem("panel_session_v10", JSON.stringify(PANEL_SESSION));
+  document.body.classList.add("logged");
+  renderContext();
+  cargarJobs();
+}
+
+function logoutPanel(){
+  localStorage.removeItem("panel_session_v10");
+  PANEL_SESSION = null;
+  document.body.classList.remove("logged");
+}
 
 let sb = null;
 
@@ -275,13 +466,21 @@ function initSupabase(){
     return null;
   }
   if(PANEL_CONFIG.SUPABASE_URL.includes("TU-PROYECTO") || PANEL_CONFIG.SUPABASE_ANON_KEY.includes("TU_SUPABASE")){
-    showOpResult("Configurar SUPABASE_URL y SUPABASE_ANON_KEY en el HTML.", true);
+    showOpResult("Configurar Supabase solo para prueba standalone. En Electron va por .env.", true);
     return null;
   }
   if(!sb){
     sb = window.supabase.createClient(PANEL_CONFIG.SUPABASE_URL, PANEL_CONFIG.SUPABASE_ANON_KEY);
   }
   return sb;
+}
+
+function showActionPane(which){
+  const money = which === "money";
+  paneMoney.classList.toggle("active", money);
+  paneAccount.classList.toggle("active", !money);
+  tabMoney.classList.toggle("active", money);
+  tabAccount.classList.toggle("active", !money);
 }
 
 function parseMonto(){
@@ -295,7 +494,7 @@ function parseMonto(){
 }
 
 function getBilleteraVisible(){
-  const sel = document.querySelector(".formGrid select");
+  const sel = document.querySelector("#paneMoney select");
   return sel ? sel.value : "";
 }
 
@@ -312,7 +511,17 @@ function showOpResult(text, isError=false){
   el.textContent = text;
 }
 
+function showCuentaResult(text, isError=false){
+  const el = document.getElementById("cuentaResult");
+  if(!el) return;
+  el.style.display = "block";
+  el.className = "wide notice" + (isError ? " red" : "");
+  el.textContent = text;
+}
+
 async function enviarOrden(){
+  const s = requireSession();
+  if(!s) return showOpResult("Ingresá al panel antes de crear jobs.", true);
   const client = initSupabase();
   if(!client) return;
 
@@ -322,52 +531,87 @@ async function enviarOrden(){
   const motivo = getMotivo();
   const billeteraVisible = getBilleteraVisible();
 
-  if(!usuario){
-    showOpResult("Falta usuario.", true);
-    return;
-  }
-  if(!monto){
-    showOpResult("Monto inválido.", true);
-    return;
-  }
-  if(monto < 0 && !motivo){
-    showOpResult("Retiro: completar motivo/control 24 hs.", true);
-    return;
-  }
+  if(!usuario) return showOpResult("Falta usuario.", true);
+  if(!monto) return showOpResult("Monto inválido.", true);
+  if(monto < 0 && !motivo) return showOpResult("Retiro: completar motivo/control 24 hs.", true);
 
   btn.disabled = true;
   btn.textContent = "Creando job...";
 
   try{
     const { data, error } = await client.rpc("panel_crear_operacion_rapida", {
-      p_pc_codigo: PANEL_CONFIG.PC_CODIGO,
+      p_pc_codigo: s.pc_codigo,
       p_usuario: usuario,
       p_monto: monto,
       p_billetera_id: null,
       p_billetera_visible: billeteraVisible,
       p_motivo: motivo,
-      p_oficina_id: PANEL_CONFIG.OFICINA_ID,
-      p_operador_id: PANEL_CONFIG.OPERADOR_ID,
-      p_operador_nombre: PANEL_CONFIG.OPERADOR_NOMBRE
+      p_oficina_id: s.oficina_id,
+      p_operador_id: s.operador_id,
+      p_operador_nombre: s.operador_nombre,
+      p_turno: s.turno,
+      p_rol: s.rol
     });
-
     if(error) throw error;
 
     const jobId = typeof data === "object" ? (data.job_id || data.id || JSON.stringify(data)) : data;
     showOpResult(`Job creado: ${jobId}`);
     await cargarJobs();
 
-    // Limpieza fluida: no borra usuario por si repite mismo usuario; limpia monto/motivo.
     document.getElementById("monto").value = "";
     const txt = document.querySelector("#motivoBox textarea");
     if(txt) txt.value = "";
     updateAction();
-
   }catch(err){
     showOpResult("Error creando job: " + (err.message || String(err)), true);
   }finally{
     btn.disabled = false;
     btn.textContent = "Enviar orden";
+  }
+}
+
+async function enviarAccionCuenta(){
+  const s = requireSession();
+  if(!s) return showCuentaResult("Ingresá al panel antes de crear jobs.", true);
+  const client = initSupabase();
+  if(!client) return;
+
+  const btn = document.getElementById("btnEnviarCuenta");
+  const usuario = document.getElementById("usuarioCuenta").value.trim();
+  const clave = document.getElementById("claveNueva").value.trim();
+  const accion = document.getElementById("accionCuenta").value;
+  const nota = document.getElementById("notaCuenta").value.trim();
+
+  if(!usuario) return showCuentaResult("Falta usuario.", true);
+  if(accion === "CAMBIAR_CLAVE" && !clave) return showCuentaResult("Para cambiar clave, completar clave nueva.", true);
+
+  btn.disabled = true;
+  btn.textContent = "Creando job...";
+
+  try{
+    const { data, error } = await client.rpc("panel_crear_accion_usuario", {
+      p_pc_codigo: s.pc_codigo,
+      p_usuario: usuario,
+      p_tipo_job: accion,
+      p_clave_nueva: clave || null,
+      p_nota: nota || null,
+      p_oficina_id: s.oficina_id,
+      p_operador_id: s.operador_id,
+      p_operador_nombre: s.operador_nombre,
+      p_turno: s.turno,
+      p_rol: s.rol
+    });
+    if(error) throw error;
+
+    const jobId = typeof data === "object" ? (data.job_id || data.id || JSON.stringify(data)) : data;
+    showCuentaResult(`Job creado: ${jobId}`);
+    await cargarJobs();
+    document.getElementById("claveNueva").value = "";
+  }catch(err){
+    showCuentaResult("Error creando job: " + (err.message || String(err)), true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Crear job usuario / clave";
   }
 }
 
@@ -379,18 +623,24 @@ function estadoClass(estado){
   return "s-run";
 }
 
+function safeText(v){
+  return String(v ?? "").replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
 async function cargarJobs(){
+  const s = requireSession();
+  if(!s) return;
   const client = initSupabase();
   const body = document.getElementById("jobsBody");
   if(!client || !body) return;
 
   const { data, error } = await client.rpc("panel_listar_jobs_recientes", {
-    p_pc_codigo: PANEL_CONFIG.PC_CODIGO,
+    p_pc_codigo: s.pc_codigo,
     p_limit: 30
   });
 
   if(error){
-    body.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7">Error: ${safeText(error.message)}</td></tr>`;
     return;
   }
 
@@ -403,26 +653,41 @@ async function cargarJobs(){
   body.innerHTML = rows.map(r => {
     const tipo = `${r.tipo_job || r.tipo_accion || ""}${r.monto ? " $" + Math.abs(Number(r.monto)).toLocaleString("es-AR") : ""}`;
     const sync = r.sync_job_id ? "#" + r.sync_job_id : "—";
+    const payload = encodeURIComponent(JSON.stringify(r));
     return `
       <tr>
-        <td>${r.id}</td>
-        <td>${r.usuario || ""}</td>
-        <td>${tipo}</td>
-        <td><span class="state ${estadoClass(r.estado)}">${r.estado || ""}</span></td>
-        <td>${r.etapa_actual || ""}</td>
-        <td>${sync}</td>
-        <td><button class="smallBtn" onclick='verJob(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Ver</button></td>
+        <td>${safeText(r.id)}</td>
+        <td>${safeText(r.usuario)}</td>
+        <td>${safeText(tipo)}</td>
+        <td><span class="state ${estadoClass(r.estado)}">${safeText(r.estado)}</span></td>
+        <td>${safeText(r.etapa_actual)}</td>
+        <td>${safeText(sync)}</td>
+        <td><button class="smallBtn" onclick="verJob('${payload}')">Ver</button></td>
       </tr>
     `;
   }).join("");
 }
 
-function verJob(r){
-  showOpResult(`Job #${r.id} · ${r.estado} · ${r.etapa_actual || ""}`);
+function verJob(encoded){
+  try{
+    const r = JSON.parse(decodeURIComponent(encoded));
+    showOpResult(`Job #${r.id} · ${r.estado} · ${r.etapa_actual || ""}`);
+  }catch(e){
+    showOpResult("No se pudo abrir el job.", true);
+  }
+}
+
+function quickReply(text){
+  const input = document.querySelector(".chatInput input");
+  if(input){
+    input.value = text;
+    input.focus();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   updateAction();
+  requireSession();
   setTimeout(cargarJobs, 600);
   setInterval(cargarJobs, 10000);
 });
