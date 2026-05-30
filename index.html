@@ -9,7 +9,7 @@
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>BET300 · Cargas/Retiros · V12 UX Limpia</title>
+<title>BET300 · Cargas/Retiros · V13 Reset Confirmación</title>
 <!-- Landing pública blindada: solo RPC de landing, sin panel/admin/worker en frontend. -->
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
@@ -2701,6 +2701,170 @@ img[alt="BET300"]{
     setTimeout(limpiarTextoGuia,400);
     setTimeout(limpiarTextoGuia,1300);
   });
+})();
+</script>
+
+
+<script id="landing-v13-reset-confirmacion">
+(function(){
+  if(window.__LANDING_V13_RESET_CONFIRMACION__) return;
+  window.__LANDING_V13_RESET_CONFIRMACION__ = true;
+
+  function limpiarSolicitudConfirmadaV13(){
+    const keysToRemove = [];
+
+    [sessionStorage, localStorage].forEach(store=>{
+      try{
+        for(let i=0;i<store.length;i++){
+          const k = store.key(i);
+          const kk = String(k || '').toLowerCase();
+
+          if(
+            kk.includes('solicitud_actual') ||
+            kk.includes('solicitudactual') ||
+            kk.includes('landing_solicitud') ||
+            kk.includes('bet300_solicitud') ||
+            kk.includes('v9_solicitud') ||
+            kk.includes('v8_solicitud')
+          ){
+            keysToRemove.push({store,k});
+          }
+        }
+      }catch(e){}
+    });
+
+    keysToRemove.forEach(x=>{
+      try{ x.store.removeItem(x.k); }catch(e){}
+    });
+
+    try{ window.solicitudActual = null; }catch(e){}
+    try{ window.__landingV8ModalAbierto = false; }catch(e){}
+    try{ window.__landingV9ModalAbierto = false; }catch(e){}
+    try{ window.__landingV10ModalAbierto = false; }catch(e){}
+    try{ window.__landingV13ModalCerrado = true; }catch(e){}
+
+    try{
+      if(window.__landingV8Timer) clearInterval(window.__landingV8Timer);
+      if(window.__landingV9Timer) clearInterval(window.__landingV9Timer);
+      if(window.__landingV10Timer) clearInterval(window.__landingV10Timer);
+    }catch(e){}
+  }
+
+  function cerrarModalYVolverInicioV13(){
+    limpiarSolicitudConfirmadaV13();
+
+    const modales = [
+      document.getElementById('successModal'),
+      document.getElementById('modalExito'),
+      document.getElementById('modalSuccess')
+    ].filter(Boolean);
+
+    modales.forEach(m=>{
+      m.classList.add('hidden');
+      m.style.display = 'none';
+      m.removeAttribute('data-v8-open');
+      m.removeAttribute('data-v9-open');
+      m.removeAttribute('data-v10-open');
+    });
+
+    // Vuelve al estado inicial sin perder usuario/billetera.
+    try{
+      if(typeof mostrarCarga === 'function'){
+        mostrarCarga();
+        setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),80);
+        return;
+      }
+    }catch(e){}
+
+    // Fallback final: reload limpio sin reabrir modal porque ya limpiamos storage.
+    setTimeout(()=>location.reload(),120);
+  }
+
+  function irPlataformaYLimpiarV13(ev){
+    limpiarSolicitudConfirmadaV13();
+
+    // Si es link real, dejamos que siga. Si no, respetamos funciones internas.
+    const el = ev?.currentTarget || ev?.target;
+    const href = el?.href || el?.getAttribute?.('href') || el?.dataset?.url;
+
+    if(href && href !== '#' && !href.startsWith('javascript:')){
+      return;
+    }
+
+    try{
+      if(typeof ingresarPlataforma === 'function'){
+        ingresarPlataforma();
+        return;
+      }
+    }catch(e){}
+
+    try{
+      if(typeof abrirPlataforma === 'function'){
+        abrirPlataforma();
+        return;
+      }
+    }catch(e){}
+  }
+
+  function engancharModalV13(){
+    // Botones X / cerrar dentro de modales de éxito.
+    const modales = [
+      document.getElementById('successModal'),
+      document.getElementById('modalExito'),
+      document.getElementById('modalSuccess')
+    ].filter(Boolean);
+
+    modales.forEach(modal=>{
+      if(modal.dataset.v13ResetHooked === '1') return;
+      modal.dataset.v13ResetHooked = '1';
+
+      modal.addEventListener('click', function(ev){
+        const t = ev.target;
+        const txt = String(t?.textContent || '').trim().toLowerCase();
+
+        const isCerrar =
+          (txt === '×' || txt === 'x' || txt.includes('cerrar') || txt.includes('cancelar')) ||
+          t?.matches?.('.close,.modal-close,.btn-close,[data-close],[aria-label="Cerrar"],[aria-label="close"]');
+
+        const isPlataforma = txt.includes('ingresar a la plataforma') || txt.includes('plataforma');
+
+        if(isCerrar){
+          ev.preventDefault();
+          ev.stopPropagation();
+          cerrarModalYVolverInicioV13();
+        }
+
+        if(isPlataforma){
+          limpiarSolicitudConfirmadaV13();
+        }
+      }, true);
+    });
+
+    // Cualquier botón/link global de plataforma también limpia.
+    Array.from(document.querySelectorAll('a,button')).forEach(el=>{
+      const txt = String(el.textContent || '').trim().toLowerCase();
+      if(txt.includes('ingresar a la plataforma')){
+        if(el.dataset.v13PlataformaHooked === '1') return;
+        el.dataset.v13PlataformaHooked = '1';
+        el.addEventListener('click', irPlataformaYLimpiarV13, true);
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    engancharModalV13();
+    setInterval(engancharModalV13, 600);
+  });
+
+  window.addEventListener('load',()=>{
+    engancharModalV13();
+    setTimeout(engancharModalV13,500);
+    setTimeout(engancharModalV13,1500);
+  });
+
+  // Exponer para debug manual si hace falta:
+  window.landingV13LimpiarSolicitud = limpiarSolicitudConfirmadaV13;
+  window.landingV13CerrarModal = cerrarModalYVolverInicioV13;
 })();
 </script>
 
