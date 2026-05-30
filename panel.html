@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Panel Lite V11 · Completo</title>
+<title>Panel Lite V12 · Rápido</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -46,7 +46,9 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
 .landingList{display:flex;flex-direction:column;gap:9px}.landing{border:1px solid var(--line);background:rgba(0,0,0,.13);border-radius:17px;padding:12px}.landingTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.tag{border:1px solid rgba(115,183,255,.28);background:rgba(115,183,255,.12);color:var(--blue);border-radius:99px;padding:5px 8px;font-size:11px;font-weight:950}.tag.warn{border-color:rgba(255,179,92,.3);background:rgba(255,179,92,.12);color:var(--orange)}.tag.red{border-color:rgba(255,107,122,.3);background:rgba(255,107,122,.12);color:var(--red)}.landing p{font-size:12px;color:var(--muted);margin:7px 0 10px}.actions{display:flex;gap:7px;flex-wrap:wrap}
 .tableCard{padding:16px}table{width:100%;border-collapse:separate;border-spacing:0 8px}th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:0 9px}td{background:rgba(255,255,255,.035);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:11px 9px;font-size:13px}td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}.state{font-size:11px;font-weight:950;border-radius:99px;padding:6px 8px}.s-ok{background:rgba(105,255,155,.12);color:var(--green)}.s-man{background:rgba(255,240,106,.12);color:var(--yellow)}.s-err{background:rgba(255,107,122,.13);color:var(--red)}.s-run{background:rgba(115,183,255,.13);color:var(--blue)}
 .chat{padding:14px;display:flex;flex-direction:column;min-height:calc(100vh - 32px);position:sticky;top:16px}.chatHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.chatHead h3{margin:0;font-size:19px}.badge{background:var(--yellow);color:#111;border-radius:99px;min-width:25px;height:25px;display:grid;place-items:center;font-weight:950}.chatTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.inbox,.conv{display:none}.inbox.active,.conv.active{display:flex;flex-direction:column;min-height:0}.convList{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:calc(100vh - 210px)}.convRow{border:1px solid var(--line);background:rgba(0,0,0,.15);border-radius:16px;padding:11px;cursor:pointer}.convRow:hover{border-color:rgba(255,240,106,.45)}.convRow .r1{display:flex;justify-content:space-between;gap:8px}.convRow p{font-size:12px;color:var(--muted);margin:6px 0 0}.unread{background:var(--purple);color:#fff;border-radius:99px;padding:4px 7px;font-size:11px;font-weight:950}
-.replyGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.reply{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:12px;padding:9px;font-size:12px;font-weight:900;text-align:left;cursor:pointer}.opCard{border:1px solid rgba(255,240,106,.32);background:rgba(255,240,106,.065);border-radius:17px;padding:11px;margin-bottom:10px}.opCard h4{margin:0 0 8px}.kv{display:grid;grid-template-columns:78px 1fr;gap:5px;font-size:12px}.kv span{color:var(--muted)}.msgs{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:260px;flex:1}.msg{max-width:86%;border-radius:15px;padding:9px 10px;font-size:13px;line-height:1.35}.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:9px}
+.replyGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.quickAlways{position:relative;z-index:2}
+.reply{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:12px;padding:9px;font-size:12px;font-weight:900;text-align:left;cursor:pointer}.opCard{border:1px solid rgba(255,240,106,.32);background:rgba(255,240,106,.065);border-radius:17px;padding:11px;margin-bottom:10px}.opCard h4{margin:0 0 8px}.kv{display:grid;grid-template-columns:78px 1fr;gap:5px;font-size:12px}.kv span{color:var(--muted)}.msgs{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:260px;flex:1}.msg{max-width:86%;border-radius:15px;padding:9px 10px;font-size:13px;line-height:1.35}.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:9px}
 .loginOverlay{position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(7,8,11,.96);padding:20px}.loginBox{width:min(460px,100%);padding:22px}.loginBox h2{margin:0 0 5px}.loginBox p{margin:0 0 16px;color:var(--muted);font-size:13px}.loginGrid{display:grid;gap:11px}body.logged .loginOverlay{display:none}body:not(.logged) .app{filter:blur(4px);pointer-events:none}
 @media(max-width:1280px){.app{grid-template-columns:var(--leftW) 1fr}.chat{grid-column:1/-1;position:relative;top:auto;min-height:auto}}
 @media(max-width:900px){.app{grid-template-columns:1fr}.left{display:none}.wallets,.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.top{flex-direction:column;align-items:flex-start}.ctxs{justify-content:flex-start}}
@@ -69,7 +71,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
 
 <div class="app">
   <aside class="left card">
-    <div class="brand"><div class="logo">B+</div><div class="brandText"><h1>Panel Lite</h1><p>PC4 · V11</p></div></div>
+    <div class="brand"><div class="logo">B+</div><div class="brandText"><h1>Panel Lite</h1><p>PC4 · V12</p></div></div>
     <button class="toggle" onclick="document.body.classList.toggle('left-mini')">☰</button>
     <button class="navbtn active"><span class="ico">⚡</span><span class="navText">Operación</span></button>
     <button class="navbtn"><span class="ico">🌐</span><span class="navText">Landing</span></button>
@@ -99,18 +101,16 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
 
     <section class="grid">
       <div class="section card">
-        <div class="head"><h3>Operación rápida</h3><span class="hint">validar antes de enviar</span></div>
+        <div class="head"><h3>Operación rápida</h3><span class="hint">rápido</span></div>
         <div class="tabs"><button id="tabMoney" class="tab active" onclick="showPane('money')">Carga / Retiro</button><button id="tabAccount" class="tab" onclick="showPane('account')">Usuario / Clave</button></div>
 
         <div id="paneMoney" class="pane active">
           <div class="form">
-            <div class="wide"><label>Usuario</label><input id="usuario" placeholder="usuario real"></div>
-            <div class="btnRow wide"><button class="btn gray" onclick="validarUsuario()">Validar usuario</button><button class="btn gray" onclick="limpiarValidacion()">Limpiar validación</button></div>
-            <div id="validacionBox" class="wide notice" style="display:none"></div>
+            <div class="wide"><label>Usuario</label><input id="usuario" placeholder="usuario"></div>
             <div><label>Monto</label><input id="monto" placeholder="5000 o -5000" oninput="updateAction()"></div>
             <div><label>Billetera</label><select id="billetera"><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
             <div id="actionNotice" class="wide notice">CARGA</div>
-            <div id="motivoBox" class="wide" style="display:none"><label>Motivo / control</label><textarea rows="2" placeholder="Obligatorio para retiro observado / 24 hs."></textarea></div>
+            <div id="motivoBox" class="wide" style="display:none"><label>Motivo / control</label><textarea rows="2" placeholder="Motivo / control 24 hs"></textarea></div>
             <button id="btnEnviarOrden" class="btn green wide" onclick="enviarOrden()">Enviar orden</button>
           </div>
           <div id="opResult" class="notice wide" style="display:none;margin-top:10px"></div>
@@ -121,9 +121,9 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
           <div class="form">
             <div class="wide"><label>Usuario</label><input id="usuarioCuenta" placeholder="usuario"></div>
             <div><label>Clave nueva</label><input id="claveNueva" placeholder="solo cambio de clave"></div>
-            <div><label>Acción</label><select id="accionCuenta"><option value="CREAR_USUARIO">Crear usuario</option><option value="CAMBIAR_CLAVE">Cambiar clave</option></select></div>
+            <div><label>Acción</label><select id="accionCuenta"><option value="VALIDAR_USUARIO">Validar usuario</option><option value="CREAR_USUARIO">Crear usuario</option><option value="CAMBIAR_CLAVE">Cambiar clave</option></select></div>
             <div class="wide"><label>Nota</label><textarea id="notaCuenta" rows="2"></textarea></div>
-            <button id="btnEnviarCuenta" class="btn wide" onclick="enviarAccionCuenta()">Crear job usuario / clave</button>
+            <button id="btnEnviarCuenta" class="btn wide" onclick="enviarAccionCuenta()">Crear job</button>
           </div>
           <div id="cuentaResult" class="notice wide" style="display:none;margin-top:10px"></div>
         </div>
@@ -150,6 +150,12 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
     <div class="chatTabs"><button id="tabInbox" class="tab active" onclick="showInbox()">Bandeja</button><button id="tabConv" class="tab" onclick="showConversation()">Conversación</button></div>
     <div id="inbox" class="inbox active">
       <input placeholder="Buscar..." style="margin-bottom:10px">
+      <div class="replyGrid quickAlways">
+        <button class="reply" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
+        <button class="reply" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
+        <button class="reply" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Comprobante</button>
+        <button class="reply" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Carga lista</button>
+      </div>
       <div class="convList">
         <div class="convRow" onclick="showConversation()"><div class="r1"><strong>matias22</strong><span class="unread">2</span></div><p>Carga pendiente · $8.000</p></div>
         <div class="convRow" onclick="showConversation()"><div class="r1"><strong>laura10</strong><span class="tag warn">24 HS</span></div><p>Retiro observado.</p></div>
@@ -176,7 +182,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
 
 <script>
 const PANEL_CONFIG={SUPABASE_URL:"https://pjvvyvfcwjoocjqvdror.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF"};
-let sb=null, SESSION=null, USER_VALIDATED=null;
+let sb=null, SESSION=null;
 
 function initSupabase(){
   if(!window.supabase) return notify('opResult','No cargó Supabase CDN.',true),null;
@@ -196,21 +202,21 @@ function logoutPanel(){localStorage.removeItem('panel_session_v11');SESSION=null
 function showPane(p){paneMoney.classList.toggle('active',p==='money');paneAccount.classList.toggle('active',p==='account');tabMoney.classList.toggle('active',p==='money');tabAccount.classList.toggle('active',p==='account')}
 function showInbox(){inbox.classList.add('active');conversation.classList.remove('active');tabInbox.classList.add('active');tabConv.classList.remove('active')}
 function showConversation(){inbox.classList.remove('active');conversation.classList.add('active');tabInbox.classList.remove('active');tabConv.classList.add('active')}
-function quickReply(t){chatInput.value=t;chatInput.focus()}
+function quickReply(t){
+  showConversation();
+  setTimeout(()=>{ chatInput.value=t; chatInput.focus(); }, 50);
+}
 function notify(id,t,err=false){const el=document.getElementById(id); if(!el)return; el.style.display='block'; el.className='notice wide'+(err?' red':''); el.textContent=t}
 function parseMonto(){const n=Number(String(monto.value||'').replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:0}
 function updateAction(){const n=parseMonto(); if(n<0){actionNotice.className='wide notice red';actionNotice.textContent='RETIRO · Control 24 hs activo';motivoBox.style.display='block'}else{actionNotice.className='wide notice';actionNotice.textContent='CARGA';motivoBox.style.display='none'}}
-function limpiarValidacion(){USER_VALIDATED=null;validacionBox.style.display='none';validacionBox.textContent=''}
+function limpiarValidacion(){}
 async function validarUsuario(){
   const s=requireSession(), c=initSupabase(); if(!s||!c)return;
   const u=usuario.value.trim(); if(!u)return notify('opResult','Falta usuario.',true);
-  limpiarValidacion();
   try{
-    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:'VALIDAR_USUARIO',p_clave_nueva:null,p_nota:'validacion previa panel',p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
+    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:'VALIDAR_USUARIO',p_clave_nueva:null,p_nota:'validacion opcional panel',p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
     if(error) throw error;
-    USER_VALIDATED={usuario:u,job_id:data?.job_id||data};
-    validacionBox.style.display='block';validacionBox.className='wide notice green';validacionBox.textContent='Validación creada. Procesar en worker y confirmar resultado antes de carga/retiro.';
-    await cargarJobs();
+    notify('opResult','Job validación creado: '+(data?.job_id||data)); await cargarJobs();
   }catch(e){notify('opResult','Error validando: '+(e.message||e),true)}
 }
 async function enviarOrden(){
@@ -218,7 +224,6 @@ async function enviarOrden(){
   const u=usuario.value.trim(), n=parseMonto(), mot=(document.querySelector('#motivoBox textarea')?.value||'').trim();
   if(!u)return notify('opResult','Falta usuario.',true);
   if(!n)return notify('opResult','Monto inválido.',true);
-  if(!USER_VALIDATED || USER_VALIDATED.usuario!==u)return notify('opResult','Primero validá el usuario desde el panel.',true);
   if(n<0&&!mot)return notify('opResult','Retiro: completar motivo/control 24 hs.',true);
   btnEnviarOrden.disabled=true;btnEnviarOrden.textContent='Creando...';
   try{
@@ -239,7 +244,7 @@ async function enviarAccionCuenta(){
     if(error) throw error;
     notify('cuentaResult','Job creado: '+(data?.job_id||JSON.stringify(data))); await cargarJobs();
   }catch(e){notify('cuentaResult','Error: '+(e.message||e),true)}
-  finally{btnEnviarCuenta.disabled=false;btnEnviarCuenta.textContent='Crear job usuario / clave'}
+  finally{btnEnviarCuenta.disabled=false;btnEnviarCuenta.textContent='Crear job'}
 }
 function stateClass(e){e=String(e||'').toUpperCase(); if(e==='COMPLETADO')return's-ok'; if(e==='REQUIERE_MANUAL')return's-man'; if(e==='ERROR'||e==='CANCELADO')return's-err'; return's-run'}
 function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
