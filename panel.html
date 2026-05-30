@@ -1,191 +1,67 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Panel Operativo Lite · V10</title>
-<style>
-  :root{
-    --bg:#07080b; --panel:#11131a; --line:#272b38; --line2:#383d4d;
-    --txt:#f4f6fb; --muted:#9aa1b4; --soft:#cdd2df;
-    --yellow:#fff06a; --green:#69ff9b; --red:#ff6b7a; --purple:#a98cff;
-    --blue:#73b7ff; --orange:#ffb35c;
-    --shadow:0 18px 60px rgba(0,0,0,.45); --radius:22px;
-    --leftW:280px;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;background:radial-gradient(circle at 15% 0%,rgba(255,240,106,.07),transparent 28%),var(--bg);
-    color:var(--txt);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  }
-  .app{min-height:100vh;padding:18px;display:grid;grid-template-columns:var(--leftW) minmax(720px,1fr) 360px;gap:16px;transition:.2s}
-  body.left-mini{--leftW:78px}
-  .card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.022));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-  .left{padding:14px;display:flex;flex-direction:column;gap:12px;transition:.2s;overflow:hidden}
-  .brand{display:flex;align-items:center;gap:12px;min-height:52px}
-  .logo{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,var(--yellow),#fff);color:#111;font-weight:950;display:grid;place-items:center}
-  .brandText{white-space:nowrap;overflow:hidden}
-  .brand h1{font-size:17px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:2px 0 0}
-  .miniToggle{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:14px;padding:11px;cursor:pointer;font-weight:950}
-  .navbtn{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:12px;border-radius:16px;color:var(--soft);border:1px solid transparent;background:transparent;font-weight:850;cursor:pointer}
-  .navbtn.active{color:#151515;background:linear-gradient(135deg,var(--yellow),#fff7aa)}
-  .navbtn:hover:not(.active){border-color:var(--line2);background:rgba(255,255,255,.035)}
-  .ico{width:24px;text-align:center;flex:0 0 24px}.navText{white-space:nowrap;overflow:hidden}
-  body.left-mini .brandText,body.left-mini .navText,body.left-mini .miniBox{display:none}
-  body.left-mini .left{align-items:center}
-  body.left-mini .navbtn{justify-content:center;padding:12px 8px}
-  .miniBox{padding:13px;border-radius:18px;border:1px solid var(--line);background:rgba(0,0,0,.15);font-size:12px;color:var(--soft)}
-  .dot{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:7px;background:var(--green)}
-  .dot.yellow{background:var(--yellow)}
-  .main{display:flex;flex-direction:column;gap:16px;min-width:0}
-  .topbar{padding:16px 18px;display:flex;align-items:center;justify-content:space-between}
-  .title h2{font-size:23px;margin:0}.title p{font-size:13px;color:var(--muted);margin:4px 0 0}
-  .pill{border:1px solid var(--line2);background:rgba(255,255,255,.035);border-radius:999px;padding:9px 12px;color:var(--soft);font-size:12px;font-weight:850}
-  .wallets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-  .wallet{padding:15px;min-height:112px}
-  .wallet.selected{border-color:rgba(255,240,106,.65)}
-  .wallet h3{font-size:15px;margin:0 0 4px}.type{font-size:12px;color:var(--muted);margin-bottom:10px}
-  .balances{display:grid;grid-template-columns:1fr 1fr;gap:8px}.balance{border:1px solid var(--line);border-radius:14px;padding:8px;background:rgba(0,0,0,.16)}
-  .balance span{display:block;color:var(--muted);font-size:11px}.balance strong{font-size:14px}
-  .diff{margin-top:8px;display:inline-flex;font-size:12px;font-weight:950;color:#111;background:var(--yellow);border-radius:999px;padding:5px 8px}
-  .okbadge{background:rgba(105,255,155,.13);color:var(--green);border:1px solid rgba(105,255,155,.35)}
-  .grid2{display:grid;grid-template-columns:minmax(400px,1fr) minmax(330px,.9fr);gap:16px}
-  .section{padding:18px}.sectionHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.section h3{font-size:19px;margin:0}
-  .hint{font-size:12px;color:var(--muted);font-weight:800}
-  label{display:block;font-size:12px;color:var(--muted);font-weight:900;margin:0 0 7px}
-  .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.wide{grid-column:1/-1}
-  input,select,textarea{width:100%;border:1px solid var(--line2);border-radius:15px;background:#090b10;color:var(--txt);padding:13px 14px;outline:none;font-size:15px}
-  input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
-  .notice{border:1px solid rgba(255,240,106,.24);background:rgba(255,240,106,.07);color:#fff7a6;border-radius:15px;padding:11px 13px;font-weight:900;font-size:13px}
-  .notice.red{border-color:rgba(255,107,122,.34);background:rgba(255,107,122,.08);color:#ffb0b8}
-  .btn{border:none;border-radius:16px;padding:13px 16px;font-weight:950;cursor:pointer;background:var(--yellow);color:#111}
-  .btn.green{background:linear-gradient(135deg,#47ff86,#b5ffd0)}.btn.gray{background:#252936;color:var(--soft);border:1px solid var(--line2)}
-  .btn.red{background:rgba(255,107,122,.14);color:#ff8794;border:1px solid rgba(255,107,122,.38)}
-  .jobPreview{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-  .previewBox{border:1px solid var(--line);border-radius:16px;padding:12px;background:rgba(0,0,0,.16)}
-  .previewBox strong{display:block;font-size:18px}.previewBox span{color:var(--muted);font-size:12px;font-weight:800}
-  .landingList{display:flex;flex-direction:column;gap:10px}.landingItem{border:1px solid var(--line);border-radius:18px;padding:13px;background:rgba(0,0,0,.14)}
-  .landingTop{display:flex;align-items:center;justify-content:space-between;gap:10px}.landingTop strong{font-size:15px}
-  .tag{font-size:11px;font-weight:950;border-radius:999px;padding:5px 8px;background:rgba(115,183,255,.12);color:var(--blue);border:1px solid rgba(115,183,255,.28);white-space:nowrap}
-  .tag.warn{background:rgba(255,179,92,.12);color:var(--orange);border-color:rgba(255,179,92,.3)}.tag.red{background:rgba(255,107,122,.13);color:var(--red);border-color:rgba(255,107,122,.3)}
-  .landingItem p{font-size:12px;color:var(--muted);margin:7px 0 10px}.itemActions{display:flex;gap:8px;flex-wrap:wrap}
-  .smallBtn{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:12px;padding:8px 10px;font-weight:900;font-size:12px;cursor:pointer}
-  .tableCard{padding:16px}table{width:100%;border-collapse:separate;border-spacing:0 8px}
-  th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:0 10px}
-  td{background:rgba(255,255,255,.035);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 10px;font-size:13px}
-  td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}
-  .state{font-weight:950;font-size:11px;border-radius:999px;padding:6px 8px;display:inline-block}.s-ok{background:rgba(105,255,155,.12);color:var(--green)}.s-man{background:rgba(255,240,106,.12);color:var(--yellow)}.s-err{background:rgba(255,107,122,.13);color:var(--red)}
-  .chat{padding:14px;display:flex;flex-direction:column;min-height:calc(100vh - 36px);position:sticky;top:18px}
-  .chatHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.chatHead h3{margin:0;font-size:19px}
-  .badge{min-width:25px;height:25px;border-radius:999px;background:var(--yellow);color:#111;display:inline-grid;place-items:center;font-weight:950;font-size:12px}
-  .chatTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.tab{border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--soft);border-radius:13px;padding:10px;font-weight:900;cursor:pointer}.tab.active{background:var(--yellow);color:#111;border-color:transparent}
-  .inbox,.conversation{display:none;min-height:0}.inbox.active,.conversation.active{display:flex;flex-direction:column}
-  .convList{display:flex;flex-direction:column;gap:9px;overflow:auto;max-height:calc(100vh - 220px);padding-right:3px}
-  .convRow{border:1px solid var(--line);border-radius:17px;padding:12px;background:rgba(0,0,0,.16);cursor:pointer}.convRow:hover{border-color:rgba(255,240,106,.45)}
-  .convRow .r1{display:flex;align-items:center;justify-content:space-between;gap:8px}.convRow strong{font-size:14px}.convRow p{color:var(--muted);font-size:12px;margin:6px 0 0}
-  .unread{background:var(--purple);color:#fff;border-radius:999px;padding:4px 7px;font-size:11px;font-weight:950}
-  .opCard{border:1px solid rgba(255,240,106,.32);background:rgba(255,240,106,.065);border-radius:18px;padding:12px;margin-bottom:10px}
-  .opCard h4{margin:0 0 8px;font-size:14px}.kv{display:grid;grid-template-columns:85px 1fr;gap:6px;font-size:12px;color:var(--soft)}.kv span{color:var(--muted)}
-  .messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:9px;padding:3px;min-height:260px}
-  .msg{max-width:86%;border-radius:16px;padding:10px 11px;font-size:13px;line-height:1.35}.msg.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.msg.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}
-  .walletCard{border:1px dashed rgba(255,240,106,.45);border-radius:16px;padding:10px;font-size:12px;background:rgba(255,240,106,.06)}
-  .copyBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
-
-
-  .loginOverlay{
-    position:fixed;inset:0;z-index:99;
-    background:
-      radial-gradient(circle at 30% 5%,rgba(255,240,106,.10),transparent 30%),
-      rgba(7,8,11,.96);
-    display:grid;place-items:center;padding:22px;
-  }
-  .loginBox{
-    width:min(460px,100%);
-    padding:22px;
-  }
-  .loginBox h2{margin:0 0 4px;font-size:24px}
-  .loginBox p{margin:0 0 18px;color:var(--muted);font-size:13px}
-  .loginGrid{display:grid;gap:12px}
-  .loginError{display:none}
-  body.logged .loginOverlay{display:none}
-  body:not(.logged) .app{filter:blur(4px);pointer-events:none;user-select:none}
-  .contextBar{
-    display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-  }
-  .ctx{
-    border:1px solid var(--line2);
-    background:rgba(255,255,255,.035);
-    border-radius:999px;
-    padding:9px 12px;
-    color:var(--soft);
-    font-size:12px;
-    font-weight:850;
-  }
-  .ctx strong{color:var(--yellow)}
-  .logoutBtn{
-    border:1px solid rgba(255,107,122,.38);
-    background:rgba(255,107,122,.12);
-    color:#ff96a1;
-    border-radius:999px;
-    padding:9px 12px;
-    font-weight:900;
-    cursor:pointer;
-  }
-
-  .actionTabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-  .actionTab{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:14px;padding:11px;font-weight:950;cursor:pointer}
-  .actionTab.active{background:var(--yellow);color:#111;border-color:transparent}
-  .actionPane{display:none}
-  .actionPane.active{display:block}
-  .quickReplies{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-  .replyBtn{border:1px solid var(--line2);background:#1d212c;color:var(--soft);border-radius:12px;padding:9px 10px;font-weight:900;font-size:12px;cursor:pointer;text-align:left}
-  .replyBtn:hover{border-color:rgba(255,240,106,.45)}
-
-  @media(max-width:1240px){.app{grid-template-columns:240px 1fr}.chat{position:relative;top:auto;grid-column:1/-1;min-height:auto}}
-  @media(max-width:860px){.app{grid-template-columns:1fr;padding:12px}.left{display:none}.wallets,.grid2{grid-template-columns:1fr}.formGrid{grid-template-columns:1fr}.topbar{align-items:flex-start;gap:12px;flex-direction:column}}
-</style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Panel Lite V11 · Completo</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#07080b;--card:#11131a;--card2:#171a23;--line:#272b38;--line2:#383d4d;
+  --txt:#f4f6fb;--muted:#9aa1b4;--yellow:#fff06a;--green:#69ff9b;--red:#ff6b7a;
+  --blue:#73b7ff;--orange:#ffb35c;--purple:#a98cff;--shadow:0 18px 60px rgba(0,0,0,.45);
+  --leftW:270px;--chatW:380px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 12% 0%,rgba(255,240,106,.08),transparent 30%),var(--bg);color:var(--txt);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
+body.left-mini{--leftW:76px}
+.app{min-height:100vh;padding:16px;display:grid;grid-template-columns:var(--leftW) minmax(760px,1fr) var(--chatW);gap:14px;transition:.2s}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.022));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+.left{padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.brand{display:flex;align-items:center;gap:12px;min-height:50px}.logo{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,var(--yellow),#fff);color:#111;font-weight:950;display:grid;place-items:center}
+.brand h1{font-size:17px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:2px 0 0}.brandText{white-space:nowrap}
+.toggle,.navbtn,.smallBtn{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:14px;padding:10px 12px;font-weight:900;cursor:pointer}
+.navbtn{display:flex;gap:10px;align-items:center;text-align:left;background:transparent;border-color:transparent}.navbtn.active{background:var(--yellow);color:#111}
+.ico{width:24px;text-align:center}.navText{white-space:nowrap}
+body.left-mini .brandText,body.left-mini .navText,body.left-mini .miniBox{display:none}
+body.left-mini .left{align-items:center}.miniBox{border:1px solid var(--line);border-radius:18px;padding:12px;font-size:12px;color:#dfe3ee;background:rgba(0,0,0,.15)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:99px;background:var(--green);margin-right:7px}.dot.y{background:var(--yellow)}
+.main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.top{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title h2{margin:0;font-size:23px}.title p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.ctxs{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.ctx{border:1px solid var(--line2);background:rgba(255,255,255,.035);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;color:#dfe3ee}.ctx b{color:var(--yellow)}
+.logout{background:rgba(255,107,122,.13);color:#ff9ba5;border-color:rgba(255,107,122,.35)}
+.wallets{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.wallet{padding:14px}.wallet.selected{border-color:rgba(255,240,106,.65)}
+.wallet h3{margin:0 0 4px;font-size:15px}.type{color:var(--muted);font-size:12px;margin-bottom:9px}.balances{display:grid;grid-template-columns:1fr 1fr;gap:8px}.balance{border:1px solid var(--line);border-radius:13px;padding:8px;background:rgba(0,0,0,.15)}.balance span{display:block;font-size:11px;color:var(--muted)}.balance strong{font-size:14px}.diff{display:inline-block;margin-top:8px;border-radius:99px;padding:5px 8px;background:rgba(105,255,155,.12);color:var(--green);font-size:12px;font-weight:950}.diff.warn{background:rgba(255,240,106,.13);color:var(--yellow)}
+.grid{display:grid;grid-template-columns:minmax(420px,1fr) minmax(340px,.9fr);gap:14px}.section{padding:16px}.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.head h3{margin:0;font-size:19px}.hint{font-size:12px;color:var(--muted);font-weight:900}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.tab{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:14px;padding:11px;font-weight:950;cursor:pointer}.tab.active{background:var(--yellow);color:#111}
+.pane{display:none}.pane.active{display:block}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:11px}.wide{grid-column:1/-1}
+label{display:block;font-size:12px;color:var(--muted);font-weight:900;margin-bottom:6px}
+input,select,textarea{width:100%;border:1px solid var(--line2);border-radius:14px;background:#090b10;color:var(--txt);padding:12px 13px;outline:none;font-size:14px}
+input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
+.notice{border:1px solid rgba(255,240,106,.25);background:rgba(255,240,106,.07);color:#fff7a6;border-radius:14px;padding:10px 12px;font-weight:900;font-size:13px}.notice.red{border-color:rgba(255,107,122,.35);background:rgba(255,107,122,.08);color:#ffb1ba}.notice.green{border-color:rgba(105,255,155,.35);background:rgba(105,255,155,.08);color:var(--green)}
+.btn{border:none;border-radius:15px;padding:12px 15px;font-weight:950;cursor:pointer;background:var(--yellow);color:#111}.btn.green{background:linear-gradient(135deg,#48ff88,#b9ffd2)}.btn.gray{background:#252936;color:#dfe3ee;border:1px solid var(--line2)}.btn.red{background:rgba(255,107,122,.14);color:#ff96a1;border:1px solid rgba(255,107,122,.38)}
+.btnRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.preview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.box{border:1px solid var(--line);background:rgba(0,0,0,.15);border-radius:15px;padding:10px}.box strong{display:block;font-size:17px}.box span{font-size:12px;color:var(--muted);font-weight:900}
+.landingList{display:flex;flex-direction:column;gap:9px}.landing{border:1px solid var(--line);background:rgba(0,0,0,.13);border-radius:17px;padding:12px}.landingTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.tag{border:1px solid rgba(115,183,255,.28);background:rgba(115,183,255,.12);color:var(--blue);border-radius:99px;padding:5px 8px;font-size:11px;font-weight:950}.tag.warn{border-color:rgba(255,179,92,.3);background:rgba(255,179,92,.12);color:var(--orange)}.tag.red{border-color:rgba(255,107,122,.3);background:rgba(255,107,122,.12);color:var(--red)}.landing p{font-size:12px;color:var(--muted);margin:7px 0 10px}.actions{display:flex;gap:7px;flex-wrap:wrap}
+.tableCard{padding:16px}table{width:100%;border-collapse:separate;border-spacing:0 8px}th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:0 9px}td{background:rgba(255,255,255,.035);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:11px 9px;font-size:13px}td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}.state{font-size:11px;font-weight:950;border-radius:99px;padding:6px 8px}.s-ok{background:rgba(105,255,155,.12);color:var(--green)}.s-man{background:rgba(255,240,106,.12);color:var(--yellow)}.s-err{background:rgba(255,107,122,.13);color:var(--red)}.s-run{background:rgba(115,183,255,.13);color:var(--blue)}
+.chat{padding:14px;display:flex;flex-direction:column;min-height:calc(100vh - 32px);position:sticky;top:16px}.chatHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.chatHead h3{margin:0;font-size:19px}.badge{background:var(--yellow);color:#111;border-radius:99px;min-width:25px;height:25px;display:grid;place-items:center;font-weight:950}.chatTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.inbox,.conv{display:none}.inbox.active,.conv.active{display:flex;flex-direction:column;min-height:0}.convList{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:calc(100vh - 210px)}.convRow{border:1px solid var(--line);background:rgba(0,0,0,.15);border-radius:16px;padding:11px;cursor:pointer}.convRow:hover{border-color:rgba(255,240,106,.45)}.convRow .r1{display:flex;justify-content:space-between;gap:8px}.convRow p{font-size:12px;color:var(--muted);margin:6px 0 0}.unread{background:var(--purple);color:#fff;border-radius:99px;padding:4px 7px;font-size:11px;font-weight:950}
+.replyGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.reply{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:12px;padding:9px;font-size:12px;font-weight:900;text-align:left;cursor:pointer}.opCard{border:1px solid rgba(255,240,106,.32);background:rgba(255,240,106,.065);border-radius:17px;padding:11px;margin-bottom:10px}.opCard h4{margin:0 0 8px}.kv{display:grid;grid-template-columns:78px 1fr;gap:5px;font-size:12px}.kv span{color:var(--muted)}.msgs{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:260px;flex:1}.msg{max-width:86%;border-radius:15px;padding:9px 10px;font-size:13px;line-height:1.35}.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:9px}
+.loginOverlay{position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(7,8,11,.96);padding:20px}.loginBox{width:min(460px,100%);padding:22px}.loginBox h2{margin:0 0 5px}.loginBox p{margin:0 0 16px;color:var(--muted);font-size:13px}.loginGrid{display:grid;gap:11px}body.logged .loginOverlay{display:none}body:not(.logged) .app{filter:blur(4px);pointer-events:none}
+@media(max-width:1280px){.app{grid-template-columns:var(--leftW) 1fr}.chat{grid-column:1/-1;position:relative;top:auto;min-height:auto}}
+@media(max-width:900px){.app{grid-template-columns:1fr}.left{display:none}.wallets,.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.top{flex-direction:column;align-items:flex-start}.ctxs{justify-content:flex-start}}
+</style>
 </head>
 <body>
-
-<div id="loginOverlay" class="loginOverlay">
+<div class="loginOverlay">
   <div class="loginBox card">
     <h2>Ingreso operativo</h2>
-    <p>Identificación requerida para asignar jobs y permisos.</p>
+    <p>Seleccioná contexto para asignar jobs.</p>
     <div class="loginGrid">
-      <div>
-        <label>Operador</label>
-        <select id="loginOperador">
-          <option value="op_noelia|Noelia|admin">Noelia · Admin</option>
-          <option value="op_turno1|Operador Turno 1|operador">Operador Turno 1</option>
-          <option value="op_turno2|Operador Turno 2|operador">Operador Turno 2</option>
-        </select>
-      </div>
-      <div>
-        <label>Oficina</label>
-        <select id="loginOficina">
-          <option value="OFI_1">OFI_1</option>
-          <option value="OFI_2">OFI_2</option>
-        </select>
-      </div>
-      <div>
-        <label>PC</label>
-        <select id="loginPc">
-          <option value="PC4">PC4</option>
-          <option value="PC1">PC1</option>
-          <option value="PC2">PC2</option>
-          <option value="PC3">PC3</option>
-        </select>
-      </div>
-      <div>
-        <label>Turno</label>
-        <select id="loginTurno">
-          <option value="14-22">14-22</option>
-          <option value="06-14">06-14</option>
-          <option value="22-06">22-06</option>
-        </select>
-      </div>
-      <div id="loginError" class="notice red loginError"></div>
+      <div><label>Operador</label><select id="loginOperador"><option value="op_noelia|Noelia|admin">Noelia · Admin</option><option value="op_turno1|Operador Turno 1|operador">Operador Turno 1</option><option value="op_turno2|Operador Turno 2|operador">Operador Turno 2</option></select></div>
+      <div><label>Oficina</label><select id="loginOficina"><option value="OFI_1">OFI_1</option><option value="OFI_2">OFI_2</option></select></div>
+      <div><label>PC</label><select id="loginPc"><option value="PC4">PC4</option><option value="PC1">PC1</option><option value="PC2">PC2</option><option value="PC3">PC3</option></select></div>
+      <div><label>Turno</label><select id="loginTurno"><option value="14-22">14-22</option><option value="06-14">06-14</option><option value="22-06">22-06</option></select></div>
       <button class="btn green" onclick="loginPanel()">Entrar</button>
     </div>
   </div>
@@ -193,118 +69,79 @@
 
 <div class="app">
   <aside class="left card">
-    <div class="brand">
-      <div class="logo">B+</div>
-      <div class="brandText">
-        <h1>Panel Lite</h1>
-        <p>PC4 · V10</p>
-      </div>
-    </div>
-    <button class="miniToggle" onclick="document.body.classList.toggle('left-mini')">☰</button>
+    <div class="brand"><div class="logo">B+</div><div class="brandText"><h1>Panel Lite</h1><p>PC4 · V11</p></div></div>
+    <button class="toggle" onclick="document.body.classList.toggle('left-mini')">☰</button>
     <button class="navbtn active"><span class="ico">⚡</span><span class="navText">Operación</span></button>
     <button class="navbtn"><span class="ico">🌐</span><span class="navText">Landing</span></button>
     <button class="navbtn"><span class="ico">📋</span><span class="navText">Jobs</span></button>
     <button class="navbtn"><span class="ico">💳</span><span class="navText">Billeteras</span></button>
     <button class="navbtn"><span class="ico">💬</span><span class="navText">Chat</span></button>
-    <div class="miniBox">
-      <div><span class="dot"></span>Operativo</div>
-      <div style="margin-top:8px"><span class="dot"></span>Sync</div>
-      <div style="margin-top:8px"><span class="dot yellow"></span>Chunior OFF</div>
-    </div>
+    <div class="miniBox"><div><span class="dot"></span>Operativo</div><div style="margin-top:8px"><span class="dot"></span>Sync</div><div style="margin-top:8px"><span class="dot y"></span>Chunior OFF</div></div>
   </aside>
 
   <main class="main">
-    <section class="topbar card">
-      <div class="title">
-        <h2>Panel Operativo PC4</h2>
-        <p>Operación · Landing · Chat · Jobs</p>
-      </div>
-      <div class="contextBar">
-        <span class="ctx">Operador: <strong id="ctxOperador">—</strong></span>
-        <span class="ctx">Oficina: <strong id="ctxOficina">—</strong></span>
-        <span class="ctx">PC: <strong id="ctxPc">—</strong></span>
-        <span class="ctx">Turno: <strong id="ctxTurno">—</strong></span>
-        <button class="logoutBtn" onclick="logoutPanel()">Salir</button>
+    <section class="top card">
+      <div class="title"><h2>Panel Operativo PC4</h2><p>Operación · Landing · Chat · Jobs</p></div>
+      <div class="ctxs">
+        <span class="ctx">Operador: <b id="ctxOperador">—</b></span>
+        <span class="ctx">Oficina: <b id="ctxOficina">—</b></span>
+        <span class="ctx">PC: <b id="ctxPc">—</b></span>
+        <span class="ctx">Turno: <b id="ctxTurno">—</b></span>
+        <button class="ctx logout" onclick="logoutPanel()">Salir</button>
       </div>
     </section>
 
     <section class="wallets">
-      <div class="wallet card selected">
-        <h3>GIORDANO MP</h3><div class="type">Mercado Pago</div>
-        <div class="balances"><div class="balance"><span>Chunior</span><strong>$120.000</strong></div><div class="balance"><span>Panel</span><strong>$120.000</strong></div></div>
-        <div class="diff okbadge">Sin diferencia</div>
-      </div>
-      <div class="wallet card">
-        <h3>RODRÍGUEZ MP</h3><div class="type">Mercado Pago</div>
-        <div class="balances"><div class="balance"><span>Chunior</span><strong>$85.000</strong></div><div class="balance"><span>Panel</span><strong>$83.000</strong></div></div>
-        <div class="diff">Dif. -$2.000</div>
-      </div>
-      <div class="wallet card">
-        <h3>BATTISTIN UALÁ</h3><div class="type">Ualá</div>
-        <div class="balances"><div class="balance"><span>Chunior</span><strong>$44.200</strong></div><div class="balance"><span>Panel</span><strong>$44.200</strong></div></div>
-        <div class="diff okbadge">Sin diferencia</div>
-      </div>
+      <div class="wallet card selected"><h3>GIORDANO MP</h3><div class="type">Mercado Pago</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$120.000</strong></div><div class="balance"><span>Panel</span><strong>$120.000</strong></div></div><div class="diff">Sin diferencia</div></div>
+      <div class="wallet card"><h3>RODRÍGUEZ MP</h3><div class="type">Mercado Pago</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$85.000</strong></div><div class="balance"><span>Panel</span><strong>$83.000</strong></div></div><div class="diff warn">Dif. -$2.000</div></div>
+      <div class="wallet card"><h3>BATTISTIN UALÁ</h3><div class="type">Ualá</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$44.200</strong></div><div class="balance"><span>Panel</span><strong>$44.200</strong></div></div><div class="diff">Sin diferencia</div></div>
     </section>
 
-    <section class="grid2">
+    <section class="grid">
       <div class="section card">
-        <div class="sectionHead"><h3>Operación rápida</h3><span class="hint">manual</span></div>
-        <div class="actionTabs">
-          <button id="tabMoney" class="actionTab active" onclick="showActionPane('money')">Carga / Retiro</button>
-          <button id="tabAccount" class="actionTab" onclick="showActionPane('account')">Usuario / Clave</button>
+        <div class="head"><h3>Operación rápida</h3><span class="hint">validar antes de enviar</span></div>
+        <div class="tabs"><button id="tabMoney" class="tab active" onclick="showPane('money')">Carga / Retiro</button><button id="tabAccount" class="tab" onclick="showPane('account')">Usuario / Clave</button></div>
+
+        <div id="paneMoney" class="pane active">
+          <div class="form">
+            <div class="wide"><label>Usuario</label><input id="usuario" placeholder="usuario real"></div>
+            <div class="btnRow wide"><button class="btn gray" onclick="validarUsuario()">Validar usuario</button><button class="btn gray" onclick="limpiarValidacion()">Limpiar validación</button></div>
+            <div id="validacionBox" class="wide notice" style="display:none"></div>
+            <div><label>Monto</label><input id="monto" placeholder="5000 o -5000" oninput="updateAction()"></div>
+            <div><label>Billetera</label><select id="billetera"><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
+            <div id="actionNotice" class="wide notice">CARGA</div>
+            <div id="motivoBox" class="wide" style="display:none"><label>Motivo / control</label><textarea rows="2" placeholder="Obligatorio para retiro observado / 24 hs."></textarea></div>
+            <button id="btnEnviarOrden" class="btn green wide" onclick="enviarOrden()">Enviar orden</button>
+          </div>
+          <div id="opResult" class="notice wide" style="display:none;margin-top:10px"></div>
+          <div class="preview"><div class="box"><strong>+ $5.000</strong><span>CARGA_MANUAL</span></div><div class="box"><strong>- $5.000</strong><span>RETIRO_MANUAL · 24 hs</span></div></div>
         </div>
 
-        <div id="paneMoney" class="actionPane active">
-          <div class="formGrid">
-            <div class="wide"><label>Usuario</label><input id="usuario" value="usuario123"></div>
-            <div><label>Monto</label><input id="monto" value="-5000" oninput="updateAction()"></div>
-            <div><label>Billetera</label><select><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
-            <div id="actionNotice" class="wide notice red">RETIRO · Control 24 hs activo</div>
-            <div id="motivoBox" class="wide">
-              <label>Motivo / control</label>
-              <textarea rows="2" placeholder="Obligatorio si hay alerta 24 hs o retiro observado."></textarea>
-            </div>
-            <div class="wide"><button id="btnEnviarOrden" class="btn green" style="width:100%" onclick="enviarOrden()">Enviar orden</button></div>
-          </div>
-          <div id="opResult" class="wide notice" style="display:none;margin-top:12px"></div>
-          <div class="jobPreview">
-            <div class="previewBox"><strong>+ $5.000</strong><span>CARGA_MANUAL</span></div>
-            <div class="previewBox"><strong>- $5.000</strong><span>RETIRO_MANUAL · 24 hs</span></div>
-          </div>
-        </div>
-
-        <div id="paneAccount" class="actionPane">
-          <div class="formGrid">
-            <div class="wide"><label>Usuario</label><input id="usuarioCuenta" value="usuario123"></div>
-            <div><label>Clave nueva</label><input id="claveNueva" placeholder="Solo para cambio de clave"></div>
+        <div id="paneAccount" class="pane">
+          <div class="form">
+            <div class="wide"><label>Usuario</label><input id="usuarioCuenta" placeholder="usuario"></div>
+            <div><label>Clave nueva</label><input id="claveNueva" placeholder="solo cambio de clave"></div>
             <div><label>Acción</label><select id="accionCuenta"><option value="CREAR_USUARIO">Crear usuario</option><option value="CAMBIAR_CLAVE">Cambiar clave</option></select></div>
-            <div class="wide"><label>Nota</label><textarea id="notaCuenta" rows="2" placeholder="Opcional"></textarea></div>
-            <div class="wide"><button id="btnEnviarCuenta" class="btn" style="width:100%" onclick="enviarAccionCuenta()">Crear job usuario / clave</button></div>
+            <div class="wide"><label>Nota</label><textarea id="notaCuenta" rows="2"></textarea></div>
+            <button id="btnEnviarCuenta" class="btn wide" onclick="enviarAccionCuenta()">Crear job usuario / clave</button>
           </div>
-          <div id="cuentaResult" class="wide notice" style="display:none;margin-top:12px"></div>
-          <div class="jobPreview">
-            <div class="previewBox"><strong>Usuario</strong><span>CREAR_USUARIO</span></div>
-            <div class="previewBox"><strong>Clave</strong><span>CAMBIAR_CLAVE</span></div>
-          </div>
-        </div>        </div>
+          <div id="cuentaResult" class="notice wide" style="display:none;margin-top:10px"></div>
+        </div>
       </div>
 
       <div class="section card">
-        <div class="sectionHead"><h3>Solicitudes Landing</h3><span class="hint">web/chat</span></div>
+        <div class="head"><h3>Solicitudes Landing</h3><span class="hint">pendientes</span></div>
         <div class="landingList">
-          <div class="landingItem"><div class="landingTop"><strong>matias22 · Carga $8.000</strong><span class="tag">NUEVA</span></div><p>Solicitud web.</p><div class="itemActions"><button class="smallBtn">Tomar</button><button class="smallBtn">Chat</button><button class="smallBtn">Crear job</button></div></div>
-          <div class="landingItem"><div class="landingTop"><strong>laura10 · Retiro $12.000</strong><span class="tag warn">24 HS</span></div><p>Requiere motivo.</p><div class="itemActions"><button class="smallBtn">Revisar</button><button class="smallBtn">Chat</button><button class="smallBtn">Continuar</button></div></div>
-          <div class="landingItem"><div class="landingTop"><strong>caro77 · Consulta</strong><span class="tag red">CHAT</span></div><p>Sin operación.</p><div class="itemActions"><button class="smallBtn">Abrir chat</button><button class="smallBtn">Asignar</button></div></div>
+          <div class="landing"><div class="landingTop"><strong>matias22 · Carga $8.000</strong><span class="tag">NUEVA</span></div><p>Solicitud web.</p><div class="actions"><button class="smallBtn">Tomar</button><button class="smallBtn" onclick="showConversation()">Chat</button><button class="smallBtn">Crear job</button></div></div>
+          <div class="landing"><div class="landingTop"><strong>laura10 · Retiro $12.000</strong><span class="tag warn">24 HS</span></div><p>Requiere motivo.</p><div class="actions"><button class="smallBtn">Revisar</button><button class="smallBtn" onclick="showConversation()">Chat</button><button class="smallBtn">Continuar</button></div></div>
+          <div class="landing"><div class="landingTop"><strong>caro77 · Consulta</strong><span class="tag red">CHAT</span></div><p>Sin operación.</p><div class="actions"><button class="smallBtn" onclick="showConversation()">Abrir chat</button><button class="smallBtn">Asignar</button></div></div>
         </div>
       </div>
     </section>
 
     <section class="tableCard card">
-      <div class="sectionHead"><h3>Jobs recientes</h3><span class="hint">últimos</span></div>
-      <table>
-        <thead><tr><th>ID</th><th>Usuario</th><th>Tipo</th><th>Estado</th><th>Etapa</th><th>Sync</th><th>Acción</th></tr></thead>
-        <tbody id="jobsBody"><tr><td colspan="7" style="border-radius:14px;border:1px solid var(--line)">Cargar jobs...</td></tr></tbody>
-      </table>
+      <div class="head"><h3>Historial / Jobs recientes</h3><span class="hint">panel + worker</span></div>
+      <table><thead><tr><th>ID</th><th>Usuario</th><th>Tipo</th><th>Estado</th><th>Etapa</th><th>Op.</th><th>Acción</th></tr></thead><tbody id="jobsBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table>
     </section>
   </main>
 
@@ -317,381 +154,104 @@
         <div class="convRow" onclick="showConversation()"><div class="r1"><strong>matias22</strong><span class="unread">2</span></div><p>Carga pendiente · $8.000</p></div>
         <div class="convRow" onclick="showConversation()"><div class="r1"><strong>laura10</strong><span class="tag warn">24 HS</span></div><p>Retiro observado.</p></div>
         <div class="convRow" onclick="showConversation()"><div class="r1"><strong>caro77</strong><span class="unread">1</span></div><p>Consulta por billetera.</p></div>
-        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>pruebasan</strong><span class="tag">#3101</span></div><p>Carga OK · Sync OFF.</p></div>
+        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>pruebasan</strong><span class="tag">job</span></div><p>Última operación.</p></div>
       </div>
     </div>
-    <div id="conversation" class="conversation">
+    <div id="conversation" class="conv">
       <button class="smallBtn" style="align-self:flex-start;margin-bottom:10px" onclick="showInbox()">← Bandeja</button>
-      <div class="opCard">
-        <h4>laura10 · Retiro</h4>
-        <div class="kv"><span>Monto</span><b>$12.000</b><span>Control</span><b>24 HS</b><span>Estado</span><b>REVISAR</b></div>
-        <div class="itemActions" style="margin-top:10px"><button class="smallBtn">Continuar</button><button class="smallBtn">Pedir motivo</button></div>
+      <div class="opCard"><h4>laura10 · Retiro</h4><div class="kv"><span>Monto</span><b>$12.000</b><span>Control</span><b>24 hs</b><span>Estado</span><b>Revisar</b></div></div>
+      <div class="replyGrid">
+        <button class="reply" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
+        <button class="reply" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
+        <button class="reply" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Pedir comprobante</button>
+        <button class="reply" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Confirmar carga</button>
+        <button class="reply" onclick="quickReply('Tu retiro queda sujeto a control de 24 hs. Te confirmamos apenas esté revisado.')">Retiro 24 hs</button>
+        <button class="reply" onclick="quickReply('Te cambiamos la clave. Probá ingresar nuevamente.')">Clave lista</button>
       </div>
-      <div class="quickReplies">
-        <button class="replyBtn" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
-        <button class="replyBtn" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
-        <button class="replyBtn" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Pedir comprobante</button>
-        <button class="replyBtn" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Confirmar carga</button>
-        <button class="replyBtn" onclick="quickReply('Tu retiro queda sujeto a control de 24 hs. Te confirmamos apenas esté revisado.')">Retiro 24 hs</button>
-        <button class="replyBtn" onclick="quickReply('Te cambiamos la clave. Probá ingresar nuevamente.')">Clave lista</button>
-      </div>
-      <div class="messages">
-        <div class="msg in">Quiero retirar.</div>
-        <div class="msg out">Reviso tu solicitud.</div>
-        <div class="msg out walletCard"><b>GIORDANO MP</b><br>Alias: GIORDANO.MP<br>CBU/CVU: 000000310147<div class="copyBtns"><button class="smallBtn">Copiar alias</button><button class="smallBtn">Copiar CBU</button></div></div>
-      </div>
-      <div class="chatInput"><input placeholder="Responder..."><button class="btn">Enviar</button></div>
+      <div class="msgs"><div class="msg in">Quiero retirar.</div><div class="msg out">Reviso tu solicitud.</div></div>
+      <div class="chatInput"><input id="chatInput" placeholder="Responder..."><button class="btn">Enviar</button></div>
     </div>
   </aside>
 </div>
 
 <script>
-function showInbox(){
-  inbox.classList.add('active'); conversation.classList.remove('active');
-  tabInbox.classList.add('active'); tabConv.classList.remove('active');
-}
-function showConversation(){
-  inbox.classList.remove('active'); conversation.classList.add('active');
-  tabInbox.classList.remove('active'); tabConv.classList.add('active');
-}
-function updateAction(){
-  const raw = document.getElementById('monto').value.replace(/\./g,'').replace(',','.');
-  const n = parseFloat(raw);
-  const notice = document.getElementById('actionNotice');
-  const motivo = document.getElementById('motivoBox');
-  if(!isNaN(n) && n < 0){
-    notice.className = 'wide notice red';
-    notice.textContent = 'RETIRO · Control 24 hs activo';
-    motivo.style.display = 'block';
-  }else{
-    notice.className = 'wide notice';
-    notice.textContent = 'CARGA';
-    motivo.style.display = 'none';
-  }
-}
-document.addEventListener('keydown',(e)=>{
-  if(e.key==='Escape'){
-    const active=document.activeElement;
-    if(active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA')){active.blur();return}
-    if(conversation.classList.contains('active')) showInbox();
-  }
-});
-updateAction();
-</script>
-
-<script>
-/* ============================================================
-   V9 PUENTE SUPABASE · ACCIONES + CHAT
-   En Electron final, esta config pasa a .env/preload.
-============================================================ */
-const PANEL_CONFIG = {
-   SUPABASE_URL: "https://pjvvyvfcwjoocjqvdror.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF",
-};
-
-let PANEL_SESSION = null;
-
-function getSession(){
-  if(PANEL_SESSION) return PANEL_SESSION;
-  try{
-    PANEL_SESSION = JSON.parse(localStorage.getItem("panel_session_v10") || "null");
-  }catch(e){
-    PANEL_SESSION = null;
-  }
-  return PANEL_SESSION;
-}
-
-function requireSession(){
-  const s = getSession();
-  if(!s){
-    document.body.classList.remove("logged");
-    return null;
-  }
-  document.body.classList.add("logged");
-  renderContext();
-  return s;
-}
-
-function renderContext(){
-  const s = getSession();
-  if(!s) return;
-  const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v || "—"; };
-  set("ctxOperador", s.operador_nombre);
-  set("ctxOficina", s.oficina_id);
-  set("ctxPc", s.pc_codigo);
-  set("ctxTurno", s.turno);
-}
-
-function loginPanel(){
-  const opRaw = document.getElementById("loginOperador").value;
-  const [operador_id, operador_nombre, rol] = opRaw.split("|");
-  const oficina_id = document.getElementById("loginOficina").value;
-  const pc_codigo = document.getElementById("loginPc").value;
-  const turno = document.getElementById("loginTurno").value;
-
-  if(!operador_id || !oficina_id || !pc_codigo){
-    const err = document.getElementById("loginError");
-    err.textContent = "Faltan datos de sesión.";
-    err.style.display = "block";
-    return;
-  }
-
-  PANEL_SESSION = {
-    operador_id,
-    operador_nombre,
-    rol,
-    oficina_id,
-    pc_codigo,
-    turno,
-    login_at: new Date().toISOString()
-  };
-
-  localStorage.setItem("panel_session_v10", JSON.stringify(PANEL_SESSION));
-  document.body.classList.add("logged");
-  renderContext();
-  cargarJobs();
-}
-
-function logoutPanel(){
-  localStorage.removeItem("panel_session_v10");
-  PANEL_SESSION = null;
-  document.body.classList.remove("logged");
-}
-
-let sb = null;
+const PANEL_CONFIG={SUPABASE_URL:"https://pjvvyvfcwjoocjqvdror.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF"};
+let sb=null, SESSION=null, USER_VALIDATED=null;
 
 function initSupabase(){
-  if(!window.supabase){
-    showOpResult("No cargó Supabase CDN.", true);
-    return null;
-  }
-  if(PANEL_CONFIG.SUPABASE_URL.includes("TU-PROYECTO") || PANEL_CONFIG.SUPABASE_ANON_KEY.includes("TU_SUPABASE")){
-    showOpResult("Configurar Supabase solo para prueba standalone. En Electron va por .env.", true);
-    return null;
-  }
-  if(!sb){
-    sb = window.supabase.createClient(PANEL_CONFIG.SUPABASE_URL, PANEL_CONFIG.SUPABASE_ANON_KEY);
-  }
+  if(!window.supabase) return notify('opResult','No cargó Supabase CDN.',true),null;
+  if(PANEL_CONFIG.SUPABASE_URL.includes('TU-PROYECTO')) return notify('opResult','Config Supabase pendiente para standalone.',true),null;
+  if(!sb) sb=window.supabase.createClient(PANEL_CONFIG.SUPABASE_URL,PANEL_CONFIG.SUPABASE_ANON_KEY);
   return sb;
 }
-
-function showActionPane(which){
-  const money = which === "money";
-  paneMoney.classList.toggle("active", money);
-  paneAccount.classList.toggle("active", !money);
-  tabMoney.classList.toggle("active", money);
-  tabAccount.classList.toggle("active", !money);
+function loginPanel(){
+  const [operador_id,operador_nombre,rol]=loginOperador.value.split('|');
+  SESSION={operador_id,operador_nombre,rol,oficina_id:loginOficina.value,pc_codigo:loginPc.value,turno:loginTurno.value};
+  localStorage.setItem('panel_session_v11',JSON.stringify(SESSION));document.body.classList.add('logged');renderContext();cargarJobs();
 }
-
-function parseMonto(){
-  const raw = String(document.getElementById("monto").value || "")
-    .replace(/\$/g,"")
-    .replace(/\s/g,"")
-    .replace(/\./g,"")
-    .replace(",",".");
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+function getSession(){if(SESSION)return SESSION;try{SESSION=JSON.parse(localStorage.getItem('panel_session_v11')||'null')}catch(e){SESSION=null}return SESSION}
+function requireSession(){const s=getSession(); if(!s){document.body.classList.remove('logged');return null} document.body.classList.add('logged');renderContext();return s}
+function renderContext(){const s=getSession(); if(!s)return; ctxOperador.textContent=s.operador_nombre;ctxOficina.textContent=s.oficina_id;ctxPc.textContent=s.pc_codigo;ctxTurno.textContent=s.turno}
+function logoutPanel(){localStorage.removeItem('panel_session_v11');SESSION=null;document.body.classList.remove('logged')}
+function showPane(p){paneMoney.classList.toggle('active',p==='money');paneAccount.classList.toggle('active',p==='account');tabMoney.classList.toggle('active',p==='money');tabAccount.classList.toggle('active',p==='account')}
+function showInbox(){inbox.classList.add('active');conversation.classList.remove('active');tabInbox.classList.add('active');tabConv.classList.remove('active')}
+function showConversation(){inbox.classList.remove('active');conversation.classList.add('active');tabInbox.classList.remove('active');tabConv.classList.add('active')}
+function quickReply(t){chatInput.value=t;chatInput.focus()}
+function notify(id,t,err=false){const el=document.getElementById(id); if(!el)return; el.style.display='block'; el.className='notice wide'+(err?' red':''); el.textContent=t}
+function parseMonto(){const n=Number(String(monto.value||'').replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:0}
+function updateAction(){const n=parseMonto(); if(n<0){actionNotice.className='wide notice red';actionNotice.textContent='RETIRO · Control 24 hs activo';motivoBox.style.display='block'}else{actionNotice.className='wide notice';actionNotice.textContent='CARGA';motivoBox.style.display='none'}}
+function limpiarValidacion(){USER_VALIDATED=null;validacionBox.style.display='none';validacionBox.textContent=''}
+async function validarUsuario(){
+  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
+  const u=usuario.value.trim(); if(!u)return notify('opResult','Falta usuario.',true);
+  limpiarValidacion();
+  try{
+    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:'VALIDAR_USUARIO',p_clave_nueva:null,p_nota:'validacion previa panel',p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
+    if(error) throw error;
+    USER_VALIDATED={usuario:u,job_id:data?.job_id||data};
+    validacionBox.style.display='block';validacionBox.className='wide notice green';validacionBox.textContent='Validación creada. Procesar en worker y confirmar resultado antes de carga/retiro.';
+    await cargarJobs();
+  }catch(e){notify('opResult','Error validando: '+(e.message||e),true)}
 }
-
-function getBilleteraVisible(){
-  const sel = document.querySelector("#paneMoney select");
-  return sel ? sel.value : "";
-}
-
-function getMotivo(){
-  const txt = document.querySelector("#motivoBox textarea");
-  return txt ? txt.value.trim() : "";
-}
-
-function showOpResult(text, isError=false){
-  const el = document.getElementById("opResult");
-  if(!el) return;
-  el.style.display = "block";
-  el.className = "wide notice" + (isError ? " red" : "");
-  el.textContent = text;
-}
-
-function showCuentaResult(text, isError=false){
-  const el = document.getElementById("cuentaResult");
-  if(!el) return;
-  el.style.display = "block";
-  el.className = "wide notice" + (isError ? " red" : "");
-  el.textContent = text;
-}
-
 async function enviarOrden(){
-  const s = requireSession();
-  if(!s) return showOpResult("Ingresá al panel antes de crear jobs.", true);
-  const client = initSupabase();
-  if(!client) return;
-
-  const btn = document.getElementById("btnEnviarOrden");
-  const usuario = document.getElementById("usuario").value.trim();
-  const monto = parseMonto();
-  const motivo = getMotivo();
-  const billeteraVisible = getBilleteraVisible();
-
-  if(!usuario) return showOpResult("Falta usuario.", true);
-  if(!monto) return showOpResult("Monto inválido.", true);
-  if(monto < 0 && !motivo) return showOpResult("Retiro: completar motivo/control 24 hs.", true);
-
-  btn.disabled = true;
-  btn.textContent = "Creando job...";
-
+  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
+  const u=usuario.value.trim(), n=parseMonto(), mot=(document.querySelector('#motivoBox textarea')?.value||'').trim();
+  if(!u)return notify('opResult','Falta usuario.',true);
+  if(!n)return notify('opResult','Monto inválido.',true);
+  if(!USER_VALIDATED || USER_VALIDATED.usuario!==u)return notify('opResult','Primero validá el usuario desde el panel.',true);
+  if(n<0&&!mot)return notify('opResult','Retiro: completar motivo/control 24 hs.',true);
+  btnEnviarOrden.disabled=true;btnEnviarOrden.textContent='Creando...';
   try{
-    const { data, error } = await client.rpc("panel_crear_operacion_rapida", {
-      p_pc_codigo: s.pc_codigo,
-      p_usuario: usuario,
-      p_monto: monto,
-      p_billetera_id: null,
-      p_billetera_visible: billeteraVisible,
-      p_motivo: motivo,
-      p_oficina_id: s.oficina_id,
-      p_operador_id: s.operador_id,
-      p_operador_nombre: s.operador_nombre,
-      p_turno: s.turno,
-      p_rol: s.rol
-    });
+    const {data,error}=await c.rpc('panel_crear_operacion_rapida',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_monto:n,p_billetera_id:null,p_billetera_visible:billetera.value,p_motivo:mot,p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
     if(error) throw error;
-
-    const jobId = typeof data === "object" ? (data.job_id || data.id || JSON.stringify(data)) : data;
-    showOpResult(`Job creado: ${jobId}`);
-    await cargarJobs();
-
-    document.getElementById("monto").value = "";
-    const txt = document.querySelector("#motivoBox textarea");
-    if(txt) txt.value = "";
-    updateAction();
-  }catch(err){
-    showOpResult("Error creando job: " + (err.message || String(err)), true);
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "Enviar orden";
-  }
+    notify('opResult','Job creado: '+(data?.job_id||JSON.stringify(data))); await cargarJobs();
+  }catch(e){notify('opResult','Error creando job: '+(e.message||e),true)}
+  finally{btnEnviarOrden.disabled=false;btnEnviarOrden.textContent='Enviar orden'}
 }
-
 async function enviarAccionCuenta(){
-  const s = requireSession();
-  if(!s) return showCuentaResult("Ingresá al panel antes de crear jobs.", true);
-  const client = initSupabase();
-  if(!client) return;
-
-  const btn = document.getElementById("btnEnviarCuenta");
-  const usuario = document.getElementById("usuarioCuenta").value.trim();
-  const clave = document.getElementById("claveNueva").value.trim();
-  const accion = document.getElementById("accionCuenta").value;
-  const nota = document.getElementById("notaCuenta").value.trim();
-
-  if(!usuario) return showCuentaResult("Falta usuario.", true);
-  if(accion === "CAMBIAR_CLAVE" && !clave) return showCuentaResult("Para cambiar clave, completar clave nueva.", true);
-
-  btn.disabled = true;
-  btn.textContent = "Creando job...";
-
+  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
+  const u=usuarioCuenta.value.trim(), accion=accionCuenta.value, clave=claveNueva.value.trim(), nota=notaCuenta.value.trim();
+  if(!u)return notify('cuentaResult','Falta usuario.',true);
+  if(accion==='CAMBIAR_CLAVE'&&!clave)return notify('cuentaResult','Falta clave nueva.',true);
+  btnEnviarCuenta.disabled=true;btnEnviarCuenta.textContent='Creando...';
   try{
-    const { data, error } = await client.rpc("panel_crear_accion_usuario", {
-      p_pc_codigo: s.pc_codigo,
-      p_usuario: usuario,
-      p_tipo_job: accion,
-      p_clave_nueva: clave || null,
-      p_nota: nota || null,
-      p_oficina_id: s.oficina_id,
-      p_operador_id: s.operador_id,
-      p_operador_nombre: s.operador_nombre,
-      p_turno: s.turno,
-      p_rol: s.rol
-    });
+    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:accion,p_clave_nueva:clave||null,p_nota:nota||null,p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
     if(error) throw error;
-
-    const jobId = typeof data === "object" ? (data.job_id || data.id || JSON.stringify(data)) : data;
-    showCuentaResult(`Job creado: ${jobId}`);
-    await cargarJobs();
-    document.getElementById("claveNueva").value = "";
-  }catch(err){
-    showCuentaResult("Error creando job: " + (err.message || String(err)), true);
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "Crear job usuario / clave";
-  }
+    notify('cuentaResult','Job creado: '+(data?.job_id||JSON.stringify(data))); await cargarJobs();
+  }catch(e){notify('cuentaResult','Error: '+(e.message||e),true)}
+  finally{btnEnviarCuenta.disabled=false;btnEnviarCuenta.textContent='Crear job usuario / clave'}
 }
-
-function estadoClass(estado){
-  estado = String(estado || "").toUpperCase();
-  if(estado === "COMPLETADO") return "s-ok";
-  if(estado === "REQUIERE_MANUAL") return "s-man";
-  if(estado === "ERROR" || estado === "CANCELADO") return "s-err";
-  return "s-run";
-}
-
-function safeText(v){
-  return String(v ?? "").replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
-}
-
+function stateClass(e){e=String(e||'').toUpperCase(); if(e==='COMPLETADO')return's-ok'; if(e==='REQUIERE_MANUAL')return's-man'; if(e==='ERROR'||e==='CANCELADO')return's-err'; return's-run'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
 async function cargarJobs(){
-  const s = requireSession();
-  if(!s) return;
-  const client = initSupabase();
-  const body = document.getElementById("jobsBody");
-  if(!client || !body) return;
-
-  const { data, error } = await client.rpc("panel_listar_jobs_recientes", {
-    p_pc_codigo: s.pc_codigo,
-    p_limit: 30
-  });
-
-  if(error){
-    body.innerHTML = `<tr><td colspan="7">Error: ${safeText(error.message)}</td></tr>`;
-    return;
-  }
-
-  const rows = data || [];
-  if(!rows.length){
-    body.innerHTML = `<tr><td colspan="7">Sin jobs recientes</td></tr>`;
-    return;
-  }
-
-  body.innerHTML = rows.map(r => {
-    const tipo = `${r.tipo_job || r.tipo_accion || ""}${r.monto ? " $" + Math.abs(Number(r.monto)).toLocaleString("es-AR") : ""}`;
-    const sync = r.sync_job_id ? "#" + r.sync_job_id : "—";
-    const payload = encodeURIComponent(JSON.stringify(r));
-    return `
-      <tr>
-        <td>${safeText(r.id)}</td>
-        <td>${safeText(r.usuario)}</td>
-        <td>${safeText(tipo)}</td>
-        <td><span class="state ${estadoClass(r.estado)}">${safeText(r.estado)}</span></td>
-        <td>${safeText(r.etapa_actual)}</td>
-        <td>${safeText(sync)}</td>
-        <td><button class="smallBtn" onclick="verJob('${payload}')">Ver</button></td>
-      </tr>
-    `;
-  }).join("");
+  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
+  const {data,error}=await c.rpc('panel_listar_jobs_recientes',{p_pc_codigo:s.pc_codigo,p_limit:30});
+  if(error){jobsBody.innerHTML=`<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`;return}
+  const rows=data||[]; if(!rows.length){jobsBody.innerHTML='<tr><td colspan="7">Sin jobs recientes</td></tr>';return}
+  jobsBody.innerHTML=rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.usuario)}</td><td>${esc(r.tipo_job||r.tipo_accion)} ${r.monto?('$'+Math.abs(Number(r.monto)).toLocaleString('es-AR')):''}</td><td><span class="state ${stateClass(r.estado)}">${esc(r.estado)}</span></td><td>${esc(r.etapa_actual)}</td><td>${esc(r.operador_nombre||'')}</td><td><button class="smallBtn" onclick="notify('opResult','Job #${esc(r.id)} · ${esc(r.estado)} · ${esc(r.etapa_actual)}')">Ver</button></td></tr>`).join('');
 }
-
-function verJob(encoded){
-  try{
-    const r = JSON.parse(decodeURIComponent(encoded));
-    showOpResult(`Job #${r.id} · ${r.estado} · ${r.etapa_actual || ""}`);
-  }catch(e){
-    showOpResult("No se pudo abrir el job.", true);
-  }
-}
-
-function quickReply(text){
-  const input = document.querySelector(".chatInput input");
-  if(input){
-    input.value = text;
-    input.focus();
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  updateAction();
-  requireSession();
-  setTimeout(cargarJobs, 600);
-  setInterval(cargarJobs, 10000);
-});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')){a.blur();return}if(conversation.classList.contains('active'))showInbox()}});
+document.addEventListener('DOMContentLoaded',()=>{updateAction();requireSession();setTimeout(cargarJobs,600);setInterval(cargarJobs,10000)});
 </script>
-
 </body>
 </html>
