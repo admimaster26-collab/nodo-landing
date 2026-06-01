@@ -47,6 +47,63 @@ input,textarea{width:100%;border:1px solid rgba(255,255,255,.12);background:#fff
 .widget-compose.locked textarea,.widget-compose.locked button{display:none}
 .flow-note{font-size:12px;color:#a7adbd;line-height:1.35;margin-top:8px}
 
+
+/* V16.2 · flujo limpio */
+.flow-card.active-flow{border-color:rgba(245,197,66,.30)}
+.form-box.submitted{display:none!important}
+.pending-box{
+  background:rgba(245,197,66,.09);
+  border:1px solid rgba(245,197,66,.25);
+  border-radius:18px;
+  padding:14px;
+  margin:12px 0;
+}
+.pending-title{font-weight:950;color:#ffe188;font-size:16px;margin-bottom:6px}
+.pending-text{font-size:13px;color:#d7dbe7;line-height:1.38}
+.pending-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pending-actions .action-btn{margin:0;flex:1;min-width:130px}
+.widget-compose{
+  min-height:64px;
+}
+.widget-compose.locked{
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  color:#a7adbd;
+  font-size:13px;
+  font-weight:900;
+  min-height:64px;
+  text-align:center;
+  padding:12px 14px;
+}
+.widget-compose.locked #composeLockText{
+  width:100%;
+  line-height:1.35;
+}
+.widget-compose:not(.locked){
+  display:grid!important;
+  grid-template-columns:1fr 44px;
+  gap:8px;
+  align-items:end;
+}
+.widget-compose:not(.locked) #composeLockText{display:none}
+.widget-compose.locked textarea,.widget-compose.locked button{display:none!important}
+#freeInput{
+  min-height:42px;
+  height:42px;
+  max-height:86px;
+  overflow:auto;
+}
+.send-btn{
+  min-width:44px;
+  width:44px;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+}
+
 </style>
 </head>
 <body>
@@ -65,11 +122,11 @@ input,textarea{width:100%;border:1px solid rgba(255,255,255,.12);background:#fff
 <div id="toast" class="toast"></div>
 <script>
 const SUPABASE_URL = "https://pjvvyvfcwjoocjqvdror.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF";
+const SUPABASE_ANON_KEY = "PEGAR_SUPABASE_ANON_KEY";
 const DEFAULT_ROUTE = "rt-a8f31";
 const PLATFORM_URL = "https://bet-300.pw";
 let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn(e)}
-const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",selectedFile:null,billetera:null,chatLibre:false};
+const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||""};
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
 function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open)setTimeout(scrollBottom,80)}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
@@ -130,33 +187,82 @@ function cambiarUsuario(){
   localStorage.removeItem("bet300_usuario");
   localStorage.removeItem("bet300_chat_id");
   localStorage.removeItem("bet300_solicitud_id");
+  localStorage.removeItem("bet300_pending_tipo");
   state.usuario="";
   state.solicitudId="";
+  state.pendingTipo="";
   state.chatLibre=false;
   $("messages").innerHTML="";
   renderUserGate();
 }
 
+function tieneSolicitudPendiente(){
+  return !!(state.solicitudId || state.pendingTipo);
+}
+function bloquearNuevaSolicitud(tipo){
+  if(!tieneSolicitudPendiente()) return false;
+  addMsg(`Ya tenés una solicitud ${state.pendingTipo || ""} en revisión. Para evitar duplicados, esperá la confirmación o escribí a soporte.`, "bot");
+  renderPendingBox();
+  return true;
+}
+function setPendiente(tipo, solicitudId){
+  state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
+  if(solicitudId) state.solicitudId = solicitudId;
+  localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
+  if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+}
+function limpiarPendienteManual(){
+  if(!confirm("¿Limpiar el estado pendiente en este dispositivo? Usalo solo si la solicitud ya fue resuelta.")) return;
+  state.pendingTipo="";
+  state.solicitudId="";
+  localStorage.removeItem("bet300_pending_tipo");
+  localStorage.removeItem("bet300_solicitud_id");
+  addMsg("Estado local limpiado. Ya podés iniciar una nueva solicitud.", "bot");
+  renderUserGate();
+}
+function renderPendingBox(){
+  const id="pendingBox";
+  const old=document.getElementById(id);
+  if(old) old.remove();
+  const box=document.createElement("div");
+  box.id=id;
+  box.className="pending-box";
+  box.innerHTML=`<div class="pending-title">Solicitud en revisión</div>
+    <div class="pending-text">Tenés una solicitud ${esc(state.pendingTipo || "")} pendiente. Para evitar duplicados, no se puede iniciar otra carga/retiro hasta que se confirme o se limpie el estado.</div>
+    <div class="pending-actions">
+      <button class="action-btn secondary-btn" onclick="startFlow('SOPORTE')">Necesito ayuda</button>
+      <button class="action-btn secondary-btn" onclick="verEstado()">Ver estado</button>
+    </div>
+    <button class="link-btn" onclick="limpiarPendienteManual()">Marcar como resuelta en este dispositivo</button>`;
+  document.getElementById("messages").appendChild(box);
+  scrollBottom();
+}
+function cerrarFormActivo(formId){
+  const el=document.getElementById(formId);
+  if(el) el.classList.add("submitted");
+}
+
+
 async function initRoute(){const r=await rpc("landing_resolver_ruta_publica",{p_public_code:state.publicCode});if(!r.error){const row=normalize(r.data);state.pcCodigo=row?.pc_codigo||row?.pc||row?.codigo_pc||null}if(!state.pcCodigo){const map={"rt-a8f31":"P1","rt-k6d92":"P2","rt-m4q77":"P3","rt-z9p42":"P4","rt-x2v61":"P5"};state.pcCodigo=map[state.publicCode]||"P1"}console.log("[BET300 V16] canal",state.pcCodigo,"ruta",state.publicCode)}
 function startFlow(tipo){
   if(!state.usuario){ renderUserGate(); return toast("Primero indicá tu usuario"); }
-  if(tipo==="CARGA"){ setComposeEnabled(false,"Completá el formulario guiado de carga."); renderCargaForm(); }
-  if(tipo==="RETIRO"){ setComposeEnabled(false,"Completá el formulario guiado de retiro."); renderRetiroForm(); }
+  if(tipo==="CARGA"){ if(bloquearNuevaSolicitud("CARGA")) return; setComposeEnabled(false,"Completá el formulario guiado de carga."); renderCargaForm(); }
+  if(tipo==="RETIRO"){ if(bloquearNuevaSolicitud("RETIRO")) return; setComposeEnabled(false,"Completá el formulario guiado de retiro."); renderRetiroForm(); }
   if(tipo==="SOPORTE"){ setComposeEnabled(true,""); renderSoporteForm(); }
 }
-function renderCargaForm(){$("messages").insertAdjacentHTML("beforeend",`<div class="form-box"><div class="welcome-title" style="font-size:16px">💳 Solicitud de carga</div><div class="welcome-txt" style="margin-bottom:10px">Informá tus datos. El comprobante es opcional.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="cargaMonto" type="number" min="1" placeholder="Ej: 5000"></div><div><label>Titular que transfiere</label><input id="cargaTitular" placeholder="Nombre del titular"></div></div><button class="action-btn" onclick="mostrarBilleteraCarga()">Ver datos de carga</button></div>`);scrollBottom()}
+function renderCargaForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formCargaActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">💳 Solicitud de carga</div><div class="welcome-txt" style="margin-bottom:10px">Informá tus datos. El comprobante es opcional.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="cargaMonto" type="number" min="1" placeholder="Ej: 5000"></div><div><label>Titular que transfiere</label><input id="cargaTitular" placeholder="Nombre del titular"></div></div><button class="action-btn" onclick="mostrarBilleteraCarga()">Ver datos de carga</button></div>`);scrollBottom()}
 async function obtenerBilletera(){const res=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});if(!res.error){state.billetera=normalize(res.data)||res.data;return state.billetera}return null}
-async function mostrarBilleteraCarga(){const usuario=state.usuario,monto=$("cargaMonto").value.trim(),titular=$("cargaTitular").value.trim();if(!monto||!titular)return toast("Completá monto y titular");addMsg("Quiero cargar $"+monto+" · Titular: "+esc(titular),"user");const b=await obtenerBilletera();const nombre=b?.nombre_visible||b?.nombre||"Billetera disponible",alias=b?.alias||"",cbu=b?.cbu||b?.cvu||"",banco=b?.banco||b?.tipo||"";$("messages").insertAdjacentHTML("beforeend",`<div class="transfer-card"><div class="transfer-title">BET300 · Datos de carga</div><div class="transfer-field"><div class="transfer-label">Billetera</div><div class="transfer-value">${esc(nombre)}</div></div><div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias||"Consultar por chat")}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div><div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu||"Consultar por chat")}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU/CVU</button></div><div class="meta">${esc(banco)}</div></div><div class="form-box"><label class="file-label" for="comprobanteFile">📎 Adjuntar comprobante opcional</label><input id="comprobanteFile" type="file" accept="image/*" style="display:none" onchange="previewFile(this)"><div id="filePreview" class="file-preview"></div><button class="action-btn" onclick="enviarSolicitudCarga('${esc(usuario)}','${esc(monto)}','${esc(titular)}')">Ya transferí / Enviar solicitud</button><button class="action-btn secondary-btn" onclick="startFlow('SOPORTE')">Necesito ayuda</button></div>`);scrollBottom()}
+async function mostrarBilleteraCarga(){const usuario=state.usuario,monto=$("cargaMonto").value.trim(),titular=$("cargaTitular").value.trim();if(!monto||!titular)return toast("Completá monto y titular");addMsg("Quiero cargar $"+monto+" · Titular: "+esc(titular),"user");cerrarFormActivo("formCargaActiva"); const b=await obtenerBilletera();const nombre=b?.nombre_visible||b?.nombre||"Billetera disponible",alias=b?.alias||"",cbu=b?.cbu||b?.cvu||"",banco=b?.banco||b?.tipo||"";$("messages").insertAdjacentHTML("beforeend",`<div class="transfer-card"><div class="transfer-title">BET300 · Datos de carga</div><div class="transfer-field"><div class="transfer-label">Billetera</div><div class="transfer-value">${esc(nombre)}</div></div><div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias||"Consultar por chat")}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div><div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu||"Consultar por chat")}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU/CVU</button></div><div class="meta">${esc(banco)}</div></div><div id="formCargaConfirmar" class="form-box active-flow"><label class="file-label" for="comprobanteFile">📎 Adjuntar comprobante opcional</label><input id="comprobanteFile" type="file" accept="image/*" style="display:none" onchange="previewFile(this)"><div id="filePreview" class="file-preview"></div><button class="action-btn" onclick="enviarSolicitudCarga('${esc(usuario)}','${esc(monto)}','${esc(titular)}')">Ya transferí / Enviar solicitud</button><button class="action-btn secondary-btn" onclick="startFlow('SOPORTE')">Necesito ayuda</button></div>`);scrollBottom()}
 async function copyText(t,btn){if(!t)return;await navigator.clipboard.writeText(t);btn.textContent="Copiado";setTimeout(()=>btn.textContent="Copiar",1200)}
 function previewFile(input){const f=input.files&&input.files[0];state.selectedFile=f||null;const box=$("filePreview");if(!f){box.classList.remove("show");return}const url=URL.createObjectURL(f);box.innerHTML='<img src="'+url+'"><div><b>Comprobante adjunto</b><div class="meta">'+esc(f.name)+'</div></div>';box.classList.add("show")}
-async function enviarSolicitudCarga(usuario,monto,titular){const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",comprobante_obligatorio:false,billetera:state.billetera};let res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload});if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload})}if(res.error){addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");console.warn(res.error);return}const data=normalize(res.data)||res.data;state.solicitudId=data?.solicitud_id||data?.id||"";if(state.solicitudId)localStorage.setItem("bet300_solicitud_id",state.solicitudId);addMsg('Solicitud recibida ✅<br><span class="status-pill">En verificación</span><br>Vamos a verificar la transferencia con el titular informado. Si es necesario, un operador te pedirá el comprobante.',"bot"); setComposeEnabled(true,"")}
-function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div class="form-box"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
-async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_extra:payload});if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_tipo:"RETIRO",p_extra:payload})}if(res.error){addMsg("No pudimos enviar el retiro automáticamente. Un operador te responde por acá.","bot");return}addMsg('Retiro recibido 🕓<br><span class="status-pill">En revisión</span><br>El equipo verificará tu saldo y los datos enviados.',"bot"); setComposeEnabled(true,"")}
-function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div class="form-box"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
-async function enviarSoporte(){const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();if(!mensaje)return toast("Escribí tu consulta");addMsg(mensaje,"user");const res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot"); setComposeEnabled(true,"")}
+async function enviarSolicitudCarga(usuario,monto,titular){const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",comprobante_obligatorio:false,billetera:state.billetera};let res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload});if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload})}if(res.error){cerrarFormActivo("formCargaConfirmar"); addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot"); setComposeEnabled(true,""); console.warn(res.error);return}const data=normalize(res.data)||res.data;state.solicitudId=data?.solicitud_id||data?.id||"";cerrarFormActivo("formCargaConfirmar");setPendiente("CARGA", state.solicitudId);addMsg('Solicitud recibida ✅<br><span class="status-pill">En verificación</span><br>Vamos a verificar la transferencia con el titular informado. Si es necesario, un operador te pedirá el comprobante.',"bot");renderPendingBox();setComposeEnabled(true,"Podés agregar un comentario si necesitás.")}
+function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
+async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_extra:payload});if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_tipo:"RETIRO",p_extra:payload})}if(res.error){cerrarFormActivo("formRetiroActiva"); addMsg("No pudimos enviar el retiro automáticamente. Un operador te responde por acá.","bot"); setComposeEnabled(true,""); return}cerrarFormActivo("formRetiroActiva");setPendiente("RETIRO", "pendiente-local-"+Date.now());addMsg('Retiro recibido 🕓<br><span class="status-pill">En revisión</span><br>El equipo verificará tu saldo y los datos enviados.',"bot");renderPendingBox();setComposeEnabled(true,"Podés agregar un comentario si necesitás.")}
+function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formSoporteActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
+async function enviarSoporte(){const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();if(!mensaje)return toast("Escribí tu consulta");addMsg(mensaje,"user");const res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}cerrarFormActivo("formSoporteActiva"); addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot"); setComposeEnabled(true,"")}
 async function sendFreeMessage(){if(!state.chatLibre)return toast("Elegí una opción para continuar");const input=$("freeInput"),txt=input.value.trim();if(!txt)return;input.value="";addMsg(esc(txt),"user");if(!state.usuario){addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");return}await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:txt,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}})}
 async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");return}const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:state.solicitudId});if(res.error){addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");return}const d=normalize(res.data)||res.data;addMsg("Estado actual: <b>"+esc(d?.estado||"En revisión")+"</b>","bot")}
-window.addEventListener("load",async()=>{$("appFrame").src=PLATFORM_URL;await initRoute();renderUserGate();});
+window.addEventListener("load",async()=>{$("appFrame").src=PLATFORM_URL;await initRoute();renderUserGate();if(tieneSolicitudPendiente()) renderPendingBox();});
 </script>
 </body>
 </html>
