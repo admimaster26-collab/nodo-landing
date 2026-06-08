@@ -1,262 +1,432 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Panel Lite V12 · Rápido</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>BET300 · Portal V16.4</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{
-  --bg:#07080b;--card:#11131a;--card2:#171a23;--line:#272b38;--line2:#383d4d;
-  --txt:#f4f6fb;--muted:#9aa1b4;--yellow:#fff06a;--green:#69ff9b;--red:#ff6b7a;
-  --blue:#73b7ff;--orange:#ffb35c;--purple:#a98cff;--shadow:0 18px 60px rgba(0,0,0,.45);
-  --leftW:270px;--chatW:380px;
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+:root{--bg:#050510;--panel:#111222;--line:rgba(255,255,255,.12);--text:#f8fafc;--muted:#a7adbd;--gold:#f5c542;--green:#18c964;--blue:#3d5afe;--shadow:0 18px 60px rgba(0,0,0,.45)}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+#appFrame{position:fixed;inset:0;width:100vw;height:100vh;border:0;background:#050510;z-index:1}
+.float-btn{position:fixed;right:18px;bottom:18px;z-index:20;border:none;border-radius:999px;padding:14px 18px;display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--gold),#ffe27a);color:#171200;font-weight:950;font-size:15px;cursor:pointer;box-shadow:0 12px 38px rgba(245,197,66,.32),0 14px 45px rgba(0,0,0,.45)}
+.widget{position:fixed;right:18px;bottom:84px;z-index:30;width:390px;max-width:calc(100vw - 24px);height:620px;max-height:calc(100vh - 105px);background:linear-gradient(180deg,rgba(25,26,44,.96),rgba(10,11,22,.98));border:1px solid rgba(255,255,255,.14);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;display:none;flex-direction:column;backdrop-filter:blur(16px)}
+.widget.open{display:flex}
+.widget-head{padding:16px;background:radial-gradient(circle at top right,rgba(245,197,66,.18),transparent 32%),linear-gradient(135deg,#17182b,#0c0d1a);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.brand-logo{font-size:22px;font-weight:950;letter-spacing:-1px}.brand-logo span:first-child{color:var(--gold)}.head-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.icon-btn{border:none;background:rgba(255,255,255,.09);color:#fff;border-radius:12px;width:34px;height:34px;cursor:pointer;font-size:18px}
+.widget-body{flex:1;overflow:auto;padding:14px;background:radial-gradient(circle at 20% 20%,rgba(61,90,254,.09),transparent 28%),radial-gradient(circle at 80% 55%,rgba(245,197,66,.07),transparent 30%),#0b0c18}
+.welcome-card,.form-box{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;margin-bottom:12px}
+.welcome-title{font-weight:950;font-size:18px;margin-bottom:6px}.welcome-txt{font-size:13px;color:#d7dbe7;line-height:1.35}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.quick{border:1px solid rgba(255,255,255,.1);background:#15172a;color:#fff;border-radius:16px;padding:13px 10px;cursor:pointer;text-align:left;font-weight:900;min-height:68px}
+.quick small{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:4px;line-height:1.25}.quick.gold{background:linear-gradient(135deg,#2b230d,#17172a);border-color:rgba(245,197,66,.35)}.quick.green{background:linear-gradient(135deg,#0d2b1a,#17172a);border-color:rgba(24,201,100,.28)}
+.msg{display:flex;flex-direction:column;margin-bottom:10px;max-width:88%}.msg.bot,.msg.sys{align-items:flex-start;margin-right:auto}.msg.user{align-items:flex-end;margin-left:auto}
+.bubble{padding:10px 12px;border-radius:16px;font-size:13px;line-height:1.36;word-break:break-word;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.msg.bot .bubble,.msg.sys .bubble{background:#1d2334;color:#f7f7fb;border-bottom-left-radius:5px;border:1px solid rgba(255,255,255,.04)}.msg.user .bubble{background:linear-gradient(135deg,#314bd8,#6879ff);color:#fff;border-bottom-right-radius:5px}.meta{font-size:10px;color:var(--muted);padding:3px 4px}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#c7cbd6;font-weight:900;margin-bottom:5px}
+input,textarea{width:100%;border:1px solid rgba(255,255,255,.12);background:#fff;color:#111;border-radius:13px;padding:12px;font-size:15px;margin-bottom:10px}textarea{resize:vertical;min-height:76px}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.action-btn{width:100%;border:none;border-radius:14px;padding:13px 14px;font-weight:950;font-size:14px;cursor:pointer;background:linear-gradient(135deg,var(--gold),#ffe27a);color:#141008;margin-top:3px}.secondary-btn{background:#262b3d;color:#fff;border:1px solid rgba(255,255,255,.10)}
+.transfer-card{background:linear-gradient(180deg,#1a2035,#111728);border:1px solid rgba(245,197,66,.42);border-radius:18px;padding:13px;margin:10px 0;box-shadow:0 12px 28px rgba(0,0,0,.24)}
+.transfer-title{font-weight:950;color:var(--gold);font-size:16px;margin-bottom:10px}.transfer-field{background:#0e1525;border-radius:13px;padding:10px;margin-bottom:8px;border:1px solid rgba(255,255,255,.06)}.transfer-label{font-size:10px;color:#aeb4c3;text-transform:uppercase;font-weight:950;margin-bottom:4px}.transfer-value{font-size:14px;font-weight:950;color:#fff;word-break:break-all;margin-bottom:7px}
+.copy-btn{border:none;border-radius:11px;background:#252b3e;color:#fff;padding:9px 10px;font-size:12px;font-weight:900;cursor:pointer;width:100%}
+.file-label{display:flex;align-items:center;justify-content:center;gap:8px;background:#1d2334;border:1px dashed rgba(255,255,255,.20);border-radius:14px;padding:12px;color:#e8ebf5;font-size:13px;font-weight:900;cursor:pointer;margin-bottom:10px;text-transform:none;letter-spacing:0}
+.file-preview{display:none;background:rgba(255,255,255,.07);border-radius:13px;padding:8px;margin-bottom:10px;align-items:center;gap:10px}.file-preview.show{display:flex}.file-preview img{width:54px;height:54px;object-fit:cover;border-radius:10px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;background:rgba(245,197,66,.12);color:#ffe188;border:1px solid rgba(245,197,66,.25);margin-top:8px}
+.widget-compose{border-top:1px solid var(--line);background:#111222;padding:11px;display:grid;grid-template-columns:1fr 44px;gap:8px;align-items:end}#freeInput{min-height:42px;max-height:90px;margin:0;resize:none;border-radius:14px;font-size:14px}.send-btn{height:42px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:950;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:60;background:#111827;color:#fff;border:1px solid rgba(255,255,255,.12);box-shadow:var(--shadow);padding:12px 15px;border-radius:14px;font-weight:900;font-size:13px;display:none}.toast.show{display:block}
+@media(max-width:700px){.float-btn{right:14px;bottom:16px;padding:13px 15px}.widget{right:8px;left:8px;bottom:76px;width:auto;height:72vh;max-height:72vh;border-radius:22px}.quick-grid{grid-template-columns:1fr 1fr}.form-row{grid-template-columns:1fr}.widget-head{padding:14px}}
+@media(max-width:390px){.quick-grid{grid-template-columns:1fr}.widget{height:75vh;max-height:75vh}}
+
+.user-gate{background:rgba(255,255,255,.055);border:1px solid rgba(245,197,66,.22);border-radius:18px;padding:14px;margin-bottom:12px}
+.user-gate-title{font-weight:950;font-size:18px;margin-bottom:6px;color:#ffe188}
+.user-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,66,.12);border:1px solid rgba(245,197,66,.25);color:#ffe188;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950;margin:8px 0 2px}
+.link-btn{border:none;background:transparent;color:#ffe188;font-size:12px;font-weight:900;cursor:pointer;text-decoration:underline;padding:0;margin-top:6px}
+.widget-compose.locked{display:flex;align-items:center;justify-content:center;color:#a7adbd;font-size:12px;font-weight:900;min-height:64px;text-align:center}
+.widget-compose.locked textarea,.widget-compose.locked button{display:none}
+.flow-note{font-size:12px;color:#a7adbd;line-height:1.35;margin-top:8px}
+
+
+/* V16.2 · flujo limpio */
+.flow-card.active-flow{border-color:rgba(245,197,66,.30)}
+.form-box.submitted{display:none!important}
+.pending-box{
+  background:rgba(245,197,66,.09);
+  border:1px solid rgba(245,197,66,.25);
+  border-radius:18px;
+  padding:14px;
+  margin:12px 0;
 }
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(circle at 12% 0%,rgba(255,240,106,.08),transparent 30%),var(--bg);color:var(--txt);font-family:Inter,system-ui,Segoe UI,Arial,sans-serif}
-body.left-mini{--leftW:76px}
-.app{min-height:100vh;padding:16px;display:grid;grid-template-columns:var(--leftW) minmax(760px,1fr) var(--chatW);gap:14px;transition:.2s}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.022));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
-.left{padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
-.brand{display:flex;align-items:center;gap:12px;min-height:50px}.logo{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,var(--yellow),#fff);color:#111;font-weight:950;display:grid;place-items:center}
-.brand h1{font-size:17px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:2px 0 0}.brandText{white-space:nowrap}
-.toggle,.navbtn,.smallBtn{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:14px;padding:10px 12px;font-weight:900;cursor:pointer}
-.navbtn{display:flex;gap:10px;align-items:center;text-align:left;background:transparent;border-color:transparent}.navbtn.active{background:var(--yellow);color:#111}
-.ico{width:24px;text-align:center}.navText{white-space:nowrap}
-body.left-mini .brandText,body.left-mini .navText,body.left-mini .miniBox{display:none}
-body.left-mini .left{align-items:center}.miniBox{border:1px solid var(--line);border-radius:18px;padding:12px;font-size:12px;color:#dfe3ee;background:rgba(0,0,0,.15)}
-.dot{display:inline-block;width:9px;height:9px;border-radius:99px;background:var(--green);margin-right:7px}.dot.y{background:var(--yellow)}
-.main{display:flex;flex-direction:column;gap:14px;min-width:0}
-.top{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.title h2{margin:0;font-size:23px}.title p{margin:4px 0 0;color:var(--muted);font-size:13px}
-.ctxs{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.ctx{border:1px solid var(--line2);background:rgba(255,255,255,.035);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;color:#dfe3ee}.ctx b{color:var(--yellow)}
-.logout{background:rgba(255,107,122,.13);color:#ff9ba5;border-color:rgba(255,107,122,.35)}
-.wallets{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.wallet{padding:14px}.wallet.selected{border-color:rgba(255,240,106,.65)}
-.wallet h3{margin:0 0 4px;font-size:15px}.type{color:var(--muted);font-size:12px;margin-bottom:9px}.balances{display:grid;grid-template-columns:1fr 1fr;gap:8px}.balance{border:1px solid var(--line);border-radius:13px;padding:8px;background:rgba(0,0,0,.15)}.balance span{display:block;font-size:11px;color:var(--muted)}.balance strong{font-size:14px}.diff{display:inline-block;margin-top:8px;border-radius:99px;padding:5px 8px;background:rgba(105,255,155,.12);color:var(--green);font-size:12px;font-weight:950}.diff.warn{background:rgba(255,240,106,.13);color:var(--yellow)}
-.grid{display:grid;grid-template-columns:minmax(420px,1fr) minmax(340px,.9fr);gap:14px}.section{padding:16px}.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.head h3{margin:0;font-size:19px}.hint{font-size:12px;color:var(--muted);font-weight:900}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.tab{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:14px;padding:11px;font-weight:950;cursor:pointer}.tab.active{background:var(--yellow);color:#111}
-.pane{display:none}.pane.active{display:block}
-.form{display:grid;grid-template-columns:1fr 1fr;gap:11px}.wide{grid-column:1/-1}
-label{display:block;font-size:12px;color:var(--muted);font-weight:900;margin-bottom:6px}
-input,select,textarea{width:100%;border:1px solid var(--line2);border-radius:14px;background:#090b10;color:var(--txt);padding:12px 13px;outline:none;font-size:14px}
-input:focus,select:focus,textarea:focus{border-color:rgba(255,240,106,.65)}
-.notice{border:1px solid rgba(255,240,106,.25);background:rgba(255,240,106,.07);color:#fff7a6;border-radius:14px;padding:10px 12px;font-weight:900;font-size:13px}.notice.red{border-color:rgba(255,107,122,.35);background:rgba(255,107,122,.08);color:#ffb1ba}.notice.green{border-color:rgba(105,255,155,.35);background:rgba(105,255,155,.08);color:var(--green)}
-.btn{border:none;border-radius:15px;padding:12px 15px;font-weight:950;cursor:pointer;background:var(--yellow);color:#111}.btn.green{background:linear-gradient(135deg,#48ff88,#b9ffd2)}.btn.gray{background:#252936;color:#dfe3ee;border:1px solid var(--line2)}.btn.red{background:rgba(255,107,122,.14);color:#ff96a1;border:1px solid rgba(255,107,122,.38)}
-.btnRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.preview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.box{border:1px solid var(--line);background:rgba(0,0,0,.15);border-radius:15px;padding:10px}.box strong{display:block;font-size:17px}.box span{font-size:12px;color:var(--muted);font-weight:900}
-.landingList{display:flex;flex-direction:column;gap:9px}.landing{border:1px solid var(--line);background:rgba(0,0,0,.13);border-radius:17px;padding:12px}.landingTop{display:flex;align-items:center;justify-content:space-between;gap:8px}.tag{border:1px solid rgba(115,183,255,.28);background:rgba(115,183,255,.12);color:var(--blue);border-radius:99px;padding:5px 8px;font-size:11px;font-weight:950}.tag.warn{border-color:rgba(255,179,92,.3);background:rgba(255,179,92,.12);color:var(--orange)}.tag.red{border-color:rgba(255,107,122,.3);background:rgba(255,107,122,.12);color:var(--red)}.landing p{font-size:12px;color:var(--muted);margin:7px 0 10px}.actions{display:flex;gap:7px;flex-wrap:wrap}
-.tableCard{padding:16px}table{width:100%;border-collapse:separate;border-spacing:0 8px}th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;padding:0 9px}td{background:rgba(255,255,255,.035);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:11px 9px;font-size:13px}td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}.state{font-size:11px;font-weight:950;border-radius:99px;padding:6px 8px}.s-ok{background:rgba(105,255,155,.12);color:var(--green)}.s-man{background:rgba(255,240,106,.12);color:var(--yellow)}.s-err{background:rgba(255,107,122,.13);color:var(--red)}.s-run{background:rgba(115,183,255,.13);color:var(--blue)}
-.chat{padding:14px;display:flex;flex-direction:column;min-height:calc(100vh - 32px);position:sticky;top:16px}.chatHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.chatHead h3{margin:0;font-size:19px}.badge{background:var(--yellow);color:#111;border-radius:99px;min-width:25px;height:25px;display:grid;place-items:center;font-weight:950}.chatTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.inbox,.conv{display:none}.inbox.active,.conv.active{display:flex;flex-direction:column;min-height:0}.convList{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:calc(100vh - 210px)}.convRow{border:1px solid var(--line);background:rgba(0,0,0,.15);border-radius:16px;padding:11px;cursor:pointer}.convRow:hover{border-color:rgba(255,240,106,.45)}.convRow .r1{display:flex;justify-content:space-between;gap:8px}.convRow p{font-size:12px;color:var(--muted);margin:6px 0 0}.unread{background:var(--purple);color:#fff;border-radius:99px;padding:4px 7px;font-size:11px;font-weight:950}
-.replyGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.quickAlways{position:relative;z-index:2}
-.reply{border:1px solid var(--line2);background:#1d212c;color:#dfe3ee;border-radius:12px;padding:9px;font-size:12px;font-weight:900;text-align:left;cursor:pointer}.opCard{border:1px solid rgba(255,240,106,.32);background:rgba(255,240,106,.065);border-radius:17px;padding:11px;margin-bottom:10px}.opCard h4{margin:0 0 8px}.kv{display:grid;grid-template-columns:78px 1fr;gap:5px;font-size:12px}.kv span{color:var(--muted)}.msgs{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:260px;flex:1}.msg{max-width:86%;border-radius:15px;padding:9px 10px;font-size:13px;line-height:1.35}.in{background:#1b1f2b;border:1px solid var(--line);align-self:flex-start}.out{background:rgba(255,240,106,.16);border:1px solid rgba(255,240,106,.3);align-self:flex-end}.chatInput{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:9px}
-.loginOverlay{position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:rgba(7,8,11,.96);padding:20px}.loginBox{width:min(460px,100%);padding:22px}.loginBox h2{margin:0 0 5px}.loginBox p{margin:0 0 16px;color:var(--muted);font-size:13px}.loginGrid{display:grid;gap:11px}body.logged .loginOverlay{display:none}body:not(.logged) .app{filter:blur(4px);pointer-events:none}
-@media(max-width:1280px){.app{grid-template-columns:var(--leftW) 1fr}.chat{grid-column:1/-1;position:relative;top:auto;min-height:auto}}
-@media(max-width:900px){.app{grid-template-columns:1fr}.left{display:none}.wallets,.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.top{flex-direction:column;align-items:flex-start}.ctxs{justify-content:flex-start}}
+.pending-title{font-weight:950;color:#ffe188;font-size:16px;margin-bottom:6px}
+.pending-text{font-size:13px;color:#d7dbe7;line-height:1.38}
+.pending-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pending-actions .action-btn{margin:0;flex:1;min-width:130px}
+.widget-compose{
+  min-height:64px;
+}
+.widget-compose.locked{
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  color:#a7adbd;
+  font-size:13px;
+  font-weight:900;
+  min-height:64px;
+  text-align:center;
+  padding:12px 14px;
+}
+.widget-compose.locked #composeLockText{
+  width:100%;
+  line-height:1.35;
+}
+.widget-compose:not(.locked){
+  display:grid!important;
+  grid-template-columns:1fr 44px;
+  gap:8px;
+  align-items:end;
+}
+.widget-compose:not(.locked) #composeLockText{display:none}
+.widget-compose.locked textarea,.widget-compose.locked button{display:none!important}
+#freeInput{
+  min-height:42px;
+  height:42px;
+  max-height:86px;
+  overflow:auto;
+}
+.send-btn{
+  min-width:44px;
+  width:44px;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+}
+
+
+/* V16.3 · modo solicitud estricta */
+.main-menu-disabled{display:none!important}
+.user-gate.pending-mode{
+  border-color:rgba(245,197,66,.35);
+  background:rgba(245,197,66,.08);
+}
+.pending-only-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+.pending-only-actions button{
+  margin:0;
+}
+@media(max-width:390px){
+  .pending-only-actions{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
-<div class="loginOverlay">
-  <div class="loginBox card">
-    <h2>Ingreso operativo</h2>
-    <p>Seleccioná contexto para asignar jobs.</p>
-    <div class="loginGrid">
-      <div><label>Operador</label><select id="loginOperador"><option value="op_noelia|Noelia|admin">Noelia · Admin</option><option value="op_turno1|Operador Turno 1|operador">Operador Turno 1</option><option value="op_turno2|Operador Turno 2|operador">Operador Turno 2</option></select></div>
-      <div><label>Oficina</label><select id="loginOficina"><option value="OFI_1">OFI_1</option><option value="OFI_2">OFI_2</option></select></div>
-      <div><label>PC</label><select id="loginPc"><option value="PC4">PC4</option><option value="PC1">PC1</option><option value="PC2">PC2</option><option value="PC3">PC3</option></select></div>
-      <div><label>Turno</label><select id="loginTurno"><option value="14-22">14-22</option><option value="06-14">06-14</option><option value="22-06">22-06</option></select></div>
-      <button class="btn green" onclick="loginPanel()">Entrar</button>
-    </div>
+<iframe id="appFrame" src="https://bet-300.pw" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+<button id="floatBtn" class="float-btn" onclick="toggleWidget(true)"><span>💬</span><span>Cajero / Soporte</span></button>
+<section id="widget" class="widget">
+  <div class="widget-head"><div><div class="brand-logo"><span>BET</span><span>300</span></div><div class="head-sub">Centro de asistencia integrado</div></div><button class="icon-btn" onclick="toggleWidget(false)">×</button></div>
+  <div id="widgetBody" class="widget-body">
+    
+<div id="userGate" class="user-gate"></div>
+    <div id="mainMenu" class="welcome-card hidden"></div>
+    <div id="messages"></div>
   </div>
-</div>
-
-<div class="app">
-  <aside class="left card">
-    <div class="brand"><div class="logo">B+</div><div class="brandText"><h1>Panel Lite</h1><p>PC4 · V12</p></div></div>
-    <button class="toggle" onclick="document.body.classList.toggle('left-mini')">☰</button>
-    <button class="navbtn active"><span class="ico">⚡</span><span class="navText">Operación</span></button>
-    <button class="navbtn"><span class="ico">🌐</span><span class="navText">Landing</span></button>
-    <button class="navbtn"><span class="ico">📋</span><span class="navText">Jobs</span></button>
-    <button class="navbtn"><span class="ico">💳</span><span class="navText">Billeteras</span></button>
-    <button class="navbtn"><span class="ico">💬</span><span class="navText">Chat</span></button>
-    <div class="miniBox"><div><span class="dot"></span>Operativo</div><div style="margin-top:8px"><span class="dot"></span>Sync</div><div style="margin-top:8px"><span class="dot y"></span>Chunior OFF</div></div>
-  </aside>
-
-  <main class="main">
-    <section class="top card">
-      <div class="title"><h2>Panel Operativo PC4</h2><p>Operación · Landing · Chat · Jobs</p></div>
-      <div class="ctxs">
-        <span class="ctx">Operador: <b id="ctxOperador">—</b></span>
-        <span class="ctx">Oficina: <b id="ctxOficina">—</b></span>
-        <span class="ctx">PC: <b id="ctxPc">—</b></span>
-        <span class="ctx">Turno: <b id="ctxTurno">—</b></span>
-        <button class="ctx logout" onclick="logoutPanel()">Salir</button>
-      </div>
-    </section>
-
-    <section class="wallets">
-      <div class="wallet card selected"><h3>GIORDANO MP</h3><div class="type">Mercado Pago</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$120.000</strong></div><div class="balance"><span>Panel</span><strong>$120.000</strong></div></div><div class="diff">Sin diferencia</div></div>
-      <div class="wallet card"><h3>RODRÍGUEZ MP</h3><div class="type">Mercado Pago</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$85.000</strong></div><div class="balance"><span>Panel</span><strong>$83.000</strong></div></div><div class="diff warn">Dif. -$2.000</div></div>
-      <div class="wallet card"><h3>BATTISTIN UALÁ</h3><div class="type">Ualá</div><div class="balances"><div class="balance"><span>Chunior</span><strong>$44.200</strong></div><div class="balance"><span>Panel</span><strong>$44.200</strong></div></div><div class="diff">Sin diferencia</div></div>
-    </section>
-
-    <section class="grid">
-      <div class="section card">
-        <div class="head"><h3>Operación rápida</h3><span class="hint">rápido</span></div>
-        <div class="tabs"><button id="tabMoney" class="tab active" onclick="showPane('money')">Carga / Retiro</button><button id="tabAccount" class="tab" onclick="showPane('account')">Usuario / Clave</button></div>
-
-        <div id="paneMoney" class="pane active">
-          <div class="form">
-            <div class="wide"><label>Usuario</label><input id="usuario" placeholder="usuario"></div>
-            <div><label>Monto</label><input id="monto" placeholder="5000 o -5000" oninput="updateAction()"></div>
-            <div><label>Billetera</label><select id="billetera"><option>GIORDANO MP</option><option>RODRÍGUEZ MP</option><option>BATTISTIN UALÁ</option></select></div>
-            <div id="actionNotice" class="wide notice">CARGA</div>
-            <div id="motivoBox" class="wide" style="display:none"><label>Motivo / control</label><textarea rows="2" placeholder="Motivo / control 24 hs"></textarea></div>
-            <button id="btnEnviarOrden" class="btn green wide" onclick="enviarOrden()">Enviar orden</button>
-          </div>
-          <div id="opResult" class="notice wide" style="display:none;margin-top:10px"></div>
-          <div class="preview"><div class="box"><strong>+ $5.000</strong><span>CARGA_MANUAL</span></div><div class="box"><strong>- $5.000</strong><span>RETIRO_MANUAL · 24 hs</span></div></div>
-        </div>
-
-        <div id="paneAccount" class="pane">
-          <div class="form">
-            <div class="wide"><label>Usuario</label><input id="usuarioCuenta" placeholder="usuario"></div>
-            <div><label>Clave nueva</label><input id="claveNueva" placeholder="solo cambio de clave"></div>
-            <div><label>Acción</label><select id="accionCuenta"><option value="VALIDAR_USUARIO">Validar usuario</option><option value="CREAR_USUARIO">Crear usuario</option><option value="CAMBIAR_CLAVE">Cambiar clave</option></select></div>
-            <div class="wide"><label>Nota</label><textarea id="notaCuenta" rows="2"></textarea></div>
-            <button id="btnEnviarCuenta" class="btn wide" onclick="enviarAccionCuenta()">Crear job</button>
-          </div>
-          <div id="cuentaResult" class="notice wide" style="display:none;margin-top:10px"></div>
-        </div>
-      </div>
-
-      <div class="section card">
-        <div class="head"><h3>Solicitudes Landing</h3><span class="hint">pendientes</span></div>
-        <div class="landingList">
-          <div class="landing"><div class="landingTop"><strong>matias22 · Carga $8.000</strong><span class="tag">NUEVA</span></div><p>Solicitud web.</p><div class="actions"><button class="smallBtn">Tomar</button><button class="smallBtn" onclick="showConversation()">Chat</button><button class="smallBtn">Crear job</button></div></div>
-          <div class="landing"><div class="landingTop"><strong>laura10 · Retiro $12.000</strong><span class="tag warn">24 HS</span></div><p>Requiere motivo.</p><div class="actions"><button class="smallBtn">Revisar</button><button class="smallBtn" onclick="showConversation()">Chat</button><button class="smallBtn">Continuar</button></div></div>
-          <div class="landing"><div class="landingTop"><strong>caro77 · Consulta</strong><span class="tag red">CHAT</span></div><p>Sin operación.</p><div class="actions"><button class="smallBtn" onclick="showConversation()">Abrir chat</button><button class="smallBtn">Asignar</button></div></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="tableCard card">
-      <div class="head"><h3>Historial / Jobs recientes</h3><span class="hint">panel + worker</span></div>
-      <table><thead><tr><th>ID</th><th>Usuario</th><th>Tipo</th><th>Estado</th><th>Etapa</th><th>Op.</th><th>Acción</th></tr></thead><tbody id="jobsBody"><tr><td colspan="7">Cargando...</td></tr></tbody></table>
-    </section>
-  </main>
-
-  <aside class="chat card">
-    <div class="chatHead"><h3>Chat</h3><span class="badge">7</span></div>
-    <div class="chatTabs"><button id="tabInbox" class="tab active" onclick="showInbox()">Bandeja</button><button id="tabConv" class="tab" onclick="showConversation()">Conversación</button></div>
-    <div id="inbox" class="inbox active">
-      <input placeholder="Buscar..." style="margin-bottom:10px">
-      <div class="replyGrid quickAlways">
-        <button class="reply" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
-        <button class="reply" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
-        <button class="reply" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Comprobante</button>
-        <button class="reply" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Carga lista</button>
-      </div>
-      <div class="convList">
-        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>matias22</strong><span class="unread">2</span></div><p>Carga pendiente · $8.000</p></div>
-        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>laura10</strong><span class="tag warn">24 HS</span></div><p>Retiro observado.</p></div>
-        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>caro77</strong><span class="unread">1</span></div><p>Consulta por billetera.</p></div>
-        <div class="convRow" onclick="showConversation()"><div class="r1"><strong>pruebasan</strong><span class="tag">job</span></div><p>Última operación.</p></div>
-      </div>
-    </div>
-    <div id="conversation" class="conv">
-      <button class="smallBtn" style="align-self:flex-start;margin-bottom:10px" onclick="showInbox()">← Bandeja</button>
-      <div class="opCard"><h4>laura10 · Retiro</h4><div class="kv"><span>Monto</span><b>$12.000</b><span>Control</span><b>24 hs</b><span>Estado</span><b>Revisar</b></div></div>
-      <div class="replyGrid">
-        <button class="reply" onclick="quickReply('Hola 👋 ¿me pasás tu usuario?')">Saludo</button>
-        <button class="reply" onclick="quickReply('Te paso los datos de la billetera para cargar.')">Billetera</button>
-        <button class="reply" onclick="quickReply('Mandame el comprobante cuando termines la transferencia.')">Pedir comprobante</button>
-        <button class="reply" onclick="quickReply('Tu carga ya fue enviada. Aguarda unos minutos y revisá tu saldo.')">Confirmar carga</button>
-        <button class="reply" onclick="quickReply('Tu retiro queda sujeto a control de 24 hs. Te confirmamos apenas esté revisado.')">Retiro 24 hs</button>
-        <button class="reply" onclick="quickReply('Te cambiamos la clave. Probá ingresar nuevamente.')">Clave lista</button>
-      </div>
-      <div class="msgs"><div class="msg in">Quiero retirar.</div><div class="msg out">Reviso tu solicitud.</div></div>
-      <div class="chatInput"><input id="chatInput" placeholder="Responder..."><button class="btn">Enviar</button></div>
-    </div>
-  </aside>
-</div>
-
+  <div id="composeBox" class="widget-compose locked"><div id="composeLockText">Elegí una opción para continuar.</div><textarea id="freeInput" rows="1" placeholder="Escribí tu consulta..."></textarea><button class="send-btn" onclick="sendFreeMessage()">➤</button></div>
+</section>
+<div id="toast" class="toast"></div>
 <script>
-const PANEL_CONFIG={SUPABASE_URL:"https://pjvvyvfcwjoocjqvdror.supabase.co",SUPABASE_ANON_KEY:"sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF"};
-let sb=null, SESSION=null;
+const SUPABASE_URL = "https://pjvvyvfcwjoocjqvdror.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF";
+const DEFAULT_ROUTE = "rt-a8f31";
+const PLATFORM_URL = "https://bet-300.pw";
+let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn(e)}
+const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set()};
+let chatPollTimer=null;
+function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll()}else stopChatPoll()}
+function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
+async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
-function initSupabase(){
-  if(!window.supabase) return notify('opResult','No cargó Supabase CDN.',true),null;
-  if(PANEL_CONFIG.SUPABASE_URL.includes('TU-PROYECTO')) return notify('opResult','Config Supabase pendiente para standalone.',true),null;
-  if(!sb) sb=window.supabase.createClient(PANEL_CONFIG.SUPABASE_URL,PANEL_CONFIG.SUPABASE_ANON_KEY);
-  return sb;
+function startChatPoll(){
+  stopChatPoll();
+  if(!state.chatId)return;
+  chatPollTimer=setInterval(pollOperatorMessages,3500);
 }
-function loginPanel(){
-  const [operador_id,operador_nombre,rol]=loginOperador.value.split('|');
-  SESSION={operador_id,operador_nombre,rol,oficina_id:loginOficina.value,pc_codigo:loginPc.value,turno:loginTurno.value};
-  localStorage.setItem('panel_session_v11',JSON.stringify(SESSION));document.body.classList.add('logged');renderContext();cargarJobs();
+function stopChatPoll(){
+  if(chatPollTimer){clearInterval(chatPollTimer);chatPollTimer=null}
 }
-function getSession(){if(SESSION)return SESSION;try{SESSION=JSON.parse(localStorage.getItem('panel_session_v11')||'null')}catch(e){SESSION=null}return SESSION}
-function requireSession(){const s=getSession(); if(!s){document.body.classList.remove('logged');return null} document.body.classList.add('logged');renderContext();return s}
-function renderContext(){const s=getSession(); if(!s)return; ctxOperador.textContent=s.operador_nombre;ctxOficina.textContent=s.oficina_id;ctxPc.textContent=s.pc_codigo;ctxTurno.textContent=s.turno}
-function logoutPanel(){localStorage.removeItem('panel_session_v11');SESSION=null;document.body.classList.remove('logged')}
-function showPane(p){paneMoney.classList.toggle('active',p==='money');paneAccount.classList.toggle('active',p==='account');tabMoney.classList.toggle('active',p==='money');tabAccount.classList.toggle('active',p==='account')}
-function showInbox(){inbox.classList.add('active');conversation.classList.remove('active');tabInbox.classList.add('active');tabConv.classList.remove('active')}
-function showConversation(){inbox.classList.remove('active');conversation.classList.add('active');tabInbox.classList.remove('active');tabConv.classList.add('active')}
-function quickReply(t){
-  showConversation();
-  setTimeout(()=>{ chatInput.value=t; chatInput.focus(); }, 50);
+async function pollOperatorMessages(){
+  if(!state.chatId||!$("widget")?.classList.contains("open"))return;
+  const res=await rpc("landing_leer_chat_v2",{p_chat_id:Number(state.chatId),p_chat_token:state.chatToken});
+  if(res.error||!Array.isArray(res.data))return;
+  res.data.forEach(m=>{
+    const msgKey=String(m.id||m.created_at||JSON.stringify(m));
+    if(state.seenMsgIds.has(msgKey))return;
+    state.seenMsgIds.add(msgKey);
+    const emisor=String(m.tipo_emisor||m.emisor||"").toUpperCase();
+    const isOp=emisor.includes("OPER")||emisor.includes("ADMIN")||emisor.includes("PANEL")||emisor.includes("SIST")||emisor.includes("BOT")||emisor.includes("AUTO");
+    const texto=m.mensaje||m.texto||"";
+    if(isOp&&texto)addMsg(esc(texto),"bot");
+  });
 }
-function notify(id,t,err=false){const el=document.getElementById(id); if(!el)return; el.style.display='block'; el.className='notice wide'+(err?' red':''); el.textContent=t}
-function parseMonto(){const n=Number(String(monto.value||'').replace(/\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:0}
-function updateAction(){const n=parseMonto(); if(n<0){actionNotice.className='wide notice red';actionNotice.textContent='RETIRO · Control 24 hs activo';motivoBox.style.display='block'}else{actionNotice.className='wide notice';actionNotice.textContent='CARGA';motivoBox.style.display='none'}}
-function limpiarValidacion(){}
-async function validarUsuario(){
-  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
-  const u=usuario.value.trim(); if(!u)return notify('opResult','Falta usuario.',true);
-  try{
-    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:'VALIDAR_USUARIO',p_clave_nueva:null,p_nota:'validacion opcional panel',p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
-    if(error) throw error;
-    notify('opResult','Job validación creado: '+(data?.job_id||data)); await cargarJobs();
-  }catch(e){notify('opResult','Error validando: '+(e.message||e),true)}
+
+function setComposeEnabled(enabled, text){
+  state.chatLibre=!!enabled;
+  const box=$("composeBox");
+  const lock=$("composeLockText");
+  if(!box) return;
+  box.classList.toggle("locked", !enabled);
+  if(lock) lock.textContent=text || "Elegí una opción para continuar.";
+  const input=$("freeInput");
+  if(input && enabled) setTimeout(()=>input.focus(),80);
 }
-async function enviarOrden(){
-  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
-  const u=usuario.value.trim(), n=parseMonto(), mot=(document.querySelector('#motivoBox textarea')?.value||'').trim();
-  if(!u)return notify('opResult','Falta usuario.',true);
-  if(!n)return notify('opResult','Monto inválido.',true);
-  if(n<0&&!mot)return notify('opResult','Retiro: completar motivo/control 24 hs.',true);
-  btnEnviarOrden.disabled=true;btnEnviarOrden.textContent='Creando...';
-  try{
-    const {data,error}=await c.rpc('panel_crear_operacion_rapida',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_monto:n,p_billetera_id:null,p_billetera_visible:billetera.value,p_motivo:mot,p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
-    if(error) throw error;
-    notify('opResult','Job creado: '+(data?.job_id||JSON.stringify(data))); await cargarJobs();
-  }catch(e){notify('opResult','Error creando job: '+(e.message||e),true)}
-  finally{btnEnviarOrden.disabled=false;btnEnviarOrden.textContent='Enviar orden'}
+function renderUserGate(){
+  const gate=$("userGate");
+  const menu=$("mainMenu");
+  if(!gate || !menu) return;
+
+  if(!state.usuario){
+    gate.classList.remove("hidden");
+    gate.classList.remove("pending-mode");
+    menu.classList.add("hidden");
+    menu.classList.add("main-menu-disabled");
+    setComposeEnabled(false,"Primero indicá tu usuario de plataforma.");
+    gate.innerHTML=`<div class="user-gate-title">Bienvenido a BET300 Asistencia 👋</div>
+      <div class="welcome-txt">Para ayudarte con cargas, retiros o soporte, indicá tu usuario de plataforma. No pedimos tu clave.</div>
+      <label style="margin-top:12px">Usuario de plataforma</label>
+      <input id="usuarioInicial" placeholder="Ej: usuario123" autocomplete="username">
+      <button class="action-btn" onclick="guardarUsuarioInicial()">Continuar</button>
+      <div class="flow-note">Este usuario queda recordado en este dispositivo para próximas operaciones.</div>`;
+    return;
+  }
+
+  gate.classList.remove("hidden");
+
+  if(tieneSolicitudPendiente()){
+    gate.classList.add("pending-mode");
+    menu.classList.add("hidden");
+    menu.classList.add("main-menu-disabled");
+    gate.innerHTML=`<div class="user-chip">👤 ${esc(state.usuario)}</div>
+      <div class="welcome-title" style="font-size:16px;margin-top:8px">Tenés una solicitud en revisión</div>
+      <div class="welcome-txt">Para evitar duplicados, no se pueden iniciar nuevas cargas, retiros ni consultas generales hasta que esta solicitud se cierre.</div>
+      <div class="pending-only-actions">
+        <button class="action-btn secondary-btn" onclick="verEstado()">Ver estado</button>
+        <button class="action-btn secondary-btn" onclick="enfocarChatSolicitud()">Escribir sobre esta solicitud</button>
+      </div>
+      <button class="link-btn" onclick="limpiarPendienteManual()">Marcar como resuelta en este dispositivo</button>`;
+    setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
+    return;
+  }
+
+  gate.classList.remove("pending-mode");
+  menu.classList.remove("hidden");
+  menu.classList.remove("main-menu-disabled");
+  gate.innerHTML=`<div class="user-chip">👤 ${esc(state.usuario)}</div>
+    <div class="welcome-txt">Estás usando el centro de asistencia integrado. Elegí una opción para continuar.</div>
+    <button class="link-btn" onclick="cambiarUsuario()">¿No sos ${esc(state.usuario)}? Cambiar usuario</button>`;
+  menu.innerHTML=`<div class="welcome-title">Hola ${esc(state.usuario)} 👋</div>
+    <div class="welcome-txt">¿Qué necesitás hacer?</div>
+    <div class="quick-grid">
+      <button class="quick gold" onclick="startFlow('CARGA')">💳 Cargar saldo <small>Pedí datos y avisá tu transferencia.</small></button>
+      <button class="quick green" onclick="startFlow('RETIRO')">🏧 Solicitar retiro <small>Enviá tu solicitud para revisión.</small></button>
+      <button class="quick" onclick="startFlow('SOPORTE')">🆘 Soporte <small>Consultas, acceso o dudas.</small></button>
+      <button class="quick" onclick="verEstado()">🧾 Ver estado <small>Consultá tu última solicitud.</small></button>
+    </div>`;
+  setComposeEnabled(false,"Elegí una opción para continuar.");
 }
-async function enviarAccionCuenta(){
-  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
-  const u=usuarioCuenta.value.trim(), accion=accionCuenta.value, clave=claveNueva.value.trim(), nota=notaCuenta.value.trim();
-  if(!u)return notify('cuentaResult','Falta usuario.',true);
-  if(accion==='CAMBIAR_CLAVE'&&!clave)return notify('cuentaResult','Falta clave nueva.',true);
-  btnEnviarCuenta.disabled=true;btnEnviarCuenta.textContent='Creando...';
-  try{
-    const {data,error}=await c.rpc('panel_crear_accion_usuario',{p_pc_codigo:s.pc_codigo,p_usuario:u,p_tipo_job:accion,p_clave_nueva:clave||null,p_nota:nota||null,p_oficina_id:s.oficina_id,p_operador_id:s.operador_id,p_operador_nombre:s.operador_nombre,p_turno:s.turno,p_rol:s.rol});
-    if(error) throw error;
-    notify('cuentaResult','Job creado: '+(data?.job_id||JSON.stringify(data))); await cargarJobs();
-  }catch(e){notify('cuentaResult','Error: '+(e.message||e),true)}
-  finally{btnEnviarCuenta.disabled=false;btnEnviarCuenta.textContent='Crear job'}
+function guardarUsuarioInicial(){
+  const input=$("usuarioInicial");
+  const usuario=String(input?.value||"").trim();
+  if(!usuario) return toast("Indicá tu usuario de plataforma");
+  state.usuario=usuario;
+  localStorage.setItem("bet300_usuario",usuario);
+  addMsg("Usuario vinculado: "+esc(usuario),"bot");
+  renderUserGate();
 }
-function stateClass(e){e=String(e||'').toUpperCase(); if(e==='COMPLETADO')return's-ok'; if(e==='REQUIERE_MANUAL')return's-man'; if(e==='ERROR'||e==='CANCELADO')return's-err'; return's-run'}
-function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
-async function cargarJobs(){
-  const s=requireSession(), c=initSupabase(); if(!s||!c)return;
-  const {data,error}=await c.rpc('panel_listar_jobs_recientes',{p_pc_codigo:s.pc_codigo,p_limit:30});
-  if(error){jobsBody.innerHTML=`<tr><td colspan="7">Error: ${esc(error.message)}</td></tr>`;return}
-  const rows=data||[]; if(!rows.length){jobsBody.innerHTML='<tr><td colspan="7">Sin jobs recientes</td></tr>';return}
-  jobsBody.innerHTML=rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.usuario)}</td><td>${esc(r.tipo_job||r.tipo_accion)} ${r.monto?('$'+Math.abs(Number(r.monto)).toLocaleString('es-AR')):''}</td><td><span class="state ${stateClass(r.estado)}">${esc(r.estado)}</span></td><td>${esc(r.etapa_actual)}</td><td>${esc(r.operador_nombre||'')}</td><td><button class="smallBtn" onclick="notify('opResult','Job #${esc(r.id)} · ${esc(r.estado)} · ${esc(r.etapa_actual)}')">Ver</button></td></tr>`).join('');
+function cambiarUsuario(){
+  const existing=document.getElementById("cambioConfirm");
+  if(existing){existing.remove();return}
+  const gate=$("userGate");
+  if(!gate)return;
+  gate.insertAdjacentHTML("beforeend",`<div id="cambioConfirm" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);border-radius:14px;padding:12px;margin-top:10px">
+    <div style="font-size:13px;color:#fca5a5;margin-bottom:10px">¿Cambiar el usuario guardado en este dispositivo?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="action-btn secondary-btn" style="margin:0" onclick="document.getElementById('cambioConfirm').remove()">Cancelar</button>
+      <button class="action-btn" style="margin:0;background:#ef4444;color:#fff;background-image:none" onclick="_confirmarCambioUsuario()">Cambiar</button>
+    </div>
+  </div>`);
+  scrollBottom();
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')){a.blur();return}if(conversation.classList.contains('active'))showInbox()}});
-document.addEventListener('DOMContentLoaded',()=>{updateAction();requireSession();setTimeout(cargarJobs,600);setInterval(cargarJobs,10000)});
+function _confirmarCambioUsuario(){
+  stopChatPoll();
+  ["bet300_usuario","bet300_chat_id","bet300_solicitud_id","bet300_pending_tipo","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
+  Object.assign(state,{usuario:"",solicitudId:"",pendingTipo:"",chatId:"",chatToken:"",chatLibre:false,seenMsgIds:new Set()});
+  $("messages").innerHTML="";
+  renderUserGate();
+}
+
+function tieneSolicitudPendiente(){
+  return !!(state.solicitudId || state.pendingTipo);
+}
+function bloquearNuevaSolicitud(tipo){
+  if(!tieneSolicitudPendiente()) return false;
+  addMsg(`Ya tenés una solicitud ${state.pendingTipo || ""} en revisión. Para evitar duplicados, esperá la confirmación o escribí sobre esa solicitud.`, "bot");
+  renderUserGate();
+  renderPendingBox();
+  return true;
+}
+function setPendiente(tipo, solicitudId){
+  state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
+  if(solicitudId) state.solicitudId = solicitudId;
+  localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
+  if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+}
+function limpiarPendienteManual(){
+  const existing=document.getElementById("limpiarConfirm");
+  if(existing){existing.remove();return}
+  const gate=$("userGate");
+  if(!gate)return;
+  gate.insertAdjacentHTML("beforeend",`<div id="limpiarConfirm" style="background:rgba(245,197,66,.08);border:1px solid rgba(245,197,66,.25);border-radius:14px;padding:12px;margin-top:10px">
+    <div style="font-size:13px;color:#ffe188;margin-bottom:10px">¿Marcar como resuelta? Hacelo solo si la solicitud ya fue procesada.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="action-btn secondary-btn" style="margin:0" onclick="document.getElementById('limpiarConfirm').remove()">Cancelar</button>
+      <button class="action-btn" style="margin:0" onclick="_confirmarLimpiarPendiente()">Confirmar</button>
+    </div>
+  </div>`);
+  scrollBottom();
+}
+function _confirmarLimpiarPendiente(){
+  stopChatPoll();
+  Object.assign(state,{pendingTipo:"",solicitudId:"",chatId:"",chatToken:"",seenMsgIds:new Set()});
+  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
+  const old=document.getElementById("pendingBox");if(old)old.remove();
+  addMsg("Estado local limpiado. Ya podés iniciar una nueva solicitud.","bot");
+  renderUserGate();
+}
+function renderPendingBox(){
+  const id="pendingBox";
+  const old=document.getElementById(id);
+  if(old) old.remove();
+  const box=document.createElement("div");
+  box.id=id;
+  box.className="pending-box";
+  box.innerHTML=`<div class="pending-title">Solicitud en revisión</div>
+    <div class="pending-text">Tenés una solicitud ${esc(state.pendingTipo || "")} pendiente. Para evitar duplicados, no se puede iniciar otra carga/retiro hasta que se confirme o se limpie el estado.</div>
+    <div class="pending-actions">
+      <button class="action-btn secondary-btn" onclick="enfocarChatSolicitud()">Escribir</button>
+      <button class="action-btn secondary-btn" onclick="verEstado()">Ver estado</button>
+    </div>
+    <button class="link-btn" onclick="limpiarPendienteManual()">Marcar como resuelta en este dispositivo</button>`;
+  document.getElementById("messages").appendChild(box);
+  scrollBottom();
+}
+
+function enfocarChatSolicitud(){
+  setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
+  const input=document.getElementById("freeInput");
+  if(input) input.focus();
+  scrollBottom();
+}
+
+function cerrarFormActivo(formId){
+  const el=document.getElementById(formId);
+  if(el) el.classList.add("submitted");
+}
+
+
+async function initRoute(){const r=await rpc("landing_resolver_ruta_publica",{p_public_code:state.publicCode});if(!r.error){const row=normalize(r.data);state.pcCodigo=row?.pc_codigo||row?.pc||row?.codigo_pc||null}if(!state.pcCodigo){const map={"rt-a8f31":"P1","rt-k6d92":"P2","rt-m4q77":"P3","rt-z9p42":"P4","rt-x2v61":"P5"};state.pcCodigo=map[state.publicCode]||"P1"}console.log("[BET300 V16] canal",state.pcCodigo,"ruta",state.publicCode)}
+function startFlow(tipo){
+  if(!state.usuario){ renderUserGate(); return toast("Primero indicá tu usuario"); }
+  if(tipo==="CARGA"){ if(bloquearNuevaSolicitud("CARGA")) return; setComposeEnabled(false,"Completá el formulario guiado de carga."); renderCargaForm(); }
+  if(tipo==="RETIRO"){ if(bloquearNuevaSolicitud("RETIRO")) return; setComposeEnabled(false,"Completá el formulario guiado de retiro."); renderRetiroForm(); }
+  if(tipo==="SOPORTE"){ setComposeEnabled(true,""); renderSoporteForm(); }
+}
+async function renderCargaForm(){
+  $("messages").insertAdjacentHTML("beforeend",`<div id="formCargaActiva" class="form-box active-flow">
+    <div class="welcome-title" style="font-size:16px">💳 Cargar saldo</div>
+    <div id="billeteraSlot" style="margin:10px 0 4px"><div style="color:var(--muted);font-size:13px;padding:8px 0">Obteniendo datos de billetera...</div></div>
+    <div class="user-chip" style="margin-bottom:10px">👤 ${esc(state.usuario)}</div>
+    <div class="form-row">
+      <div><label>Monto transferido</label><input id="cargaMonto" type="number" min="1" placeholder="Ej: 5000"></div>
+      <div><label>Titular que transfiere</label><input id="cargaTitular" placeholder="Ej: Maria Lopez"></div>
+    </div>
+    <button class="action-btn" onclick="enviarSolicitudCargaDirecta()">Ya transferí · Enviar solicitud</button>
+    <button class="action-btn secondary-btn" style="margin-top:6px" onclick="startFlow('SOPORTE')">Necesito ayuda</button>
+  </div>`);
+  scrollBottom();
+  const b=await obtenerBilletera();
+  const slot=$("billeteraSlot");
+  if(!slot)return;
+  if(!b){slot.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:8px 0">Sin billetera disponible por ahora. Consultá por soporte.</div>`;return}
+  const alias=b?.alias||"",cbu=b?.cbu||b?.cvu||"",nombre=b?.nombre_visible||b?.nombre||"",banco=b?.banco||b?.tipo||"";
+  slot.innerHTML=`<div class="transfer-card" style="margin:0 0 10px">
+    <div class="transfer-title">Transferí a esta cuenta</div>
+    ${alias?`<div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias)}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div>`:""}
+    ${cbu?`<div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu)}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU / CVU</button></div>`:""}
+    ${nombre||banco?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(nombre)}${banco?" · "+esc(banco):""}</div>`:""}
+  </div>`;
+  scrollBottom();
+}
+async function obtenerBilletera(){const res=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});if(!res.error){state.billetera=normalize(res.data)||res.data;return state.billetera}return null}
+async function enviarSolicitudCargaDirecta(){
+  const monto=($("cargaMonto")?.value||"").trim();
+  const titular=($("cargaTitular")?.value||"").trim();
+  if(!monto||!titular)return toast("Completá monto y titular");
+  addMsg(`Quiero cargar $${monto} · Titular: ${esc(titular)}`,"user");
+  cerrarFormActivo("formCargaActiva");
+  await enviarSolicitudCarga(state.usuario,monto,titular);
+}
+async function copyText(t,btn){if(!t)return;await navigator.clipboard.writeText(t);btn.textContent="Copiado";setTimeout(()=>btn.textContent="Copiar",1200)}
+function previewFile(input){const f=input.files&&input.files[0];state.selectedFile=f||null;const box=$("filePreview");if(!f){box.classList.remove("show");return}const url=URL.createObjectURL(f);box.innerHTML='<img src="'+url+'"><div><b>Comprobante adjunto</b><div class="meta">'+esc(f.name)+'</div></div>';box.classList.add("show")}
+async function enviarSolicitudCarga(usuario,monto,titular){
+  const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",billetera:state.billetera};
+  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_destino:null,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_metadata:payload});
+  if(res.error){console.warn("[V16.4]",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload})}
+  if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload})}
+  if(res.error){addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");setComposeEnabled(true,"");return}
+  const data=normalize(res.data)||res.data;
+  const solicitudId=data?.solicitud_id||data?.id||data?.solicitudId||"";
+  const chatId=data?.chat_id||data?.chatId||"";
+  const chatToken=data?.chat_token||data?.chatToken||"";
+  if(chatId){state.chatId=String(chatId);localStorage.setItem("bet300_chat_id",state.chatId)}
+  if(chatToken){state.chatToken=String(chatToken);localStorage.setItem("bet300_chat_token",state.chatToken)}
+  setPendiente("CARGA",solicitudId);
+  addMsg('Solicitud recibida ✅<br><span class="status-pill">En verificación</span><br>Un operador va a revisar la transferencia. Podés escribir por este chat si necesitás.',"bot");
+  renderUserGate();renderPendingBox();
+  setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
+  startChatPoll();
+}
+function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
+async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_metadata:payload});
+if(res.error){console.warn("[V16.4] bridge solicitud falló",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_extra:payload});}if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_tipo:"RETIRO",p_extra:payload})}if(res.error){cerrarFormActivo("formRetiroActiva");addMsg("No pudimos enviar el retiro automáticamente. Un operador te responde por acá.","bot");setComposeEnabled(true,"");return}
+  cerrarFormActivo("formRetiroActiva");
+  const dataR=normalize(res.data)||res.data;
+  const chatIdR=dataR?.chat_id||dataR?.chatId||"";
+  const chatTokenR=dataR?.chat_token||dataR?.chatToken||"";
+  if(chatIdR){state.chatId=String(chatIdR);localStorage.setItem("bet300_chat_id",state.chatId)}
+  if(chatTokenR){state.chatToken=String(chatTokenR);localStorage.setItem("bet300_chat_token",state.chatToken)}
+  setPendiente("RETIRO",dataR?.solicitud_id||dataR?.id||"pendiente-local-"+Date.now());
+  addMsg('Retiro recibido 🕓<br><span class="status-pill">En revisión</span><br>El equipo verificará tu saldo y los datos enviados. Podés escribir por acá.',"bot");
+  renderUserGate();renderPendingBox();
+  setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
+  startChatPoll();}
+function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formSoporteActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
+async function enviarSoporte(){const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();if(!mensaje)return toast("Escribí tu consulta");addMsg(mensaje,"user");const res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}cerrarFormActivo("formSoporteActiva"); addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot"); setComposeEnabled(true,"")}
+async function sendFreeMessage(){if(!state.chatLibre)return toast("Elegí una opción para continuar");const input=$("freeInput"),txt=input.value.trim();if(!txt)return;input.value="";addMsg(esc(txt),"user");if(!state.usuario){addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");return}await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:txt,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}})}
+async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");return}const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:state.solicitudId});if(res.error){addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");return}const d=normalize(res.data)||res.data;addMsg("Estado actual: <b>"+esc(d?.estado||"En revisión")+"</b>","bot")}
+window.addEventListener("load",async()=>{
+  $("appFrame").src=PLATFORM_URL;
+  await initRoute();
+  renderUserGate();
+  if(tieneSolicitudPendiente()) renderPendingBox();
+  if(state.chatId && $("widget")?.classList.contains("open")) startChatPoll();
+});
 </script>
 </body>
 </html>
