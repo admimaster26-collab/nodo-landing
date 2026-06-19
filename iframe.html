@@ -153,172 +153,6 @@ function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
-let solicitudPollTimer=null;
-function uniqueList(arr){return [...new Set((arr||[]).map(v=>String(v||"").trim()).filter(Boolean))]}
-function pcCandidatesPortal(){
-  const raw=String(state.pcCodigo||"P1").trim().toUpperCase();
-  const out=[raw,"P1"];
-  if(/^P\d+$/.test(raw)) out.push("PC"+raw.replace("P",""));
-  if(/^PC\d+$/.test(raw)) out.push("P"+raw.replace("PC",""));
-  return uniqueList(out);
-}
-function saveChatFromRow(row){
-  const d=normalize(row)||row||{};
-  const chatId=d.chat_id||d.chatId||d.chat_session_id||d.session_id||d.sesion_id||"";
-  const token=d.chat_token||d.chatToken||d.chat_public_token||d.public_token||"";
-  if(chatId){state.chatId=String(chatId);localStorage.setItem("bet300_chat_id",state.chatId)}
-  if(token){state.chatToken=String(token);localStorage.setItem("bet300_chat_token",state.chatToken)}
-  return {chatId:state.chatId,chatToken:state.chatToken};
-}
-function isNumericId(v){return /^\d+$/.test(String(v||"").trim())}
-async function ensureChatForPortal(tipo){
-  if(state.chatId&&state.chatToken) return true;
-  const sid=isNumericId(state.solicitudId)?Number(state.solicitudId):null;
-  let res=await rpc("landing_crear_chat_v2",{
-    p_usuario:state.usuario,
-    p_telefono:"",
-    p_pc_codigo:state.pcCodigo||"P1",
-    p_solicitud_id:sid
-  });
-  if(!res.error){
-    saveChatFromRow(res.data);
-    if(state.chatId&&state.chatToken){startChatPoll();return true;}
-  }
-  // Fallback a la RPC blindada del portal si existe.
-  res=await rpc("landing_crear_chat_v2_blindado",{
-    p_public_code:state.publicCode,
-    p_usuario:state.usuario,
-    p_mensaje:"",
-    p_tipo:tipo||"SOPORTE",
-    p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode,solicitud_id:state.solicitudId||null}
-  });
-  if(!res.error){
-    saveChatFromRow(res.data);
-    if(state.chatId&&state.chatToken){startChatPoll();return true;}
-  }
-  return false;
-}
-function estadoAprobado(estado){
-  const e=String(estado||"").trim().toUpperCase();
-  if(!e) return false;
-
-  // Estados finales reales. No alcanza con que termine en _OK,
-  // porque algunas RPC pueden devolver OK como confirmación de creación/recepción
-  // y eso NO significa que las fichas ya estén cargadas.
-  const finalesExactos = new Set([
-    "ACREDITADA",
-    "ACREDITADO",
-    "PAGADA",
-    "PAGADO",
-    "COMPLETADA",
-    "COMPLETADO",
-    "APROBADA",
-    "APROBADO",
-    "APROBADA_OK",
-    "APROBADO_OK",
-    "APROBADA_MANUAL_OK",
-    "APROBADO_MANUAL_OK"
-  ]);
-
-  if(finalesExactos.has(e)) return true;
-  return e.includes("ACREDIT") || e.includes("PAGAD") || e.includes("COMPLET") || e.includes("APROBAD");
-}
-function estadoRechazado(estado){
-  const e=String(estado||"").toUpperCase();
-  return e.includes("RECHAZ") || e.includes("ERROR") || e.includes("CANCEL");
-}
-function estadoFinalizado(estado){
-  return estadoAprobado(estado) || estadoRechazado(estado);
-}
-function notificarFinalSolicitud(estado){
-  const e=String(estado||"").toUpperCase();
-  if(state._estadoFinalNotificado===e) return;
-  state._estadoFinalNotificado=e;
-  if(estadoAprobado(e)){
-    addMsg("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.","bot");
-  }else{
-    addMsg("La solicitud fue cerrada con estado: <b>"+esc(e||"cerrada")+"</b>. Si necesitás ayuda, escribinos.","bot");
-  }
-}
-function clearPendingAfterDone(estado){
-  const e=String(estado||"").toUpperCase();
-  if(!estadoFinalizado(e)) return false;
-  stopSolicitudPoll();
-  ["bet300_pending_tipo","bet300_solicitud_id"].forEach(k=>localStorage.removeItem(k));
-  state.pendingTipo="";
-  state.solicitudId="";
-  const old=document.getElementById("pendingBox");
-  if(old) old.remove();
-  renderUserGate();
-  setComposeEnabled(false,"Elegí una opción para continuar.");
-  return true;
-}
-function stopSolicitudPoll(){
-  if(solicitudPollTimer){clearInterval(solicitudPollTimer);solicitudPollTimer=null}
-}
-function prepararNuevaSolicitudLocal(){
-  // Evita que una solicitud vieja ya aprobada dispare "fichas cargadas"
-  // sobre una solicitud nueva recién enviada.
-  stopSolicitudPoll();
-  state.solicitudId="";
-  state.pendingTipo="";
-  state._estadoFinalNotificado="";
-  ["bet300_solicitud_id","bet300_pending_tipo"].forEach(k=>localStorage.removeItem(k));
-  const old=document.getElementById("pendingBox");
-  if(old) old.remove();
-}
-function startSolicitudPoll(){
-  stopSolicitudPoll();
-  if(!isNumericId(state.solicitudId)) return;
-  (async()=>{
-    const d=await consultarEstadoSolicitud();
-    const estado=String(d?.estado||"").toUpperCase();
-    if(estadoFinalizado(estado)){
-      notificarFinalSolicitud(estado);
-      clearPendingAfterDone(estado);
-    }
-  })();
-  solicitudPollTimer=setInterval(async()=>{
-    const d=await consultarEstadoSolicitud();
-    const estado=String(d?.estado||"").toUpperCase();
-    if(estadoFinalizado(estado)){
-      notificarFinalSolicitud(estado);
-      clearPendingAfterDone(estado);
-    }
-  },3500);
-}
-async function consultarEstadoSolicitud(){
-  if(!isNumericId(state.solicitudId)) return null;
-
-  // Firma usada por el portal V16 si existe.
-  let res=await rpc("landing_estado_solicitud_segura",{
-    p_public_code:state.publicCode,
-    p_solicitud_id:String(state.solicitudId)
-  });
-  if(!res.error){
-    return normalize(res.data)||res.data;
-  }
-
-  // Firma segura clásica: solicitud + chat numérico + token.
-  if(isNumericId(state.solicitudId) && isNumericId(state.chatId) && state.chatToken){
-    res=await rpc("landing_estado_solicitud_segura",{
-      p_solicitud_id:Number(state.solicitudId),
-      p_chat_id:Number(state.chatId),
-      p_chat_token:state.chatToken
-    });
-    if(!res.error){
-      return normalize(res.data)||res.data;
-    }
-  }
-
-  // Fallback directo controlado: solo lee el estado de esa solicitud.
-  try{
-    const q=await sb.from("solicitudes").select("id,estado,tipo,usuario,monto,updated_at").eq("id",Number(state.solicitudId)).maybeSingle();
-    if(!q.error && q.data) return q.data;
-  }catch(e){}
-  return null;
-}
-
 function startChatPoll(){
   stopChatPoll();
   if(!state.chatId)return;
@@ -449,19 +283,9 @@ function bloquearNuevaSolicitud(tipo){
 }
 function setPendiente(tipo, solicitudId){
   state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
-
-  // Solo guardamos un ID real numérico para consultar estado.
-  // Si la RPC no devolvió solicitud_id, NO conservamos un ID viejo.
-  const sid = String(solicitudId || "").trim();
-  if(/^\d+$/.test(sid)){
-    state.solicitudId = sid;
-    localStorage.setItem("bet300_solicitud_id", state.solicitudId);
-  }else{
-    state.solicitudId = "";
-    localStorage.removeItem("bet300_solicitud_id");
-  }
-
+  if(solicitudId) state.solicitudId = solicitudId;
   localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
+  if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
 }
 function limpiarPendienteManual(){
   const existing=document.getElementById("limpiarConfirm");
@@ -549,56 +373,11 @@ async function renderCargaForm(){
   </div>`;
   scrollBottom();
 }
-async function obtenerBilletera(){
-  state.billetera=null;
-  const candidatos=pcCandidatesPortal();
-
-  // 1) Camino correcto para esta base: landing_obtener_billetera(p_pc_codigo).
-  for(const pc of candidatos){
-    const res=await rpc("landing_obtener_billetera",{p_pc_codigo:pc});
-    if(!res.error){
-      const row=normalize(res.data)||res.data;
-      if(row && (!Array.isArray(res.data) || res.data.length)){
-        state.billetera=row;
-        return state.billetera;
-      }
-    }
-  }
-
-  // 2) Compatibilidad con versiones que aceptan public_code.
-  const resPub=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});
-  if(!resPub.error){
-    const row=normalize(resPub.data)||resPub.data;
-    if(row && (!Array.isArray(resPub.data) || resPub.data.length)){
-      state.billetera=row;
-      return state.billetera;
-    }
-  }
-
-  // 3) Último fallback REST: billetera marcada manual para el PC.
-  for(const pc of candidatos){
-    try{
-      const q=await sb.from("billeteras")
-        .select("id,pc_codigo,nombre_visible,titular,alias,cbu,banco,seleccionada_manual,activa")
-        .eq("pc_codigo",pc)
-        .eq("activa",true)
-        .eq("seleccionada_manual",true)
-        .limit(1)
-        .maybeSingle();
-      if(!q.error && q.data){
-        state.billetera=q.data;
-        return state.billetera;
-      }
-    }catch(e){}
-  }
-
-  return null;
-}
+async function obtenerBilletera(){const res=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});if(!res.error){state.billetera=normalize(res.data)||res.data;return state.billetera}return null}
 async function enviarSolicitudCargaDirecta(){
   const monto=($("cargaMonto")?.value||"").trim();
   const titular=($("cargaTitular")?.value||"").trim();
   if(!monto||!titular)return toast("Completá monto y titular");
-  prepararNuevaSolicitudLocal();
   addMsg(`Quiero cargar $${monto} · Titular: ${esc(titular)}`,"user");
   cerrarFormActivo("formCargaActiva");
   await enviarSolicitudCarga(state.usuario,monto,titular);
@@ -606,237 +385,308 @@ async function enviarSolicitudCargaDirecta(){
 async function copyText(t,btn){if(!t)return;await navigator.clipboard.writeText(t);btn.textContent="Copiado";setTimeout(()=>btn.textContent="Copiar",1200)}
 function previewFile(input){const f=input.files&&input.files[0];state.selectedFile=f||null;const box=$("filePreview");if(!f){box.classList.remove("show");return}const url=URL.createObjectURL(f);box.innerHTML='<img src="'+url+'"><div><b>Comprobante adjunto</b><div class="meta">'+esc(f.name)+'</div></div>';box.classList.add("show")}
 async function enviarSolicitudCarga(usuario,monto,titular){
-  if(!state.billetera) await obtenerBilletera();
-  const payload={
-    usuario,
-    monto:Number(monto),
-    titular,
-    pc_codigo:state.pcCodigo,
-    public_code:state.publicCode,
-    tipo:"CARGA",
-    billetera:state.billetera,
-    billetera_id:state.billetera?.id||null,
-    billetera_nombre:state.billetera?.nombre_visible||state.billetera?.nombre||null
-  };
-
-  let res=await rpc("landing_portal_v16_crear_solicitud",{
-    p_public_code:state.publicCode,
-    p_usuario:usuario,
-    p_tipo:"CARGA",
-    p_monto:Number(monto),
-    p_titular:titular,
-    p_destino:null,
-    p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,
-    p_metadata:payload
-  });
-
-  if(res.error){
-    console.warn("[V16.4] landing_portal_v16_crear_solicitud falló",res.error);
-    res=await rpc("landing_crear_solicitud_v3_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:usuario,
-      p_tipo:"CARGA",
-      p_monto:Number(monto),
-      p_titular:titular,
-      p_comprobante_url:null,
-      p_extra:payload
-    });
-  }
-
-  if(res.error){
-    res=await rpc("landing_crear_chat_v2_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:usuario,
-      p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,
-      p_tipo:"CARGA",
-      p_extra:payload
-    });
-  }
-
-  if(res.error){
-    addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");
-    setComposeEnabled(true,"");
-    return;
-  }
-
-  const data=normalize(res.data)||res.data||{};
+  const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",billetera:state.billetera};
+  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_destino:null,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_metadata:payload});
+  if(res.error){console.warn("[V16.4]",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload})}
+  if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload})}
+  if(res.error){addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");setComposeEnabled(true,"");return}
+  const data=normalize(res.data)||res.data;
   const solicitudId=data?.solicitud_id||data?.id||data?.solicitudId||"";
-  saveChatFromRow(data);
-
-  if(!state.chatId || !state.chatToken){
-    if(solicitudId) state.solicitudId=String(solicitudId);
-    await ensureChatForPortal("CARGA");
-  }
-
+  const chatId=data?.chat_id||data?.chatId||"";
+  const chatToken=data?.chat_token||data?.chatToken||"";
+  if(chatId){state.chatId=String(chatId);localStorage.setItem("bet300_chat_id",state.chatId)}
+  if(chatToken){state.chatToken=String(chatToken);localStorage.setItem("bet300_chat_token",state.chatToken)}
   setPendiente("CARGA",solicitudId);
-  if(state.chatId) localStorage.setItem("bet300_chat_id",state.chatId);
-  if(state.chatToken) localStorage.setItem("bet300_chat_token",state.chatToken);
-
   addMsg('Solicitud recibida ✅<br><span class="status-pill">En verificación</span><br>Un operador va a revisar la transferencia. Podés escribir por este chat si necesitás.',"bot");
-  renderUserGate();
-  renderPendingBox();
+  renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  startSolicitudPoll();
 }
 function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
-async function enviarSolicitudRetiro(){
-  const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();
-  if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");
-  prepararNuevaSolicitudLocal();
-  addMsg("Solicito retiro de $"+monto,"user");
-  const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};
-  let res=await rpc("landing_portal_v16_crear_solicitud",{
-    p_public_code:state.publicCode,
-    p_usuario:usuario,
-    p_tipo:"RETIRO",
-    p_monto:Number(monto),
-    p_titular:titular,
-    p_destino:destino,
-    p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,
-    p_metadata:payload
-  });
-  if(res.error){
-    console.warn("[V16.4] bridge solicitud falló",res.error);
-    res=await rpc("landing_crear_solicitud_v3_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:usuario,
-      p_tipo:"RETIRO",
-      p_monto:Number(monto),
-      p_titular:titular,
-      p_destino:destino,
-      p_extra:payload
-    });
-  }
-  if(res.error){
-    res=await rpc("landing_crear_chat_v2_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:usuario,
-      p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,
-      p_tipo:"RETIRO",
-      p_extra:payload
-    });
-  }
-  if(res.error){
-    cerrarFormActivo("formRetiroActiva");
-    addMsg("No pudimos enviar el retiro automáticamente. Un operador te responde por acá.","bot");
-    setComposeEnabled(true,"");
-    return;
-  }
-
+async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_metadata:payload});
+if(res.error){console.warn("[V16.4] bridge solicitud falló",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_extra:payload});}if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_tipo:"RETIRO",p_extra:payload})}if(res.error){cerrarFormActivo("formRetiroActiva");addMsg("No pudimos enviar el retiro automáticamente. Un operador te responde por acá.","bot");setComposeEnabled(true,"");return}
   cerrarFormActivo("formRetiroActiva");
-  const dataR=normalize(res.data)||res.data||{};
-  saveChatFromRow(dataR);
-  const solicitudId=dataR?.solicitud_id||dataR?.id||"";
-  if(!state.chatId || !state.chatToken){
-    if(solicitudId) state.solicitudId=String(solicitudId);
-    await ensureChatForPortal("RETIRO");
-  }
-
-  setPendiente("RETIRO",solicitudId||"pendiente-local-"+Date.now());
+  const dataR=normalize(res.data)||res.data;
+  const chatIdR=dataR?.chat_id||dataR?.chatId||"";
+  const chatTokenR=dataR?.chat_token||dataR?.chatToken||"";
+  if(chatIdR){state.chatId=String(chatIdR);localStorage.setItem("bet300_chat_id",state.chatId)}
+  if(chatTokenR){state.chatToken=String(chatTokenR);localStorage.setItem("bet300_chat_token",state.chatToken)}
+  setPendiente("RETIRO",dataR?.solicitud_id||dataR?.id||"pendiente-local-"+Date.now());
   addMsg('Retiro recibido 🕓<br><span class="status-pill">En revisión</span><br>El equipo verificará tu saldo y los datos enviados. Podés escribir por acá.',"bot");
+  renderUserGate();renderPendingBox();
+  setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
+  startChatPoll();}
+function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formSoporteActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
+async function enviarSoporte(){const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();if(!mensaje)return toast("Escribí tu consulta");addMsg(mensaje,"user");const res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}cerrarFormActivo("formSoporteActiva"); addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot"); setComposeEnabled(true,"")}
+async function sendFreeMessage(){if(!state.chatLibre)return toast("Elegí una opción para continuar");const input=$("freeInput"),txt=input.value.trim();if(!txt)return;input.value="";addMsg(esc(txt),"user");if(!state.usuario){addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");return}await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:txt,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}})}
+async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");return}const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:state.solicitudId});if(res.error){addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");return}const d=normalize(res.data)||res.data;addMsg("Estado actual: <b>"+esc(d?.estado||"En revisión")+"</b>","bot")}
+
+
+/* =========================================================
+   PATCH V16.5 · USUARIO REAL + BILLETERA REAL + ESTADO ESTRICTO
+   - Valida usuario antes de habilitar menú.
+   - Billetera por p_pc_codigo, con fallback P1.
+   - Soporte usa solo la barra inferior, sin formulario duplicado.
+   - Nunca muestra "aprobada" por un OK genérico.
+   - Solo cierra pendiente con estado final real desde landing_estado_solicitud_segura.
+========================================================= */
+let estadoPollTimer=null;
+let estadoFinalNotificado=false;
+
+function estadoNormalizado(v){return String(v||"").trim().toUpperCase();}
+function esEstadoFinalAprobado(v){
+  const e=estadoNormalizado(v);
+  return ["ACREDITADA","PAGADA","COMPLETADA","APROBADA","APROBADA_MANUAL_OK"].includes(e);
+}
+function esEstadoFinalRechazado(v){
+  const e=estadoNormalizado(v);
+  return ["RECHAZADA","CANCELADA","ERROR"].includes(e);
+}
+function solicitudIdNumerica(){
+  const raw=String(state.solicitudId||"").trim();
+  return /^\d+$/.test(raw) ? Number(raw) : null;
+}
+function stopEstadoPoll(){
+  if(estadoPollTimer){clearInterval(estadoPollTimer);estadoPollTimer=null;}
+}
+function startEstadoPoll(){
+  stopEstadoPoll();
+  if(!solicitudIdNumerica()) return;
+  estadoPollTimer=setInterval(()=>consultarEstadoSolicitud(false),2500);
+  setTimeout(()=>consultarEstadoSolicitud(false),800);
+}
+function limpiarPendienteAprobado(mensaje){
+  if(estadoFinalNotificado) return;
+  estadoFinalNotificado=true;
+  stopEstadoPoll();
+  stopChatPoll();
+  const old=document.getElementById("pendingBox");
+  if(old) old.remove();
+  state.pendingTipo="";
+  state.solicitudId="";
+  state.chatId="";
+  state.chatToken="";
+  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
+  addMsg(mensaje || "✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.", "bot");
   renderUserGate();
-  renderPendingBox();
+  setComposeEnabled(false,"Elegí una opción para continuar.");
+}
+async function consultarEstadoSolicitud(mostrarMensaje=true){
+  const sid=solicitudIdNumerica();
+  if(!sid){
+    if(mostrarMensaje) addMsg("No hay una solicitud válida para consultar en este dispositivo.","bot");
+    return null;
+  }
+  const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:sid});
+  if(res.error){
+    if(mostrarMensaje) addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");
+    return null;
+  }
+  const d=normalize(res.data)||res.data||{};
+  const estado=estadoNormalizado(d.estado||d.status||d.estado_solicitud);
+
+  if(esEstadoFinalAprobado(estado)){
+    limpiarPendienteAprobado("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.");
+    return estado;
+  }
+  if(esEstadoFinalRechazado(estado)){
+    stopEstadoPoll();
+    const old=document.getElementById("pendingBox");
+    if(old) old.remove();
+    state.pendingTipo="";
+    state.solicitudId="";
+    ["bet300_pending_tipo","bet300_solicitud_id"].forEach(k=>localStorage.removeItem(k));
+    addMsg("Tu solicitud fue rechazada o cancelada. Podés iniciar una nueva solicitud si corresponde.","bot");
+    renderUserGate();
+    return estado;
+  }
+  if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
+  return estado || "PENDIENTE";
+}
+
+async function validarUsuarioRealPortal(usuario){
+  const u=String(usuario||"").trim();
+  if(!u) return {ok:false,error:"Indicá tu usuario de plataforma"};
+  const r=await rpc("landing_validar_usuario_login",{p_usuario:u,p_pc_codigo:state.pcCodigo||"P1"});
+  if(r.error) return {ok:false,error:"No pudimos validar el usuario. Intentá nuevamente."};
+  let row=normalize(r.data)||r.data||{};
+  let estado=estadoNormalizado(row.estado||row.status);
+  if(["EXISTE","EXISTIR"].includes(estado)) return {ok:true,validacion_id:row.validacion_id||row.id||null};
+  const validacionId=row.validacion_id||row.id||null;
+  if(validacionId){
+    for(let i=0;i<12;i++){
+      await new Promise(res=>setTimeout(res,1800));
+      const st=await rpc("landing_estado_validacion_usuario",{p_validacion_id:Number(validacionId)});
+      if(st.error) continue;
+      const sr=normalize(st.data)||st.data||{};
+      estado=estadoNormalizado(sr.estado||sr.status);
+      if(["EXISTE","EXISTIR"].includes(estado)) return {ok:true,validacion_id:validacionId};
+      if(["NO_EXISTE","ERROR","RECHAZADO"].includes(estado)) return {ok:false,error:"Ese usuario no figura válido. Revisá cómo lo escribiste."};
+    }
+  }
+  return {ok:false,error:"No pudimos confirmar ese usuario. Revisá el nombre o consultá soporte."};
+}
+
+async function guardarUsuarioInicial(){
+  const input=$("usuarioInicial");
+  const usuario=String(input?.value||"").trim();
+  if(!usuario) return toast("Indicá tu usuario de plataforma");
+  const btn=input?.parentElement?.querySelector("button.action-btn");
+  if(btn){btn.disabled=true;btn.textContent="Validando usuario...";}
+  const v=await validarUsuarioRealPortal(usuario);
+  if(btn){btn.disabled=false;btn.textContent="Continuar";}
+  if(!v.ok){toast(v.error||"Usuario no validado");return;}
+  state.usuario=usuario;
+  localStorage.setItem("bet300_usuario",usuario);
+  if(v.validacion_id) localStorage.setItem("bet300_validacion_id",String(v.validacion_id));
+  addMsg("Usuario validado: "+esc(usuario),"bot");
+  renderUserGate();
+}
+
+function inferirTipoBilletera(b){
+  const raw=[b?.banco,b?.tipo,b?.nombre_visible,b?.nombre,b?.alias,b?.cbu,b?.cvu].map(x=>String(x||"").toUpperCase()).join(" ");
+  const alias=String(b?.alias||"").toLowerCase();
+  const cbu=String(b?.cbu||b?.cvu||"");
+  if(alias.endsWith(".mp") || cbu.startsWith("00000031") || raw.includes("MERCADO")) return "Mercado Pago";
+  if(raw.includes("NARANJA") || raw.includes("NX") || cbu.startsWith("453")) return "Naranja X";
+  if(raw.includes("UALA") || raw.includes("UALÁ")) return "Ualá";
+  if(raw.includes("PERSONAL")) return "Personal Pay";
+  if(raw.includes("BRUBANK")) return "Brubank";
+  if(raw.includes("BANCO")) return "Banco";
+  return "Billetera";
+}
+async function obtenerBilletera(){
+  const pcs=[state.pcCodigo,"P1"].map(v=>String(v||"").trim().toUpperCase()).filter(Boolean);
+  for(const pc of [...new Set(pcs)]){
+    const segura=await rpc("landing_obtener_billetera_segura",{
+      p_validacion_usuario_id:Number(localStorage.getItem("bet300_validacion_id")||0),
+      p_usuario:state.usuario||"",
+      p_nombre_completo:state.usuario||"",
+      p_telefono:"",
+      p_dni:"",
+      p_pc_codigo:pc
+    });
+    if(!segura.error && segura.data && segura.data.length){state.billetera=normalize(segura.data)||segura.data[0];return state.billetera;}
+    const publica=await rpc("landing_obtener_billetera",{p_pc_codigo:pc});
+    if(!publica.error && publica.data && publica.data.length){state.billetera=normalize(publica.data)||publica.data[0];return state.billetera;}
+  }
+  state.billetera=null;
+  return null;
+}
+
+async function renderCargaForm(){
+  $("messages").insertAdjacentHTML("beforeend",`<div id="formCargaActiva" class="form-box active-flow">
+    <div class="welcome-title" style="font-size:16px">💳 Cargar saldo</div>
+    <div id="billeteraSlot" style="margin:10px 0 4px"><div style="color:var(--muted);font-size:13px;padding:8px 0">Obteniendo datos de billetera...</div></div>
+    <div class="user-chip" style="margin-bottom:10px">👤 ${esc(state.usuario)}</div>
+    <div class="form-row">
+      <div><label>Monto transferido</label><input id="cargaMonto" type="number" min="1" placeholder="Ej: 5000"></div>
+      <div><label>Titular que transfiere</label><input id="cargaTitular" placeholder="Ej: Maria Lopez"></div>
+    </div>
+    <button class="action-btn" onclick="enviarSolicitudCargaDirecta()">Ya transferí · Enviar solicitud</button>
+    <button class="action-btn secondary-btn" style="margin-top:6px" onclick="startFlow('SOPORTE')">Necesito ayuda</button>
+  </div>`);
+  scrollBottom();
+  const b=await obtenerBilletera();
+  const slot=$("billeteraSlot");
+  if(!slot)return;
+  if(!b){slot.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:8px 0">Sin billetera disponible por ahora. Consultá por soporte.</div>`;return;}
+  const alias=b?.alias||"", cbu=b?.cbu||b?.cvu||"", nombre=b?.nombre_visible||b?.nombre||"", titular=b?.titular||"", tipo=inferirTipoBilletera(b);
+  slot.innerHTML=`<div class="transfer-card" style="margin:0 0 10px">
+    <div class="transfer-title">Transferí a esta cuenta</div>
+    ${alias?`<div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias)}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div>`:""}
+    ${cbu?`<div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu)}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU / CVU</button></div>`:""}
+    ${titular?`<div class="transfer-field"><div class="transfer-label">Titular</div><div class="transfer-value">${esc(titular)}</div></div>`:""}
+    <div class="transfer-field"><div class="transfer-label">Tipo</div><div class="transfer-value">${esc(tipo)}</div></div>
+  </div>`;
+  scrollBottom();
+}
+
+function billeteraPayloadPlano(){
+  const b=state.billetera||{};
+  return {
+    billetera_id:b.id||b.billetera_id||null,
+    billetera_nombre:b.nombre_visible||b.nombre||"",
+    billetera_titular:b.titular||"",
+    billetera_alias:b.alias||"",
+    billetera_cbu:b.cbu||b.cvu||"",
+    billetera_banco:inferirTipoBilletera(b)
+  };
+}
+function limpiarSolicitudAnteriorAntesDeNueva(){
+  stopEstadoPoll();
+  estadoFinalNotificado=false;
+  state.solicitudId="";
+  state.pendingTipo="";
+  localStorage.removeItem("bet300_solicitud_id");
+  localStorage.removeItem("bet300_pending_tipo");
+}
+async function enviarSolicitudCarga(usuario,monto,titular){
+  limpiarSolicitudAnteriorAntesDeNueva();
+  const bp=billeteraPayloadPlano();
+  const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",...bp};
+  const destino=bp.billetera_nombre ? `${bp.billetera_nombre}${bp.billetera_alias?" · "+bp.billetera_alias:""}` : null;
+  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_metadata:payload});
+  if(res.error){console.warn("[V16.5] bridge solicitud falló",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload});}
+  if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload});}
+  if(res.error){addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");setComposeEnabled(true,"");return;}
+  const data=normalize(res.data)||res.data||{};
+  const solicitudId=data?.solicitud_id||data?.id||data?.solicitudId||"";
+  const chatId=data?.chat_id||data?.chatId||"";
+  const chatToken=data?.chat_token||data?.chatToken||"";
+  if(chatId){state.chatId=String(chatId);localStorage.setItem("bet300_chat_id",state.chatId);}
+  if(chatToken){state.chatToken=String(chatToken);localStorage.setItem("bet300_chat_token",state.chatToken);}
+  setPendiente("CARGA",/^\d+$/.test(String(solicitudId))?String(solicitudId):"");
+  addMsg('Solicitud recibida ✅<br><span class="status-pill">En verificación</span><br>Un operador va a revisar la transferencia. Podés escribir por este chat si necesitás.',"bot");
+  renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  startSolicitudPoll();
+  startEstadoPoll();
 }
-function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formSoporteActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
-async function enviarSoporte(){
-  const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();
-  if(!mensaje)return toast("Escribí tu consulta");
-  addMsg(mensaje,"user");
 
-  await ensureChatForPortal("SOPORTE");
-  let ok=false;
-  if(state.chatId&&state.chatToken&&isNumericId(state.chatId)){
-    const env=await rpc("landing_enviar_mensaje_v2",{
-      p_chat_id:Number(state.chatId),
-      p_chat_token:state.chatToken,
-      p_emisor:usuario,
-      p_mensaje:mensaje,
-      p_imagen_url:""
-    });
-    ok=!env.error;
-  }
-
-  if(!ok){
-    const res=await rpc("landing_crear_chat_v2_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:usuario,
-      p_mensaje:mensaje,
-      p_tipo:"SOPORTE",
-      p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}
-    });
-    if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}
-    saveChatFromRow(res.data);
-  }
-
-  cerrarFormActivo("formSoporteActiva");
-  addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot");
+function renderSoporteForm(){
+  addMsg("Escribí tu consulta en la barra de abajo y un operador te responde por este mismo chat.","bot");
   setComposeEnabled(true,"");
+  setTimeout(()=>$("freeInput")?.focus(),80);
+}
+async function enviarSoporte(){
+  const mensaje=String($("soporteMensaje")?.value||"").trim();
+  if(!mensaje)return toast("Escribí tu consulta");
+  await enviarMensajeSoporte(mensaje);
+}
+async function enviarMensajeSoporte(txt){
+  const mensaje=String(txt||"").trim();
+  if(!mensaje)return;
+  let res;
+  if(state.chatId&&state.chatToken){
+    res=await rpc("landing_enviar_mensaje_v2",{p_chat_id:Number(state.chatId),p_chat_token:state.chatToken,p_emisor:state.usuario,p_mensaje:mensaje,p_imagen_url:""});
+  }else{
+    res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});
+    const d=normalize(res.data)||res.data||{};
+    if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
+    if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+  }
+  if(res?.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
   startChatPoll();
 }
 async function sendFreeMessage(){
   if(!state.chatLibre)return toast("Elegí una opción para continuar");
-  const input=$("freeInput"),txt=input.value.trim();
+  const input=$("freeInput"), txt=input.value.trim();
   if(!txt)return;
   input.value="";
   addMsg(esc(txt),"user");
-  if(!state.usuario){
-    addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");
-    return;
-  }
-
-  await ensureChatForPortal(state.pendingTipo||"SOPORTE");
-
-  let sent=false;
-  if(state.chatId&&state.chatToken&&isNumericId(state.chatId)){
-    const res=await rpc("landing_enviar_mensaje_v2",{
-      p_chat_id:Number(state.chatId),
-      p_chat_token:state.chatToken,
-      p_emisor:state.usuario,
-      p_mensaje:txt,
-      p_imagen_url:""
-    });
-    sent=!res.error;
-  }
-
-  if(!sent){
-    const res=await rpc("landing_crear_chat_v2_blindado",{
-      p_public_code:state.publicCode,
-      p_usuario:state.usuario,
-      p_mensaje:txt,
-      p_tipo:state.pendingTipo||"SOPORTE",
-      p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode,solicitud_id:state.solicitudId||null}
-    });
-    if(!res.error) saveChatFromRow(res.data);
-  }
-  startChatPoll();
+  if(!state.usuario){addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");return;}
+  await enviarMensajeSoporte(txt);
 }
 async function verEstado(){
-  if(!isNumericId(state.solicitudId)){
-    addMsg("Tu solicitud fue recibida. Todavía no tengo un ID de seguimiento automático en este dispositivo; un operador puede responderte por este chat.","bot");
-    return;
-  }
-  const d=await consultarEstadoSolicitud();
-  if(!d){
-    addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");
-    return;
-  }
-  const estado=String(d?.estado||"En revisión");
-  if(estadoFinalizado(estado)){
-    notificarFinalSolicitud(estado);
-    clearPendingAfterDone(estado);
-    return;
-  }
-  addMsg("Estado actual: <b>"+esc(estado)+"</b>","bot");
+  await consultarEstadoSolicitud(true);
 }
+
 window.addEventListener("load",async()=>{
   $("appFrame").src=PLATFORM_URL;
   await initRoute();
   renderUserGate();
-  if(tieneSolicitudPendiente()){ renderPendingBox(); startSolicitudPoll(); }
+  if(tieneSolicitudPendiente()) renderPendingBox();
   if(state.chatId && $("widget")?.classList.contains("open")) startChatPoll();
 });
 </script>
