@@ -199,8 +199,29 @@ async function ensureChatForPortal(tipo){
   return false;
 }
 function estadoAprobado(estado){
-  const e=String(estado||"").toUpperCase();
-  return e.includes("ACREDIT") || e.includes("APROBAD") || e.includes("PAGAD") || e.includes("COMPLET") || e === "OK" || e.endsWith("_OK");
+  const e=String(estado||"").trim().toUpperCase();
+  if(!e) return false;
+
+  // Estados finales reales. No alcanza con que termine en _OK,
+  // porque algunas RPC pueden devolver OK como confirmación de creación/recepción
+  // y eso NO significa que las fichas ya estén cargadas.
+  const finalesExactos = new Set([
+    "ACREDITADA",
+    "ACREDITADO",
+    "PAGADA",
+    "PAGADO",
+    "COMPLETADA",
+    "COMPLETADO",
+    "APROBADA",
+    "APROBADO",
+    "APROBADA_OK",
+    "APROBADO_OK",
+    "APROBADA_MANUAL_OK",
+    "APROBADO_MANUAL_OK"
+  ]);
+
+  if(finalesExactos.has(e)) return true;
+  return e.includes("ACREDIT") || e.includes("PAGAD") || e.includes("COMPLET") || e.includes("APROBAD");
 }
 function estadoRechazado(estado){
   const e=String(estado||"").toUpperCase();
@@ -235,9 +256,20 @@ function clearPendingAfterDone(estado){
 function stopSolicitudPoll(){
   if(solicitudPollTimer){clearInterval(solicitudPollTimer);solicitudPollTimer=null}
 }
+function prepararNuevaSolicitudLocal(){
+  // Evita que una solicitud vieja ya aprobada dispare "fichas cargadas"
+  // sobre una solicitud nueva recién enviada.
+  stopSolicitudPoll();
+  state.solicitudId="";
+  state.pendingTipo="";
+  state._estadoFinalNotificado="";
+  ["bet300_solicitud_id","bet300_pending_tipo"].forEach(k=>localStorage.removeItem(k));
+  const old=document.getElementById("pendingBox");
+  if(old) old.remove();
+}
 function startSolicitudPoll(){
   stopSolicitudPoll();
-  if(!state.solicitudId) return;
+  if(!isNumericId(state.solicitudId)) return;
   (async()=>{
     const d=await consultarEstadoSolicitud();
     const estado=String(d?.estado||"").toUpperCase();
@@ -256,7 +288,7 @@ function startSolicitudPoll(){
   },3500);
 }
 async function consultarEstadoSolicitud(){
-  if(!state.solicitudId) return null;
+  if(!isNumericId(state.solicitudId)) return null;
 
   // Firma usada por el portal V16 si existe.
   let res=await rpc("landing_estado_solicitud_segura",{
@@ -417,9 +449,19 @@ function bloquearNuevaSolicitud(tipo){
 }
 function setPendiente(tipo, solicitudId){
   state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
-  if(solicitudId) state.solicitudId = solicitudId;
+
+  // Solo guardamos un ID real numérico para consultar estado.
+  // Si la RPC no devolvió solicitud_id, NO conservamos un ID viejo.
+  const sid = String(solicitudId || "").trim();
+  if(/^\d+$/.test(sid)){
+    state.solicitudId = sid;
+    localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+  }else{
+    state.solicitudId = "";
+    localStorage.removeItem("bet300_solicitud_id");
+  }
+
   localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
-  if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
 }
 function limpiarPendienteManual(){
   const existing=document.getElementById("limpiarConfirm");
@@ -556,6 +598,7 @@ async function enviarSolicitudCargaDirecta(){
   const monto=($("cargaMonto")?.value||"").trim();
   const titular=($("cargaTitular")?.value||"").trim();
   if(!monto||!titular)return toast("Completá monto y titular");
+  prepararNuevaSolicitudLocal();
   addMsg(`Quiero cargar $${monto} · Titular: ${esc(titular)}`,"user");
   cerrarFormActivo("formCargaActiva");
   await enviarSolicitudCarga(state.usuario,monto,titular);
@@ -640,6 +683,7 @@ function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div i
 async function enviarSolicitudRetiro(){
   const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();
   if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");
+  prepararNuevaSolicitudLocal();
   addMsg("Solicito retiro de $"+monto,"user");
   const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};
   let res=await rpc("landing_portal_v16_crear_solicitud",{
@@ -771,8 +815,8 @@ async function sendFreeMessage(){
   startChatPoll();
 }
 async function verEstado(){
-  if(!state.solicitudId){
-    addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");
+  if(!isNumericId(state.solicitudId)){
+    addMsg("Tu solicitud fue recibida. Todavía no tengo un ID de seguimiento automático en este dispositivo; un operador puede responderte por este chat.","bot");
     return;
   }
   const d=await consultarEstadoSolicitud();
