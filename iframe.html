@@ -148,8 +148,9 @@ const PLATFORM_URL = "https://bet-300.pw";
 let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn(e)}
 const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set()};
 let chatPollTimer=null;
+function doneKey(id){return "bet300_done_notified_"+String(id||"")}
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
-function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll()}else stopChatPoll()}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll();if(state.solicitudId)startSolicitudPoll()}else stopChatPoll()}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
@@ -201,11 +202,25 @@ async function ensureChatForPortal(tipo){
 function clearPendingAfterDone(estado){
   const e=String(estado||"").toUpperCase();
   if(!["ACREDITADA","PAGADA","COMPLETADA","RECHAZADA","ERROR"].includes(e)) return false;
+
+  const oldSolicitudId = state.solicitudId;
   stopSolicitudPoll();
+
   ["bet300_pending_tipo","bet300_solicitud_id"].forEach(k=>localStorage.removeItem(k));
   state.pendingTipo="";
   state.solicitudId="";
+
+  // Limpiar visualmente la solicitud pendiente sin refrescar la página.
+  document.getElementById("pendingBox")?.remove();
+  document.querySelectorAll(".active-flow,.form-box.submitted").forEach(el=>el.remove());
+  document.getElementById("limpiarConfirm")?.remove();
+
+  // Si quedó el chip/modo pendiente, reconstruir menú normal.
   renderUserGate();
+
+  // El chat queda disponible para soporte, pero ya no bloquea el menú.
+  setComposeEnabled(false,"Elegí una opción para continuar.");
+  scrollBottom();
   return true;
 }
 function stopSolicitudPoll(){
@@ -214,17 +229,33 @@ function stopSolicitudPoll(){
 function startSolicitudPoll(){
   stopSolicitudPoll();
   if(!state.solicitudId) return;
-  solicitudPollTimer=setInterval(async()=>{
+
+  const tickEstado = async()=>{
+    const currentSolicitudId = state.solicitudId;
+    if(!currentSolicitudId) return;
     const d=await consultarEstadoSolicitud();
     const estado=String(d?.estado||"").toUpperCase();
+
     if(["ACREDITADA","PAGADA","COMPLETADA"].includes(estado)){
-      addMsg("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.","bot");
+      const k=doneKey(currentSolicitudId);
+      if(localStorage.getItem(k)!=="1"){
+        localStorage.setItem(k,"1");
+        addMsg("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.","bot");
+      }
       clearPendingAfterDone(estado);
     }else if(["RECHAZADA","ERROR"].includes(estado)){
-      addMsg("La solicitud fue cerrada con estado: <b>"+esc(estado)+"</b>. Si necesitás ayuda, escribinos.","bot");
+      const k=doneKey(currentSolicitudId);
+      if(localStorage.getItem(k)!=="1"){
+        localStorage.setItem(k,"1");
+        addMsg("La solicitud fue cerrada con estado: <b>"+esc(estado)+"</b>. Si necesitás ayuda, escribinos.","bot");
+      }
       clearPendingAfterDone(estado);
     }
-  },3500);
+  };
+
+  // Primera consulta inmediata: evita esperar/refrescar para que cambie el estado.
+  tickEstado();
+  solicitudPollTimer=setInterval(tickEstado,2500);
 }
 async function consultarEstadoSolicitud(){
   if(!state.solicitudId) return null;
@@ -388,9 +419,12 @@ function bloquearNuevaSolicitud(tipo){
 }
 function setPendiente(tipo, solicitudId){
   state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
-  if(solicitudId) state.solicitudId = solicitudId;
+  if(solicitudId) state.solicitudId = String(solicitudId);
   localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
-  if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+  if(state.solicitudId){
+    localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+    localStorage.removeItem(doneKey(state.solicitudId));
+  }
 }
 function limpiarPendienteManual(){
   const existing=document.getElementById("limpiarConfirm");
