@@ -148,9 +148,8 @@ const PLATFORM_URL = "https://bet-300.pw";
 let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn(e)}
 const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set()};
 let chatPollTimer=null;
-function doneKey(id){return "bet300_done_notified_"+String(id||"")}
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
-function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll();if(state.solicitudId)startSolicitudPoll()}else stopChatPoll()}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll()}else stopChatPoll()}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
@@ -199,26 +198,17 @@ async function ensureChatForPortal(tipo){
   }
   return false;
 }
+function doneKey(id){return "bet300_done_solicitud_"+String(id||"");}
 function clearPendingAfterDone(estado){
   const e=String(estado||"").toUpperCase();
   if(!["ACREDITADA","PAGADA","COMPLETADA","RECHAZADA","ERROR"].includes(e)) return false;
-
-  const oldSolicitudId = state.solicitudId;
   stopSolicitudPoll();
-
   ["bet300_pending_tipo","bet300_solicitud_id"].forEach(k=>localStorage.removeItem(k));
   state.pendingTipo="";
   state.solicitudId="";
-
-  // Limpiar visualmente la solicitud pendiente sin refrescar la página.
   document.getElementById("pendingBox")?.remove();
   document.querySelectorAll(".active-flow,.form-box.submitted").forEach(el=>el.remove());
-  document.getElementById("limpiarConfirm")?.remove();
-
-  // Si quedó el chip/modo pendiente, reconstruir menú normal.
   renderUserGate();
-
-  // El chat queda disponible para soporte, pero ya no bloquea el menú.
   setComposeEnabled(false,"Elegí una opción para continuar.");
   scrollBottom();
   return true;
@@ -228,23 +218,22 @@ function stopSolicitudPoll(){
 }
 function startSolicitudPoll(){
   stopSolicitudPoll();
-  if(!state.solicitudId) return;
+  if(!isNumericId(state.solicitudId)) return;
 
   const tickEstado = async()=>{
-    const currentSolicitudId = state.solicitudId;
-    if(!currentSolicitudId) return;
+    const sid=String(state.solicitudId||"");
+    if(!isNumericId(sid)) return;
     const d=await consultarEstadoSolicitud();
     const estado=String(d?.estado||"").toUpperCase();
-
     if(["ACREDITADA","PAGADA","COMPLETADA"].includes(estado)){
-      const k=doneKey(currentSolicitudId);
+      const k=doneKey(sid);
       if(localStorage.getItem(k)!=="1"){
         localStorage.setItem(k,"1");
         addMsg("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.","bot");
       }
       clearPendingAfterDone(estado);
     }else if(["RECHAZADA","ERROR"].includes(estado)){
-      const k=doneKey(currentSolicitudId);
+      const k=doneKey(sid);
       if(localStorage.getItem(k)!=="1"){
         localStorage.setItem(k,"1");
         addMsg("La solicitud fue cerrada con estado: <b>"+esc(estado)+"</b>. Si necesitás ayuda, escribinos.","bot");
@@ -253,7 +242,7 @@ function startSolicitudPoll(){
     }
   };
 
-  // Primera consulta inmediata: evita esperar/refrescar para que cambie el estado.
+  // Primera consulta inmediata, pero solo con solicitud_id real.
   tickEstado();
   solicitudPollTimer=setInterval(tickEstado,2500);
 }
@@ -419,12 +408,11 @@ function bloquearNuevaSolicitud(tipo){
 }
 function setPendiente(tipo, solicitudId){
   state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
-  if(solicitudId) state.solicitudId = String(solicitudId);
+  const sid = /^\d+$/.test(String(solicitudId||"")) ? String(solicitudId) : "";
+  state.solicitudId = sid;
   localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
-  if(state.solicitudId){
-    localStorage.setItem("bet300_solicitud_id", state.solicitudId);
-    localStorage.removeItem(doneKey(state.solicitudId));
-  }
+  if(sid) localStorage.setItem("bet300_solicitud_id", sid);
+  else localStorage.removeItem("bet300_solicitud_id");
 }
 function limpiarPendienteManual(){
   const existing=document.getElementById("limpiarConfirm");
@@ -503,12 +491,13 @@ async function renderCargaForm(){
   const slot=$("billeteraSlot");
   if(!slot)return;
   if(!b){slot.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:8px 0">Sin billetera disponible por ahora. Consultá por soporte.</div>`;return}
-  const alias=b?.alias||"",cbu=b?.cbu||b?.cvu||"",nombre=b?.nombre_visible||b?.nombre||"",banco=b?.banco||b?.tipo||"";
+  const alias=billeteraAliasPublico(b),cbu=billeteraCbuPublico(b),titular=billeteraTitularPublico(b),banco=String(b?.banco||b?.tipo||"").trim();
   slot.innerHTML=`<div class="transfer-card" style="margin:0 0 10px">
     <div class="transfer-title">Transferí a esta cuenta</div>
     ${alias?`<div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias)}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div>`:""}
     ${cbu?`<div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu)}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU / CVU</button></div>`:""}
-    ${nombre||banco?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(nombre)}${banco?" · "+esc(banco):""}</div>`:""}
+    ${titular?`<div class="transfer-field"><div class="transfer-label">Titular</div><div class="transfer-value">${esc(titular)}</div></div>`:""}
+    ${banco?`<div class="transfer-field"><div class="transfer-label">Tipo</div><div class="transfer-value">${esc(banco)}</div></div>`:""}
   </div>`;
   scrollBottom();
 }
@@ -557,6 +546,56 @@ async function obtenerBilletera(){
 
   return null;
 }
+function billeteraNombrePublico(b){
+  return String(b?.nombre_visible || b?.nombre || b?.billetera_nombre || "Billetera").trim();
+}
+function billeteraTitularPublico(b){
+  return String(b?.titular || b?.nombre_titular || "").trim();
+}
+function billeteraAliasPublico(b){
+  return String(b?.alias || "").trim();
+}
+function billeteraCbuPublico(b){
+  return String(b?.cbu || b?.cvu || b?.cvu_cbu || "").trim();
+}
+function billeteraDestinoTexto(b){
+  const nombre=billeteraNombrePublico(b);
+  const alias=billeteraAliasPublico(b);
+  const cbu=billeteraCbuPublico(b);
+  const titular=billeteraTitularPublico(b);
+  return [nombre, titular, alias || cbu].filter(Boolean).join(" · ");
+}
+function billeteraMetadataPlana(b){
+  return {
+    billetera_id: b?.id || b?.billetera_id || null,
+    billetera_nombre: billeteraNombrePublico(b),
+    billetera_titular: billeteraTitularPublico(b),
+    billetera_alias: billeteraAliasPublico(b),
+    billetera_cbu: billeteraCbuPublico(b),
+    billetera_banco: String(b?.banco || b?.tipo || "").trim(),
+    billetera_pc_codigo: String(b?.pc_codigo || state.pcCodigo || "").trim()
+  };
+}
+function extraerSolicitudIdSeguro(d){
+  const raw=d?.solicitud_id || d?.solicitudId || d?.solicitud?.id || d?.request_id || "";
+  return /^\d+$/.test(String(raw||"")) ? String(raw) : "";
+}
+async function buscarSolicitudRecienCreada(usuario,tipo,monto,desdeIso){
+  if(!sb) return "";
+  try{
+    let q=sb.from("solicitudes")
+      .select("id,usuario,tipo,monto,estado,created_at,chat_id")
+      .eq("usuario",usuario)
+      .eq("tipo",tipo)
+      .eq("monto",Number(monto))
+      .order("id",{ascending:false})
+      .limit(1);
+    if(desdeIso) q=q.gte("created_at",desdeIso);
+    const res=await q.maybeSingle();
+    if(!res.error && res.data?.id) return String(res.data.id);
+  }catch(e){}
+  return "";
+}
 async function enviarSolicitudCargaDirecta(){
   const monto=($("cargaMonto")?.value||"").trim();
   const titular=($("cargaTitular")?.value||"").trim();
@@ -569,6 +608,9 @@ async function copyText(t,btn){if(!t)return;await navigator.clipboard.writeText(
 function previewFile(input){const f=input.files&&input.files[0];state.selectedFile=f||null;const box=$("filePreview");if(!f){box.classList.remove("show");return}const url=URL.createObjectURL(f);box.innerHTML='<img src="'+url+'"><div><b>Comprobante adjunto</b><div class="meta">'+esc(f.name)+'</div></div>';box.classList.add("show")}
 async function enviarSolicitudCarga(usuario,monto,titular){
   if(!state.billetera) await obtenerBilletera();
+  const startedAt=new Date(Date.now()-6000).toISOString();
+  const billeteraInfo=billeteraMetadataPlana(state.billetera);
+  const destinoBilletera=billeteraDestinoTexto(state.billetera);
   const payload={
     usuario,
     monto:Number(monto),
@@ -576,9 +618,10 @@ async function enviarSolicitudCarga(usuario,monto,titular){
     pc_codigo:state.pcCodigo,
     public_code:state.publicCode,
     tipo:"CARGA",
-    billetera:state.billetera,
-    billetera_id:state.billetera?.id||null,
-    billetera_nombre:state.billetera?.nombre_visible||state.billetera?.nombre||null
+    destino:destinoBilletera,
+    // No mandar objeto crudo: el panel necesita texto/campos planos.
+    billetera:billeteraInfo.billetera_nombre,
+    ...billeteraInfo
   };
 
   let res=await rpc("landing_portal_v16_crear_solicitud",{
@@ -587,7 +630,7 @@ async function enviarSolicitudCarga(usuario,monto,titular){
     p_tipo:"CARGA",
     p_monto:Number(monto),
     p_titular:titular,
-    p_destino:null,
+    p_destino:destinoBilletera || null,
     p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,
     p_metadata:payload
   });
@@ -622,11 +665,17 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   }
 
   const data=normalize(res.data)||res.data||{};
-  const solicitudId=data?.solicitud_id||data?.id||data?.solicitudId||"";
+  let solicitudId=extraerSolicitudIdSeguro(data);
   saveChatFromRow(data);
 
+  // Si la RPC no devolvió solicitud_id, buscar la solicitud recién creada por usuario/tipo/monto.
+  if(!solicitudId){
+    solicitudId=await buscarSolicitudRecienCreada(usuario,"CARGA",monto,startedAt);
+  }
+
+  if(solicitudId) state.solicitudId=String(solicitudId);
+
   if(!state.chatId || !state.chatToken){
-    if(solicitudId) state.solicitudId=String(solicitudId);
     await ensureChatForPortal("CARGA");
   }
 
@@ -639,7 +688,9 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  startSolicitudPoll();
+
+  // Solo escuchar aprobación si tenemos el ID real de solicitud. Evita aprobar por error usando un chat_id viejo.
+  if(state.solicitudId) startSolicitudPoll();
 }
 function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
 async function enviarSolicitudRetiro(){
