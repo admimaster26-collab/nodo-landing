@@ -309,11 +309,15 @@ function limpiarPendienteAprobado(mensaje){
   estadoFinalNotificado=true;
   stopEstadoPoll();stopChatPoll();
   const old=document.getElementById("pendingBox");if(old)old.remove();
-  state.pendingTipo="";state.solicitudId="";state.chatId="";state.chatToken="";
+  state.pendingTipo="";state.solicitudId="";state.chatId="";state.chatToken="";state.seenMsgIds=new Set();
   ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token","bet300_solicitud_started_at"].forEach(k=>localStorage.removeItem(k));
+  // Limpiar historial de conversación y mostrar confirmación limpia
+  const msgs=$("messages");
+  if(msgs)msgs.innerHTML="";
   addMsg(mensaje||"✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.","bot");
   renderUserGate();
   setComposeEnabled(false,"Elegí una opción para continuar.");
+  const body=$("widgetBody");if(body)body.scrollTop=0;
 }
 function esConfirmacionDemasiadoTemprana(){
   const started=Number(state.solicitudStartedAt||localStorage.getItem("bet300_solicitud_started_at")||0);
@@ -545,16 +549,46 @@ function renderSoporteForm(){
 async function enviarMensajeSoporte(txt){
   const mensaje=String(txt||"").trim();
   if(!mensaje)return;
-  let res;
+  let res=null;
+
+  // 1) Si ya tenemos chatId + chatToken, enviar directo
   if(state.chatId&&state.chatToken){
-    res=await rpc("landing_enviar_mensaje_v2",{p_chat_id:Number(state.chatId),p_chat_token:state.chatToken,p_emisor:state.usuario,p_mensaje:mensaje,p_imagen_url:""});
-  }else{
-    res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});
-    const d=normalize(res.data)||res.data||{};
-    if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
-    if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+    res=await rpc("landing_enviar_mensaje_v2",{
+      p_chat_id:Number(state.chatId),p_chat_token:state.chatToken,
+      p_emisor:state.usuario,p_mensaje:mensaje,p_imagen_url:""
+    });
   }
-  if(res?.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
+
+  // 2) Si falló o no teníamos chatId, crear solicitud SOPORTE (mismo RPC que funciona para cargas)
+  if(!res||res.error){
+    const payload={usuario:state.usuario,monto:0,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"SOPORTE"};
+    res=await rpc("landing_portal_v16_crear_solicitud",{
+      p_public_code:state.publicCode,p_usuario:state.usuario,p_tipo:"SOPORTE",
+      p_monto:0,p_titular:"",p_destino:null,
+      p_mensaje:mensaje,p_metadata:payload
+    });
+    if(!res.error){
+      const d=normalize(res.data)||res.data||{};
+      if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
+      if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+    }
+  }
+
+  // 3) Fallback: landing_crear_chat_v2_blindado
+  if(!res||res.error){
+    res=await rpc("landing_crear_chat_v2_blindado",{
+      p_public_code:state.publicCode,p_usuario:state.usuario,
+      p_mensaje:mensaje,p_tipo:"SOPORTE",
+      p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}
+    });
+    if(!res.error){
+      const d=normalize(res.data)||res.data||{};
+      if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
+      if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+    }
+  }
+
+  if(!res||res.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
   startChatPoll();
   if(tieneSolicitudPendiente())setTimeout(()=>startEstadoPoll(),5000);
 }
