@@ -146,10 +146,10 @@ const SUPABASE_ANON_KEY = "sb_publishable_NYqRoKptTgcL90VAVF2kqA_Gl06mEUF";
 const DEFAULT_ROUTE = "rt-a8f31";
 const PLATFORM_URL = "https://bet-300.pw";
 let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){console.warn(e)}
-const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set()};
+const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set(),solicitudStartedAt:Number(localStorage.getItem("bet300_solicitud_started_at")||0)};
 let chatPollTimer=null;
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
-function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll(); if(tieneSolicitudPendiente()) startEstadoPoll();}else{ stopChatPoll(); stopEstadoPoll(); }}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll(); if(tieneSolicitudPendiente()) setTimeout(()=>startEstadoPoll(), 18000);}else{ stopChatPoll(); stopEstadoPoll(); }}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
@@ -283,9 +283,12 @@ function bloquearNuevaSolicitud(tipo){
 }
 function setPendiente(tipo, solicitudId){
   state.pendingTipo = tipo || state.pendingTipo || "SOLICITUD";
-  if(solicitudId) state.solicitudId = solicitudId;
+  if(solicitudId) state.solicitudId = String(solicitudId);
+  state.solicitudStartedAt = Date.now();
+  estadoFinalNotificado = false;
   localStorage.setItem("bet300_pending_tipo", state.pendingTipo);
   if(state.solicitudId) localStorage.setItem("bet300_solicitud_id", state.solicitudId);
+  localStorage.setItem("bet300_solicitud_started_at", String(state.solicitudStartedAt));
 }
 function limpiarPendienteManual(){
   const existing=document.getElementById("limpiarConfirm");
@@ -304,7 +307,7 @@ function limpiarPendienteManual(){
 function _confirmarLimpiarPendiente(){
   stopChatPoll();
   Object.assign(state,{pendingTipo:"",solicitudId:"",chatId:"",chatToken:"",seenMsgIds:new Set()});
-  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
+  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token","bet300_solicitud_started_at"].forEach(k=>localStorage.removeItem(k));
   const old=document.getElementById("pendingBox");if(old)old.remove();
   addMsg("Estado local limpiado. Ya podés iniciar una nueva solicitud.","bot");
   renderUserGate();
@@ -374,6 +377,31 @@ async function renderCargaForm(){
   scrollBottom();
 }
 async function obtenerBilletera(){const res=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});if(!res.error){state.billetera=normalize(res.data)||res.data;return state.billetera}return null}
+
+function tipoBilleteraPublica(b){
+  const raw=String(b?.banco||b?.tipo||"").trim();
+  const alias=String(b?.alias||"").toLowerCase();
+  const cbu=String(b?.cbu||b?.cvu||"");
+  const nombre=String(b?.nombre_visible||b?.nombre||"").toLowerCase();
+  if(alias.endsWith(".mp") || cbu.startsWith("00000031") || nombre.includes("mp")) return "Mercado Pago";
+  if(alias.includes(".nx") || cbu.startsWith("453") || nombre.includes("naranja") || nombre.includes("njx") || nombre.includes("nx")) return "Naranja X";
+  if(nombre.includes("uala") || raw.toLowerCase().includes("uala")) return "Ualá";
+  if(nombre.includes("personal") || raw.toLowerCase().includes("personal")) return "Personal Pay";
+  if(raw && raw.toLowerCase() !== "chunior") return raw;
+  return "Billetera";
+}
+function billeteraPayloadPlano(){
+  const b=state.billetera||{};
+  return {
+    billetera_id:b?.id||b?.billetera_id||null,
+    billetera_nombre:b?.nombre_visible||b?.nombre||"",
+    billetera_titular:b?.titular||"",
+    billetera_alias:b?.alias||"",
+    billetera_cbu:b?.cbu||b?.cvu||"",
+    billetera_banco:tipoBilleteraPublica(b)
+  };
+}
+
 async function enviarSolicitudCargaDirecta(){
   const monto=($("cargaMonto")?.value||"").trim();
   const titular=($("cargaTitular")?.value||"").trim();
@@ -385,8 +413,10 @@ async function enviarSolicitudCargaDirecta(){
 async function copyText(t,btn){if(!t)return;await navigator.clipboard.writeText(t);btn.textContent="Copiado";setTimeout(()=>btn.textContent="Copiar",1200)}
 function previewFile(input){const f=input.files&&input.files[0];state.selectedFile=f||null;const box=$("filePreview");if(!f){box.classList.remove("show");return}const url=URL.createObjectURL(f);box.innerHTML='<img src="'+url+'"><div><b>Comprobante adjunto</b><div class="meta">'+esc(f.name)+'</div></div>';box.classList.add("show")}
 async function enviarSolicitudCarga(usuario,monto,titular){
-  const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",billetera:state.billetera};
-  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_destino:null,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_metadata:payload});
+  const billeteraInfo=billeteraPayloadPlano();
+  const destinoLegible=billeteraInfo.billetera_nombre ? (billeteraInfo.billetera_nombre + (billeteraInfo.billetera_alias ? " · " + billeteraInfo.billetera_alias : "")) : null;
+  const payload={usuario,monto:Number(monto),titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"CARGA",destino:destinoLegible,...billeteraInfo};
+  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_destino:destinoLegible,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_metadata:payload});
   if(res.error){console.warn("[V16.4]",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"CARGA",p_monto:Number(monto),p_titular:titular,p_comprobante_url:null,p_extra:payload})}
   if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de CARGA: $"+monto+" · Titular: "+titular,p_tipo:"CARGA",p_extra:payload})}
   if(res.error){addMsg("No pudimos enviar la solicitud automáticamente. Escribinos por acá y un operador te responde.","bot");setComposeEnabled(true,"");return}
@@ -401,6 +431,7 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
+  setTimeout(()=>startEstadoPoll(), 18000);
 }
 function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
 async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_metadata:payload});
@@ -471,11 +502,34 @@ function limpiarPendienteAprobado(mensaje){
   state.solicitudId="";
   state.chatId="";
   state.chatToken="";
-  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
+  ["bet300_pending_tipo","bet300_solicitud_id","bet300_chat_id","bet300_chat_token","bet300_solicitud_started_at"].forEach(k=>localStorage.removeItem(k));
   addMsg(mensaje || "✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.", "bot");
   renderUserGate();
   setComposeEnabled(false,"Elegí una opción para continuar.");
 }
+function esConfirmacionDemasiadoTemprana(d, mostrarMensaje){
+  const started = Number(state.solicitudStartedAt || localStorage.getItem("bet300_solicitud_started_at") || 0);
+  if(!started) return false;
+
+  // Evita que el portal tome como aprobada una respuesta inmediata o de una solicitud vieja.
+  // El panel/worker nunca debería cerrar una carga real en el mismo instante exacto del envío.
+  const elapsed = Date.now() - started;
+  const updatedRaw = d?.updated_at || d?.updatedAt || d?.fecha_actualizacion || "";
+  const updatedMs = updatedRaw ? Date.parse(updatedRaw) : 0;
+
+  if(updatedMs && updatedMs < (started - 3000)){
+    if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
+    return true;
+  }
+
+  if(elapsed < 18000){
+    if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
+    return true;
+  }
+
+  return false;
+}
+
 async function consultarEstadoSolicitud(mostrarMensaje=true){
   const sid=solicitudIdNumerica();
   if(!sid){
@@ -496,6 +550,9 @@ async function consultarEstadoSolicitud(mostrarMensaje=true){
   const estado=estadoNormalizado(d.estado||d.status||d.estado_solicitud);
 
   if(esEstadoFinalAprobado(estado)){
+    if(esConfirmacionDemasiadoTemprana(d, mostrarMensaje)){
+      return "PENDIENTE";
+    }
     limpiarPendienteAprobado("✅ Tu solicitud fue aprobada. Ya podés revisar tus fichas/saldo.");
     return estado;
   }
@@ -505,7 +562,7 @@ async function consultarEstadoSolicitud(mostrarMensaje=true){
     if(old) old.remove();
     state.pendingTipo="";
     state.solicitudId="";
-    ["bet300_pending_tipo","bet300_solicitud_id"].forEach(k=>localStorage.removeItem(k));
+    ["bet300_pending_tipo","bet300_solicitud_id","bet300_solicitud_started_at"].forEach(k=>localStorage.removeItem(k));
     addMsg("Tu solicitud fue rechazada o cancelada. Podés iniciar una nueva solicitud si corresponde.","bot");
     renderUserGate();
     return estado;
@@ -683,7 +740,7 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  startEstadoPoll();
+  setTimeout(()=>startEstadoPoll(), 18000);
 }
 
 function renderSoporteForm(){
@@ -710,6 +767,7 @@ async function enviarMensajeSoporte(txt){
   }
   if(res?.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
   startChatPoll();
+  setTimeout(()=>startEstadoPoll(), 18000);
 }
 async function sendFreeMessage(){
   if(!state.chatLibre)return toast("Elegí una opción para continuar");
@@ -728,8 +786,9 @@ window.addEventListener("load",async()=>{
   $("appFrame").src=PLATFORM_URL;
   await initRoute();
   renderUserGate();
-  if(tieneSolicitudPendiente()){ renderPendingBox(); startEstadoPoll(); }
+  if(tieneSolicitudPendiente()){ renderPendingBox(); setTimeout(()=>startEstadoPoll(), 18000); }
   if(state.chatId && $("widget")?.classList.contains("open")) startChatPoll();
+  setTimeout(()=>startEstadoPoll(), 18000);
 });
 </script>
 </body>
