@@ -285,7 +285,8 @@ function cerrarFormActivo(formId){const el=document.getElementById(formId);if(el
 function estadoNormalizado(v){return String(v||"").trim().toUpperCase();}
 function esEstadoFinalAprobado(v){
   const e=estadoNormalizado(v);
-  return ["ACREDITADA","PAGADA","COMPLETADA","APROBADA","APROBADA_MANUAL","APROBADA_MANUAL_OK"].includes(e);
+  // Solo estados verdaderamente finales — APROBADA_MANUAL es intermedio (pre-ejecución)
+  return ["ACREDITADA","PAGADA","COMPLETADA"].includes(e);
 }
 function esEstadoFinalRechazado(v){
   const e=estadoNormalizado(v);
@@ -515,16 +516,33 @@ function renderRetiroForm(){
 }
 
 async function enviarSolicitudRetiro(){
-  const usuario=state.usuario,monto=$("retiroMonto")?.value.trim(),destino=$("retiroDestino")?.value.trim(),titular=$("retiroTitular")?.value.trim();
-  if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");
+  const usuario=state.usuario,montoRaw=$("retiroMonto")?.value.trim(),destino=$("retiroDestino")?.value.trim(),titular=$("retiroTitular")?.value.trim();
+  if(!montoRaw||!destino||!titular)return toast("Completá todos los datos del retiro");
+  const monto=Math.abs(Number(montoRaw));
+  if(!monto||monto<=0)return toast("Ingresá un monto válido mayor a cero");
   addMsg("Solicito retiro de $"+monto,"user");
   cerrarFormActivo("formRetiroActiva");
   limpiarSolicitudAnteriorAntesDeNueva();
-  const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};
-  let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_metadata:payload});
-  if(res.error){console.warn("[V16.5] retiro bridge falló",res.error);res=await rpc("landing_crear_solicitud_v3_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_extra:payload});}
-  if(res.error){res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_tipo:"RETIRO",p_extra:payload});}
-  if(res.error){addMsg("No pudimos enviar el retiro automáticamente. Escribinos por acá.","bot");setComposeEnabled(true,"");return;}
+  const msg="Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular;
+  const payload={usuario,monto,destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};
+  let res=await rpc("landing_portal_v16_crear_solicitud",{
+    p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",
+    p_monto:monto,p_titular:titular,p_destino:destino,p_mensaje:msg,p_metadata:payload
+  });
+  if(res.error){
+    console.warn("[V16.5] retiro v16 falló",res.error);
+    res=await rpc("landing_crear_solicitud_v3_blindado",{
+      p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",
+      p_monto:monto,p_titular:titular,p_comprobante_url:null,p_extra:payload
+    });
+  }
+  if(res.error){
+    res=await rpc("landing_crear_chat_v2_blindado",{
+      p_public_code:state.publicCode,p_usuario:usuario,
+      p_mensaje:msg,p_tipo:"RETIRO",p_extra:payload
+    });
+  }
+  if(res.error){addMsg("No pudimos enviar el retiro automáticamente. Escribinos por acá y un operador te ayuda.","bot");setComposeEnabled(true,"Describí tu solicitud de retiro.");return;}
   const dataR=normalize(res.data)||res.data||{};
   const solicitudId=dataR?.solicitud_id||dataR?.id||dataR?.solicitudId||"";
   const chatId=dataR?.chat_id||dataR?.chatId||"";
@@ -546,51 +564,44 @@ function renderSoporteForm(){
 }
 
 // ── Mensajería libre ──────────────────────────────────────────────────────
+async function _crearChatSoporte(mensaje){
+  // Crea un CHAT (no una solicitud) para soporte — usa landing_crear_chat_v2_blindado
+  const extra={pc_codigo:state.pcCodigo||"P1",public_code:state.publicCode,usuario:state.usuario};
+  const res=await rpc("landing_crear_chat_v2_blindado",{
+    p_public_code:state.publicCode,
+    p_usuario:state.usuario,
+    p_mensaje:mensaje,
+    p_tipo:"SOPORTE",
+    p_extra:extra
+  });
+  if(!res.error){
+    const d=normalize(res.data)||res.data||{};
+    if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
+    if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+  }
+  return res;
+}
+
 async function enviarMensajeSoporte(txt){
   const mensaje=String(txt||"").trim();
   if(!mensaje)return;
   let res=null;
 
-  // 1) Si ya tenemos chatId + chatToken, enviar directo
+  // 1) Si ya tenemos chatId + chatToken, enviar mensaje en el chat existente
   if(state.chatId&&state.chatToken){
     res=await rpc("landing_enviar_mensaje_v2",{
       p_chat_id:Number(state.chatId),p_chat_token:state.chatToken,
       p_emisor:state.usuario,p_mensaje:mensaje,p_imagen_url:""
     });
+    // Si el token expiró o el chat no existe, crear uno nuevo
+    if(res.error) res=await _crearChatSoporte(mensaje);
+  } else {
+    // Sin chatId: crear chat de soporte directamente (NO crear solicitud)
+    res=await _crearChatSoporte(mensaje);
   }
 
-  // 2) Si falló o no teníamos chatId, crear solicitud SOPORTE (mismo RPC que funciona para cargas)
-  if(!res||res.error){
-    const payload={usuario:state.usuario,monto:0,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"SOPORTE"};
-    res=await rpc("landing_portal_v16_crear_solicitud",{
-      p_public_code:state.publicCode,p_usuario:state.usuario,p_tipo:"SOPORTE",
-      p_monto:0,p_titular:"",p_destino:null,
-      p_mensaje:mensaje,p_metadata:payload
-    });
-    if(!res.error){
-      const d=normalize(res.data)||res.data||{};
-      if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
-      if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
-    }
-  }
-
-  // 3) Fallback: landing_crear_chat_v2_blindado
-  if(!res||res.error){
-    res=await rpc("landing_crear_chat_v2_blindado",{
-      p_public_code:state.publicCode,p_usuario:state.usuario,
-      p_mensaje:mensaje,p_tipo:"SOPORTE",
-      p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}
-    });
-    if(!res.error){
-      const d=normalize(res.data)||res.data||{};
-      if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
-      if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
-    }
-  }
-
-  if(!res||res.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
+  if(!res||res.error){addMsg("No pudimos enviar el mensaje. Intentá en unos segundos.","bot");return;}
   startChatPoll();
-  if(tieneSolicitudPendiente())setTimeout(()=>startEstadoPoll(),5000);
 }
 
 async function sendFreeMessage(){
