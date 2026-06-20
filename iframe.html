@@ -149,7 +149,7 @@ let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=w
 const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set()};
 let chatPollTimer=null;
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
-function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll()}else stopChatPoll()}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll(); if(tieneSolicitudPendiente()) startEstadoPoll();}else{ stopChatPoll(); stopEstadoPoll(); }}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
@@ -419,7 +419,12 @@ if(res.error){console.warn("[V16.4] bridge solicitud falló",res.error);res=awai
 function renderSoporteForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formSoporteActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🆘 Soporte</div><div class="user-chip">👤 ${esc(state.usuario)}</div><label>Consulta</label><textarea id="soporteMensaje" placeholder="Contanos qué necesitás..."></textarea><button class="action-btn" onclick="enviarSoporte()">Enviar consulta</button></div>`);scrollBottom()}
 async function enviarSoporte(){const usuario=state.usuario,mensaje=$("soporteMensaje").value.trim();if(!mensaje)return toast("Escribí tu consulta");addMsg(mensaje,"user");const res=await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:usuario,p_mensaje:mensaje,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}});if(res.error){addMsg("No pudimos crear el chat automáticamente. Intentá nuevamente.","bot");return}cerrarFormActivo("formSoporteActiva"); addMsg("Consulta enviada ✅ Un operador te responde por este mismo chat.","bot"); setComposeEnabled(true,"")}
 async function sendFreeMessage(){if(!state.chatLibre)return toast("Elegí una opción para continuar");const input=$("freeInput"),txt=input.value.trim();if(!txt)return;input.value="";addMsg(esc(txt),"user");if(!state.usuario){addMsg("Para ayudarte mejor, indicá tu usuario de plataforma o elegí una opción del menú.","bot");return}await rpc("landing_crear_chat_v2_blindado",{p_public_code:state.publicCode,p_usuario:state.usuario,p_mensaje:txt,p_tipo:"SOPORTE",p_extra:{pc_codigo:state.pcCodigo,public_code:state.publicCode}})}
-async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");return}const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:state.solicitudId});if(res.error){addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");return}const d=normalize(res.data)||res.data;addMsg("Estado actual: <b>"+esc(d?.estado||"En revisión")+"</b>","bot")}
+async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramos una solicitud reciente en este dispositivo. Podés iniciar una carga, retiro o escribir a soporte.","bot");return}const chatIdNum = /^\d+$/.test(String(state.chatId||"")) ? Number(state.chatId) : null;
+  const res=await rpc("landing_estado_solicitud_segura",{
+    p_solicitud_id:Number(state.solicitudId),
+    p_chat_id:chatIdNum,
+    p_chat_token:state.chatToken||""
+  });if(res.error){addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");return}const d=normalize(res.data)||res.data;addMsg("Estado actual: <b>"+esc(d?.estado||"En revisión")+"</b>","bot")}
 
 
 /* =========================================================
@@ -477,7 +482,12 @@ async function consultarEstadoSolicitud(mostrarMensaje=true){
     if(mostrarMensaje) addMsg("No hay una solicitud válida para consultar en este dispositivo.","bot");
     return null;
   }
-  const res=await rpc("landing_estado_solicitud_segura",{p_public_code:state.publicCode,p_solicitud_id:sid});
+  const chatIdNum = /^\d+$/.test(String(state.chatId||"")) ? Number(state.chatId) : null;
+  const res=await rpc("landing_estado_solicitud_segura",{
+    p_solicitud_id:sid,
+    p_chat_id:chatIdNum,
+    p_chat_token:state.chatToken||""
+  });
   if(res.error){
     if(mostrarMensaje) addMsg("No pude consultar el estado ahora. Intentá nuevamente en unos minutos.","bot");
     return null;
@@ -718,7 +728,7 @@ window.addEventListener("load",async()=>{
   $("appFrame").src=PLATFORM_URL;
   await initRoute();
   renderUserGate();
-  if(tieneSolicitudPendiente()) renderPendingBox();
+  if(tieneSolicitudPendiente()){ renderPendingBox(); startEstadoPoll(); }
   if(state.chatId && $("widget")?.classList.contains("open")) startChatPoll();
 });
 </script>
