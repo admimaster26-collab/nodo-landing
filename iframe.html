@@ -149,7 +149,7 @@ let sb=null;try{if(SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes("PEGAR_"))sb=w
 const state={publicCode:new URLSearchParams(location.search).get("r")||DEFAULT_ROUTE,pcCodigo:null,usuario:localStorage.getItem("bet300_usuario")||"",solicitudId:localStorage.getItem("bet300_solicitud_id")||"",chatId:localStorage.getItem("bet300_chat_id")||"",chatToken:localStorage.getItem("bet300_chat_token")||"",selectedFile:null,billetera:null,chatLibre:false,pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",seenMsgIds:new Set(),solicitudStartedAt:Number(localStorage.getItem("bet300_solicitud_started_at")||0)};
 let chatPollTimer=null;
 function $(id){return document.getElementById(id)}function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
-function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll(); if(tieneSolicitudPendiente()) setTimeout(()=>startEstadoPoll(), 18000);}else{ stopChatPoll(); stopEstadoPoll(); }}
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll(); if(tieneSolicitudPendiente()) setTimeout(()=>startEstadoPoll(), 8000);}else{ stopChatPoll(); stopEstadoPoll(); }}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
 
@@ -372,11 +372,26 @@ async function renderCargaForm(){
     <div class="transfer-title">Transferí a esta cuenta</div>
     ${alias?`<div class="transfer-field"><div class="transfer-label">Alias</div><div class="transfer-value">${esc(alias)}</div><button class="copy-btn" onclick="copyText('${esc(alias)}',this)">Copiar alias</button></div>`:""}
     ${cbu?`<div class="transfer-field"><div class="transfer-label">CBU / CVU</div><div class="transfer-value">${esc(cbu)}</div><button class="copy-btn" onclick="copyText('${esc(cbu)}',this)">Copiar CBU / CVU</button></div>`:""}
-    ${nombre||banco?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(nombre)}${banco?" · "+esc(banco):""}</div>`:""}
+    ${b?.titular?`<div class="transfer-field"><div class="transfer-label">Titular</div><div class="transfer-value">${esc(b.titular)}</div></div>`:""}
+    <div class="transfer-field"><div class="transfer-label">Tipo</div><div class="transfer-value">${esc(tipoBilleteraPublica(b))}</div></div>
   </div>`;
   scrollBottom();
 }
-async function obtenerBilletera(){const res=await rpc("landing_obtener_billetera",{p_public_code:state.publicCode});if(!res.error){state.billetera=normalize(res.data)||res.data;return state.billetera}return null}
+async function obtenerBilletera(){
+  const candidatos=[state.pcCodigo||"P1","P1"];
+  for(const pc of [...new Set(candidatos.map(x=>String(x||"").trim().toUpperCase()).filter(Boolean))]){
+    const res=await rpc("landing_obtener_billetera",{p_pc_codigo:pc});
+    if(!res.error){
+      const row=normalize(res.data)||res.data;
+      if(row && (Array.isArray(res.data) ? res.data.length : true)){
+        state.billetera=row;
+        return state.billetera;
+      }
+    }
+  }
+  state.billetera=null;
+  return null;
+}
 
 function tipoBilleteraPublica(b){
   const raw=String(b?.banco||b?.tipo||"").trim();
@@ -431,7 +446,7 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  setTimeout(()=>startEstadoPoll(), 18000);
+  setTimeout(()=>startEstadoPoll(), 8000);
 }
 function renderRetiroForm(){$("messages").insertAdjacentHTML("beforeend",`<div id="formRetiroActiva" class="form-box active-flow"><div class="welcome-title" style="font-size:16px">🏧 Solicitud de retiro</div><div class="welcome-txt" style="margin-bottom:10px">El retiro queda sujeto a revisión de cuenta y saldo disponible.</div><div class="user-chip">👤 ${esc(state.usuario)}</div><div class="form-row"><div><label>Monto</label><input id="retiroMonto" type="number" min="1" placeholder="Ej: 10000"></div><div><label>Alias/CBU destino</label><input id="retiroDestino" placeholder="Alias o CBU/CVU"></div></div><label>Titular destino</label><input id="retiroTitular" placeholder="Nombre del titular"><button class="action-btn" onclick="enviarSolicitudRetiro()">Enviar retiro a revisión</button></div>`);scrollBottom()}
 async function enviarSolicitudRetiro(){const usuario=state.usuario,monto=$("retiroMonto").value.trim(),destino=$("retiroDestino").value.trim(),titular=$("retiroTitular").value.trim();if(!monto||!destino||!titular)return toast("Completá todos los datos del retiro");addMsg("Solicito retiro de $"+monto,"user");const payload={usuario,monto:Number(monto),destino,titular,pc_codigo:state.pcCodigo,public_code:state.publicCode,tipo:"RETIRO"};let res=await rpc("landing_portal_v16_crear_solicitud",{p_public_code:state.publicCode,p_usuario:usuario,p_tipo:"RETIRO",p_monto:Number(monto),p_titular:titular,p_destino:destino,p_mensaje:"Solicitud de RETIRO: $"+monto+" · Destino: "+destino+" · Titular: "+titular,p_metadata:payload});
@@ -511,22 +526,14 @@ function esConfirmacionDemasiadoTemprana(d, mostrarMensaje){
   const started = Number(state.solicitudStartedAt || localStorage.getItem("bet300_solicitud_started_at") || 0);
   if(!started) return false;
 
-  // Evita que el portal tome como aprobada una respuesta inmediata o de una solicitud vieja.
-  // El panel/worker nunca debería cerrar una carga real en el mismo instante exacto del envío.
+  // Protección anti falso positivo:
+  // solo bloquea una confirmación durante los primeros 8 segundos después de crear la solicitud.
+  // Después de ese plazo, si Supabase dice ACREDITADA/PAGADA/APROBADA, se respeta.
   const elapsed = Date.now() - started;
-  const updatedRaw = d?.updated_at || d?.updatedAt || d?.fecha_actualizacion || "";
-  const updatedMs = updatedRaw ? Date.parse(updatedRaw) : 0;
-
-  if(updatedMs && updatedMs < (started - 3000)){
+  if(elapsed < 8000){
     if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
     return true;
   }
-
-  if(elapsed < 18000){
-    if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
-    return true;
-  }
-
   return false;
 }
 
@@ -547,6 +554,10 @@ async function consultarEstadoSolicitud(mostrarMensaje=true){
     return null;
   }
   const d=normalize(res.data)||res.data||{};
+  if(d.ok===false){
+    if(mostrarMensaje) addMsg("Estado actual: <b>En verificación</b>","bot");
+    return "PENDIENTE";
+  }
   const estado=estadoNormalizado(d.estado||d.status||d.estado_solicitud);
 
   if(esEstadoFinalAprobado(estado)){
@@ -740,7 +751,7 @@ async function enviarSolicitudCarga(usuario,monto,titular){
   renderUserGate();renderPendingBox();
   setComposeEnabled(true,"Podés agregar un comentario sobre tu solicitud.");
   startChatPoll();
-  setTimeout(()=>startEstadoPoll(), 18000);
+  setTimeout(()=>startEstadoPoll(), 8000);
 }
 
 function renderSoporteForm(){
@@ -767,7 +778,7 @@ async function enviarMensajeSoporte(txt){
   }
   if(res?.error){addMsg("No pudimos enviar el mensaje. Intentá nuevamente.","bot");return;}
   startChatPoll();
-  setTimeout(()=>startEstadoPoll(), 18000);
+  setTimeout(()=>startEstadoPoll(), 8000);
 }
 async function sendFreeMessage(){
   if(!state.chatLibre)return toast("Elegí una opción para continuar");
@@ -786,9 +797,9 @@ window.addEventListener("load",async()=>{
   $("appFrame").src=PLATFORM_URL;
   await initRoute();
   renderUserGate();
-  if(tieneSolicitudPendiente()){ renderPendingBox(); setTimeout(()=>startEstadoPoll(), 18000); }
+  if(tieneSolicitudPendiente()){ renderPendingBox(); setTimeout(()=>startEstadoPoll(), 8000); }
   if(state.chatId && $("widget")?.classList.contains("open")) startChatPoll();
-  setTimeout(()=>startEstadoPoll(), 18000);
+  setTimeout(()=>startEstadoPoll(), 8000);
 });
 </script>
 </body>
