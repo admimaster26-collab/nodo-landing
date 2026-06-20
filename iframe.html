@@ -564,40 +564,34 @@ function renderSoporteForm(){
 }
 
 // ── Mensajería libre ──────────────────────────────────────────────────────
-async function _crearChatSoporte(mensaje){
-  // Crea un CHAT (no una solicitud) para soporte — usa landing_crear_chat_v2_blindado
-  const extra={pc_codigo:state.pcCodigo||"P1",public_code:state.publicCode,usuario:state.usuario};
-  const res=await rpc("landing_crear_chat_v2_blindado",{
-    p_public_code:state.publicCode,
-    p_usuario:state.usuario,
-    p_mensaje:mensaje,
-    p_tipo:"SOPORTE",
-    p_extra:extra
-  });
-  if(!res.error){
-    const d=normalize(res.data)||res.data||{};
-    if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
-    if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
-  }
-  return res;
-}
-
 async function enviarMensajeSoporte(txt){
   const mensaje=String(txt||"").trim();
   if(!mensaje)return;
   let res=null;
 
-  // 1) Si ya tenemos chatId + chatToken, enviar mensaje en el chat existente
+  // 1) Si ya tenemos chatId + chatToken, enviar en chat existente
   if(state.chatId&&state.chatToken){
     res=await rpc("landing_enviar_mensaje_v2",{
       p_chat_id:Number(state.chatId),p_chat_token:state.chatToken,
       p_emisor:state.usuario,p_mensaje:mensaje,p_imagen_url:""
     });
-    // Si el token expiró o el chat no existe, crear uno nuevo
-    if(res.error) res=await _crearChatSoporte(mensaje);
-  } else {
-    // Sin chatId: crear chat de soporte directamente (NO crear solicitud)
-    res=await _crearChatSoporte(mensaje);
+  }
+
+  // 2) Sin chatId o si falló: crear hilo de soporte vía solicitud tipo SOPORTE
+  // (el mismo RPC confiable que usa CARGA — retorna chat_id+chat_token)
+  if(!res||res.error){
+    const bp=billeteraPayloadPlano();
+    const payload={usuario:state.usuario,pc_codigo:state.pcCodigo||"P1",public_code:state.publicCode,tipo:"SOPORTE",...bp};
+    res=await rpc("landing_portal_v16_crear_solicitud",{
+      p_public_code:state.publicCode,p_usuario:state.usuario,
+      p_tipo:"SOPORTE",p_monto:0,p_titular:"",p_destino:null,
+      p_mensaje:mensaje,p_metadata:payload
+    });
+    if(!res.error){
+      const d=normalize(res.data)||res.data||{};
+      if(d.chat_id){state.chatId=String(d.chat_id);localStorage.setItem("bet300_chat_id",state.chatId);}
+      if(d.chat_token){state.chatToken=String(d.chat_token);localStorage.setItem("bet300_chat_token",state.chatToken);}
+    }
   }
 
   if(!res||res.error){addMsg("No pudimos enviar el mensaje. Intentá en unos segundos.","bot");return;}
