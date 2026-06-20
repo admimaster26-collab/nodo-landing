@@ -198,11 +198,11 @@ function renderUserGate(){
     menu.classList.add("main-menu-disabled");
     setComposeEnabled(false,"Primero indicá tu usuario de plataforma.");
     gate.innerHTML=`<div class="user-gate-title">Bienvenido a BET300 Asistencia 👋</div>
-      <div class="welcome-txt">Para ayudarte con cargas, retiros o soporte, indicá tu usuario de plataforma. No pedimos tu clave.</div>
+      <div class="welcome-txt">Para ayudarte con cargas, retiros o soporte, indicá tu usuario de plataforma. No pedimos tu clave. La validación se revisa antes de acreditar.</div>
       <label style="margin-top:12px">Usuario de plataforma</label>
       <input id="usuarioInicial" placeholder="Ej: usuario123" autocomplete="username">
       <button class="action-btn" onclick="guardarUsuarioInicial()">Continuar</button>
-      <div class="flow-note">Este usuario queda recordado en este dispositivo para próximas operaciones.</div>`;
+      <div class="flow-note">Este usuario queda recordado en este dispositivo. Si no coincide, el operador puede rechazar la solicitud.</div>`;
     return;
   }
 
@@ -423,8 +423,8 @@ async function verEstado(){if(!state.solicitudId){addMsg("Todavía no encontramo
 
 
 /* =========================================================
-   PATCH V16.5 · USUARIO REAL + BILLETERA REAL + ESTADO ESTRICTO
-   - Valida usuario antes de habilitar menú.
+   PATCH V16.5D · VALIDACIÓN DIFERIDA + BILLETERA REAL + ESTADO ESTRICTO
+   - No bloquea el menú esperando VALIDAR_USUARIO; valida en segundo plano.
    - Billetera por p_pc_codigo, con fallback P1.
    - Soporte usa solo la barra inferior, sin formulario duplicado.
    - Nunca muestra "aprobada" por un OK genérico.
@@ -527,20 +527,49 @@ async function validarUsuarioRealPortal(usuario){
   return {ok:false,error:"No pudimos confirmar ese usuario. Revisá el nombre o consultá soporte."};
 }
 
+async function iniciarValidacionUsuarioBackground(usuario){
+  const u=String(usuario||"").trim();
+  if(!u) return;
+  try{
+    const r=await rpc("landing_validar_usuario_login",{p_usuario:u,p_pc_codigo:state.pcCodigo||"P1"});
+    if(r.error) return;
+    const row=normalize(r.data)||r.data||{};
+    const validacionId=row.validacion_id||row.id||null;
+    if(validacionId) localStorage.setItem("bet300_validacion_id",String(validacionId));
+
+    // Validación diferida: no bloquea al usuario ni al menú.
+    // Si el worker P1 no procesa la validación, el panel igualmente recibe la solicitud
+    // y puede validarla/rechazarla antes de cargar fichas.
+    if(validacionId){
+      let intentos=0;
+      const t=setInterval(async()=>{
+        intentos++;
+        if(intentos>8){clearInterval(t);return;}
+        const st=await rpc("landing_estado_validacion_usuario",{p_validacion_id:Number(validacionId)});
+        if(st.error) return;
+        const sr=normalize(st.data)||st.data||{};
+        const estado=estadoNormalizado(sr.estado||sr.status);
+        if(["EXISTE","EXISTIR","NO_EXISTE","ERROR","RECHAZADO"].includes(estado)){
+          clearInterval(t);
+          localStorage.setItem("bet300_validacion_estado",estado);
+        }
+      },2500);
+    }
+  }catch(e){/* silencioso: no bloquear portal */}
+}
+
 async function guardarUsuarioInicial(){
   const input=$("usuarioInicial");
   const usuario=String(input?.value||"").trim();
   if(!usuario) return toast("Indicá tu usuario de plataforma");
-  const btn=input?.parentElement?.querySelector("button.action-btn");
-  if(btn){btn.disabled=true;btn.textContent="Validando usuario...";}
-  const v=await validarUsuarioRealPortal(usuario);
-  if(btn){btn.disabled=false;btn.textContent="Continuar";}
-  if(!v.ok){toast(v.error||"Usuario no validado");return;}
+
+  // Validación diferida: se intenta en segundo plano, pero no se traba el portal.
+  // La carga/retiro queda en revisión y NODO/worker confirma antes de acreditar.
   state.usuario=usuario;
   localStorage.setItem("bet300_usuario",usuario);
-  if(v.validacion_id) localStorage.setItem("bet300_validacion_id",String(v.validacion_id));
-  addMsg("Usuario validado: "+esc(usuario),"bot");
+  addMsg("Usuario vinculado: "+esc(usuario),"bot");
   renderUserGate();
+  iniciarValidacionUsuarioBackground(usuario);
 }
 
 function inferirTipoBilletera(b){
@@ -615,11 +644,14 @@ function billeteraPayloadPlano(){
 }
 function limpiarSolicitudAnteriorAntesDeNueva(){
   stopEstadoPoll();
+  stopChatPoll();
   estadoFinalNotificado=false;
   state.solicitudId="";
   state.pendingTipo="";
-  localStorage.removeItem("bet300_solicitud_id");
-  localStorage.removeItem("bet300_pending_tipo");
+  state.chatId="";
+  state.chatToken="";
+  state.seenMsgIds=new Set();
+  ["bet300_solicitud_id","bet300_pending_tipo","bet300_chat_id","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
 }
 async function enviarSolicitudCarga(usuario,monto,titular){
   limpiarSolicitudAnteriorAntesDeNueva();
