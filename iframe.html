@@ -94,10 +94,11 @@ const state={
   selectedFile:null, billetera:null, chatLibre:false,
   pendingTipo:localStorage.getItem("bet300_pending_tipo")||"",
   seenMsgIds:new Set(),
+  portalThreadSeen:new Set(JSON.parse(localStorage.getItem("bet300_portal_thread_seen")||"[]")),
   solicitudStartedAt:Number(localStorage.getItem("bet300_solicitud_started_at")||0)
 };
 
-let chatPollTimer=null, estadoPollTimer=null, estadoFinalNotificado=false;
+let chatPollTimer=null, estadoPollTimer=null, portalThreadTimer=null, estadoFinalNotificado=false;
 
 function $(id){return document.getElementById(id)}
 function esc(t){return String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
@@ -105,7 +106,7 @@ function escMsg(t){return esc(t).replace(/\n/g,"<br>")}
 function now(){return new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
 function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}
 function scrollBottom(){const b=$("widgetBody");b.scrollTop=b.scrollHeight}
-function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll();if(tieneSolicitudPendiente())setTimeout(()=>startEstadoPoll(),8000);}else{stopChatPoll();stopEstadoPoll();}}
+function toggleWidget(open){$("widget").classList.toggle("open",!!open);if(open){setTimeout(scrollBottom,80);if(state.chatId)startChatPoll();if(state.usuario)startPortalThreadPoll();if(tieneSolicitudPendiente())setTimeout(()=>startEstadoPoll(),8000);}else{stopChatPoll();stopPortalThreadPoll();stopEstadoPoll();}}
 function addMsg(text,who="bot"){const wrap=document.createElement("div");wrap.className="msg "+(who==="user"?"user":"bot");wrap.innerHTML='<div class="bubble">'+String(text)+'</div><div class="meta">'+(who==="user"?"Vos":"BET300")+" · "+now()+'</div>';$("messages").appendChild(wrap);scrollBottom()}
 async function rpc(fn,params){if(!sb)return{data:null,error:{message:"Supabase no configurado"}};const{data,error}=await sb.rpc(fn,params||{});return{data,error}}
 function normalize(data){if(!data)return null;if(Array.isArray(data))return data[0]||null;if(data.data)return Array.isArray(data.data)?data.data[0]:data.data;return data}
@@ -127,6 +128,45 @@ async function pollOperatorMessages(){
     // Convertir \n a <br> para que los saltos de línea del panel se vean correctamente
     if(isOp&&texto) addMsg(escMsg(texto),"bot");
   });
+}
+
+// ── Portal metadata thread poll (respuestas desde panel/NODO) ─────────────
+function savePortalThreadSeen(){
+  try{localStorage.setItem("bet300_portal_thread_seen",JSON.stringify([...state.portalThreadSeen].slice(-400)));}catch(e){}
+}
+function startPortalThreadPoll(){
+  stopPortalThreadPoll();
+  if(!state.usuario)return;
+  portalThreadTimer=setInterval(pollPortalThread,3500);
+  setTimeout(pollPortalThread,900);
+}
+function stopPortalThreadPoll(){
+  if(portalThreadTimer){clearInterval(portalThreadTimer);portalThreadTimer=null;}
+}
+function threadKey(m){
+  return String((m?.origen||"")+"|"+(m?.solicitud_id||"")+"|"+(m?.fecha||"")+"|"+(m?.mensaje||""));
+}
+async function pollPortalThread(){
+  if(!state.usuario||!$("widget")?.classList.contains("open"))return;
+  const res=await rpc("landing_portal_chat_thread_get",{p_usuario:state.usuario,p_public_code:state.publicCode});
+  if(res.error){console.warn("[chat_thread]",res.error);return;}
+  const d=normalize(res.data)||res.data||{};
+  const thread=Array.isArray(d.chat_thread)?d.chat_thread:[];
+  if(!thread.length)return;
+
+  thread.forEach(m=>{
+    const key=threadKey(m);
+    if(state.portalThreadSeen.has(key))return;
+    state.portalThreadSeen.add(key);
+
+    const origen=String(m.origen||"").toUpperCase();
+    const texto=m.mensaje||"";
+    // Mostramos en portal solo respuestas del panel/operador para evitar duplicar mensajes propios
+    if(origen==="OPERADOR"&&texto){
+      addMsg(escMsg(texto),"bot");
+    }
+  });
+  savePortalThreadSeen();
 }
 
 // ── Compose ───────────────────────────────────────────────────────────────
@@ -215,8 +255,8 @@ function cambiarUsuario(){
 
 function _confirmarCambioUsuario(){
   stopChatPoll();stopEstadoPoll();
-  ["bet300_usuario","bet300_chat_id","bet300_solicitud_id","bet300_pending_tipo","bet300_chat_token"].forEach(k=>localStorage.removeItem(k));
-  Object.assign(state,{usuario:"",solicitudId:"",pendingTipo:"",chatId:"",chatToken:"",chatLibre:false,seenMsgIds:new Set()});
+  ["bet300_usuario","bet300_chat_id","bet300_solicitud_id","bet300_pending_tipo","bet300_chat_token","bet300_portal_thread_seen"].forEach(k=>localStorage.removeItem(k));
+  Object.assign(state,{usuario:"",solicitudId:"",pendingTipo:"",chatId:"",chatToken:"",chatLibre:false,seenMsgIds:new Set(),portalThreadSeen:new Set()});
   $("messages").innerHTML="";
   renderUserGate();
 }
@@ -596,6 +636,7 @@ async function enviarMensajeSoporte(txt){
 
   if(!res||res.error){addMsg("No pudimos enviar el mensaje. Intentá en unos segundos.","bot");return;}
   startChatPoll();
+  startPortalThreadPoll();
 }
 
 async function sendFreeMessage(){
@@ -615,6 +656,7 @@ window.addEventListener("load",async()=>{
   renderUserGate();
   if(tieneSolicitudPendiente()){renderPendingBox();setTimeout(()=>startEstadoPoll(),8000);}
   if(state.chatId&&$("widget")?.classList.contains("open"))startChatPoll();
+  if(state.usuario&&$("widget")?.classList.contains("open"))startPortalThreadPoll();
 });
 </script>
 </body>
